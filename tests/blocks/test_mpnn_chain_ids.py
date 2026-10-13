@@ -131,7 +131,7 @@ def test_block_renames_for_mpnn_and_restores_the_outputs(tmp_path):
         (sandbox / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     ((renamed_path, positions),) = staged.items()
-    assert renamed_path.endswith("portable_pdb/design.pdb")
+    assert renamed_path.endswith("pdb_inputs/design.pdb")
     assert positions == "A1 B5 C9"
     assert _chain_ids(renamed_path) == {"A", "B", "C"}
     assert _chain_ids(source) == {"A", "X1", "X2"}  # the input is untouched
@@ -180,6 +180,6 @@ def test_sequence_mode_stages_a_renamed_pdb_and_keeps_original_chains_in_the_man
         (sandbox / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     ((path, positions),) = staged.items()
-    assert path.endswith("portable_pdb/design.pdb")
+    assert path.endswith("pdb_inputs/design.pdb")
     assert _chain_ids(path) == {"A", "B"}
     assert positions == "B5"

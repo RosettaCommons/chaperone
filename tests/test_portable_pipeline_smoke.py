@@ -30,7 +30,7 @@ def test_public_packing_smoke_respects_site_and_explicit_mode(tmp_path, local, m
     result = subprocess.run(
         [
             sys.executable,
-            str(ROOT / "tests/public_mpnn_packing_smoke.py"),
+            str(ROOT / "tests/mpnn_packing_smoke.py"),
             "--inputs=unused.parquet",
             "--check-config",
             *(["--local"] if local else []),

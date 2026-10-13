@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Run LigandMPNN packing on two small existing backbones.
 
-    python tests/public_mpnn_packing_smoke.py \
+    python tests/mpnn_packing_smoke.py \
         --inputs=/path/to/core-run/rfd3/output.parquet --test --local \
-        --rundir=/path/to/new/public-packing-run
+        --rundir=/path/to/new/mpnn-packing-run
 
 Each input must have one protein chain of at most 48 residues. The helper
 renames it X1 and fixes its first two residues, requests two sequences and two
@@ -28,7 +28,7 @@ import numpy as np
 from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import get_residue_starts
 
-from blocks.networks.mpnn import ClassicMPNNBlock, LIGANDMPNN_PUBLIC_CONTAINER
+from blocks.networks.mpnn import ClassicMPNNBlock, LIGANDMPNN_CONTAINER
 from chaperone import (
     ExecutionEngine,
     PipelineDataHandler,
@@ -66,7 +66,7 @@ def resolve_plan(argv):
         {},
         None,
     )
-    assert block._get_image() is LIGANDMPNN_PUBLIC_CONTAINER
+    assert block._get_image() is LIGANDMPNN_CONTAINER
     assert block.output_mode == "structures" and block.num_seq_per_pdb == 2
     assert (
         block.args.number_of_packs_per_design == 2 and block.args.pack_side_chains == 1

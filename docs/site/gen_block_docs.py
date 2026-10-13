@@ -342,7 +342,7 @@ def _render_block(name: str, cls) -> list[str]:
         ])
     if name == "mpnn":
         lines.extend([
-            "**Backend:** `mpnn` runs the MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between LigandMPNN and `foundry_mpnn`.",
+            "**Backend:** `mpnn` runs LigandMPNN (`dauparas/LigandMPNN`) from the `ligandmpnn` image, with every official checkpoint baked in; install it with `chaperone install ligandmpnn`. No settings are needed. `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, `per_residue_label_membrane_mpnn` or `global_label_membrane_mpnn`) and `noise_level` selects the checkpoint version; the [container guide](containers.md) lists the valid combinations.",
             "",
         ])
     if name in METRIC_NOTES:

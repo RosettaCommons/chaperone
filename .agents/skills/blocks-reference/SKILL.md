@@ -23,7 +23,7 @@ Choose the least expensive block that directly measures the campaign quantity. T
 ## Default choices
 
 - Use `rfd3` for de novo backbone or atom-aware generation. Use `rfd3_partial` only for local diversification; its outputs are correlated descendants, not independent de novo designs.
-- Use `foundry_mpnn` for ordinary ProteinMPNN or LigandMPNN inverse folding. Use `mpnn` (LigandMPNN) when its mature wrapper, soluble or membrane models, a specific `noise_level` checkpoint, or specialized flags are required.
+- `mpnn` runs LigandMPNN from its own `ligandmpnn` image: `model_type` (protein, ligand, soluble or membrane MPNN) and `noise_level` select the model and checkpoint. `foundry_mpnn` is a separate block that runs MPNN from the Foundry image used by RFD3 and RF3.
 - Use `esmfold2` for cheap single-sequence monomer triage.
 - Use `rf3` for ligand-aware or multicomponent prediction when it satisfies the scorer. Use `af3` when AF3 itself, custom chemistry, or AF3-equivalent final evaluation is required.
 - Avoid the Boltz and Chai families by default in this environment: they are comparatively slow here and have not been reliable screening oracles. Use one only for a missing capability and after a bounded, matched calibration shows useful signal per cost.

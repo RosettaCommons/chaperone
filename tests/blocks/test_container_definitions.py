@@ -44,7 +44,7 @@ EXPECTED_BUILDABLE = {
     "esmfold2",
     "foundry",
     "foundry_public",
-    "ligandmpnn_public",
+    "ligandmpnn",
     "metal3d",
     "openfold3",
     "protein_hunter",

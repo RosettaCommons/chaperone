@@ -14,7 +14,7 @@ Based on the [RFD3 PPI design tutorial](https://rosettacommons.github.io/foundry
 | File | MPNN backend | Notes |
 |---|---|---|
 | `pipeline_foundry.py` | `foundry_mpnn` (production foundry fork) | Canonical all-foundry PPI stack. |
-| `pipeline_mpnn.py` | `mpnn` block (LigandMPNN) | Needs the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). |
+| `pipeline_mpnn.py` | `mpnn` block (LigandMPNN) | Needs the `ligandmpnn` image (`chaperone install ligandmpnn`). |
 
 Both pipelines share the same block sequence; the only difference is
 which MPNN block is plugged in at the inverse-folding step:
@@ -37,7 +37,7 @@ rfd3 → filter → mpnn → rf3 → rmsd → filter
 
 Both use `FOUNDRY_CONTAINER` for RFD3 and RF3. The foundry variant
 also uses it for MPNN; the `mpnn` variant runs LigandMPNN from the
-`ligandmpnn_public` image (see `src/blocks/networks/mpnn.py`).
+`ligandmpnn` image (see `src/blocks/networks/mpnn.py`).
 Set `CHAPERONE_COMPUTE_BACKEND` to `slurm` or `local` to force a mode;
 containers run with Apptainer or Docker. Cloud (Modal) execution is not
 supported.

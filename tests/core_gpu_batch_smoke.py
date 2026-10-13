@@ -11,7 +11,7 @@ This checks execution and data integrity, not scientific accuracy or production
 throughput. RF3 early stopping is disabled here to require a completed prediction
 for every input; its normal recycle and diffusion schedules are unchanged. This
 execution diagnostic does not promote designs based on confidence.
-MPNN runs from the LigandMPNN image (`chaperone install ligandmpnn_public`).
+MPNN runs from the LigandMPNN image (`chaperone install ligandmpnn`).
 
 Use --predictors=rf3,af3 (or none) to select stages. Reuse the same run directory
 to add predictors later: generation and sequences use the engine's normal cache.

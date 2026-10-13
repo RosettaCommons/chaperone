@@ -91,12 +91,12 @@ cluster, using the same shared image directory. The fresh LigandMPNN
 build there completed with Torch 2.11.0/CUDA 12.8 and passed package
 compatibility, six checksum/load gates and imports.
 
-To test public packing without Foundry or external checkpoint directories, first
+To test packing without Foundry or external checkpoint directories, first
 run the CPU smoke above, then use its two copied structures:
 
 ```bash
 # Omit --local: one engine-managed Slurm GPU job, capped at 15 minutes.
-python tests/public_mpnn_packing_smoke.py \
+python tests/mpnn_packing_smoke.py \
   --inputs=/absolute/path/to/cpu-smoke/pipeline/copy/output.parquet \
   --test --rundir=/absolute/path/to/new-packing-smoke
 ```
@@ -127,7 +127,7 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
+| MPNN (`ligandmpnn`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
 | Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
 | DISCO | Transformers-repaired full build passed; final architecture repair not rebuilt | The first GPU failure was a Transformers 5 checkpoint-layout mismatch. The corrected rebuild reached a second upstream failure: a comma-delimited CUDA architecture list. The final recipe repairs that assignment and passes parser/regression checks; final GPU validation is deferred. |
@@ -154,7 +154,7 @@ after merge; this PR does not claim that compatibility.
 A prior PPI Foundry example executed using an existing site image, with **0 of 1**
 designs passing its scientific filters. This supplies execution evidence only;
 it does not establish a successful design campaign or validate the fresh image.
-The repaired FGFR2 example executed RFD3 → private-source MPNN → AF3 with target
+The repaired FGFR2 example executed, in an earlier run, RFD3 → MPNN → AF3 with target
 template → RMSD → ipSAE → CMS → PEPPR → final filter. All these stages executed
 successfully, but **0 of 1** designs passed the unchanged scientific gates. The
 completed PPI and FGFR2 workflows therefore demonstrate runtime integration,
@@ -163,7 +163,7 @@ after the AF3 sequence-authority fix, supplying execution evidence without a
 claim of design quality.
 
 The earlier CatCIF example completed archive writing/materialization and
-RFD3 → portable MPNN → AF3 → RMSD, but that run preceded the AF3 fix: default
+RFD3 → MPNN → AF3 → RMSD, but that run preceded the AF3 fix: default
 mmCIF preparation could predict the backbone context sequence instead of the
 designed MPNN sequence. Its RMSD is therefore not validation of the intended
 designed sequence. The fix routes authoritative sequence data, including folded
@@ -177,8 +177,7 @@ normally and permits only that exact mismatch in its dependency check. This is
 an explicit compatibility override, not a clean `pip check` result; the repaired image passed the bounded GPU smoke described above.
 
 Public recipes do not grant access to private repositories, licensed software or
-model weights. The `mpnn` block installs from public source with official public
-weights. Third-party
+model weights. The `mpnn` block installs LigandMPNN from source with its official checkpoints. Third-party
 software and weights retain their own terms despite Chaperone's MIT license.
 The [third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md)
 identify the bundled AF3 runner (CC BY-NC-SA 4.0) and nine eval example structures
@@ -284,4 +283,4 @@ with each result. The assertions verify execution, not structural accuracy.
 
 ### Latest runtime findings
 
-Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/public-MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, public packing and nested scientific eval runs are deferred; their opt-in helpers remain available.
+Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, MPNN packing and nested scientific eval runs are deferred; their opt-in helpers remain available.

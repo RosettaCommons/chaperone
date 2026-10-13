@@ -44,7 +44,7 @@ been built or exercised. Validate one small workload on your cluster before scal
 | Recipes | Installation notes |
 |---|---|
 | `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
-| `ligandmpnn_public` | MIT-licensed `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block; see the [validation record](release-validation.md) for completed build/GPU checks. |
+| `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block; see the [validation record](release-validation.md) for completed build/GPU checks. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
 | `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. See the [validation record](release-validation.md) for actual inference status. |
@@ -73,12 +73,12 @@ inputs live elsewhere. Place referenced inputs beneath that root or configure
 an explicit image bind for their location. Evaluation workers use their assigned
 workspace instead of inferring a host project directory.
 
-The `mpnn` block runs LigandMPNN from the `ligandmpnn_public` image;
-install it with `chaperone install ligandmpnn_public`. The image bakes every
-official checkpoint, so no weights directory is configured. `model_type` selects
-the model and `noise_level` the checkpoint version (the backbone noise, in
-Angstrom, the model was trained with); leaving `noise_level` unset uses the
-upstream default for the model.
+`mpnn` is the single LigandMPNN block. Install its image once with
+`chaperone install ligandmpnn`; no settings are needed, because the image bakes
+every official checkpoint. Within the block, `model_type` selects the model and
+`noise_level` the checkpoint version (the backbone noise, in Angstrom, the model
+was trained with); leaving `noise_level` unset uses the upstream default for the
+model.
 
 | `model_type` | `noise_level` | Default | Checkpoints |
 |---|---|---|---|
@@ -95,7 +95,7 @@ valid ones. The membrane models take `args.transmembrane_buried` and
 (`output_mode="structures"`) uses `ligandmpnn_sc_v_32_002_16.pt`, or a host file
 given as `args.checkpoint_path_sc`.
 
-The backend stages PDB inputs for its pinned runner. It keeps the original CIF and parent links, remaps
+`mpnn` stages PDB inputs for its pinned runner. It keeps the original CIF and parent links, remaps
 fixed residues with chain names, and restores original chain identifiers in
 compiled sequences or structures. Inputs must fit PDB's residue and component
 identifier limits; coordinates use PDB precision. Residue-level bias requires

@@ -13,8 +13,8 @@ Run:
     FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
     ./examples/benchmarks/ppi/pipeline_mpnn.py --test
 
-The ``mpnn`` block runs from the ``ligandmpnn_public`` image; install it with
-``chaperone install ligandmpnn_public``. Choose the model with ``model_type``
+The ``mpnn`` block runs from the ``ligandmpnn`` image; install it with
+``chaperone install ligandmpnn``. Choose the model with ``model_type``
 (``ligand_mpnn``, ``protein_mpnn``, ``soluble_mpnn``) and the checkpoint
 version with ``noise_level``; see ``src/blocks/networks/mpnn.py``.
 """
@@ -50,7 +50,7 @@ blocks = [
             "rfd3.n_chainbreaks": MetricFilter(max=0),
         },
     ),
-    # LigandMPNN — ligand-aware inverse folding (public dauparas/LigandMPNN).
+    # LigandMPNN — ligand-aware inverse folding (dauparas/LigandMPNN).
     MPNN(
         model_type="ligand_mpnn",
         num_seq_per_pdb=4,

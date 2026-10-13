@@ -684,16 +684,16 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 > Dauparas et al. (2023) — Atomic context-conditioned protein sequence design using LigandMPNN
 > [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/dauparas/LigandMPNN) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/mpnn.py)
 
-**Backend:** `mpnn` runs the MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between LigandMPNN and `foundry_mpnn`.
+**Backend:** `mpnn` runs LigandMPNN (`dauparas/LigandMPNN`) from the `ligandmpnn` image, with every official checkpoint baked in; install it with `chaperone install ligandmpnn`. No settings are needed. `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, `per_residue_label_membrane_mpnn` or `global_label_membrane_mpnn`) and `noise_level` selects the checkpoint version; the [container guide](containers.md) lists the valid combinations.
 
-Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn_public`
+Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_type`</span> | `Literal` | `'ligand_mpnn'` | Model family: protein_mpnn, ligand_mpnn, soluble_mpnn, or a membrane model (per_residue_label_membrane_mpnn, global_l... |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`noise_level`</span> | `Optional[Literal]` | `None` | Checkpoint version: backbone noise (Angstrom) the model was trained with. None uses the upstream default. Valid value... |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`num_seq_per_pdb`</span> | `int` | `8` | Number of sequences to generate per structure |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`output_mode`</span> | `Literal` | `'sequences'` | Return compact sequence rows (default) or legacy side-chain-packed structures. Sequence mode disables packing. |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`output_mode`</span> | `Literal` | `'sequences'` | Return compact sequence rows (default) or side-chain-packed structures. Sequence mode disables packing. |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `skip_existing` | `bool` | `True` | Skip processing if outputs already exist |

@@ -32,14 +32,14 @@ from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
-_PUBLIC_MPNN_REVISION = "26ec57ac976ade5379920dbd43c7f97a91cf82de"
-_PUBLIC_MPNN_ROOT = "/opt/ligandmpnn"
+_MPNN_REVISION = "26ec57ac976ade5379920dbd43c7f97a91cf82de"
+_MPNN_ROOT = "/opt/ligandmpnn"
 # Every official checkpoint of the pinned revision (get_model_params.sh), keyed by
 # model_type, then by the backbone noise (Angstrom) the model was trained with:
 # {filename: sha256}. All are baked into the image and verified at build time.
-# The first group is also published in dauparas/ProteinMPNN; the rest come from
-# files.ipd.uw.edu, the host get_model_params.sh downloads from.
-_PUBLIC_MPNN_CHECKPOINTS = {
+# The protein_mpnn group is also published in dauparas/ProteinMPNN. The files are
+# fetched from the host that get_model_params.sh uses.
+_MPNN_CHECKPOINTS = {
     "protein_mpnn": {
         0.02: ("proteinmpnn_v_48_002.pt", "925f2ca1007bf9b02e0e7f420ff00eb91f50fcc2722f64b42e644ae95adaa131"),
         0.10: ("proteinmpnn_v_48_010.pt", "db866fae956a28661f926053d630610c55e9fc4bc03922f2aeeb98a37435ccce"),
@@ -66,60 +66,60 @@ _PUBLIC_MPNN_CHECKPOINTS = {
     },
 }
 # The upstream run.py defaults, used when noise_level is not given.
-_PUBLIC_MPNN_DEFAULT_NOISE = {
+_MPNN_DEFAULT_NOISE = {
     "protein_mpnn": 0.20,
     "ligand_mpnn": 0.10,
     "soluble_mpnn": 0.20,
     "per_residue_label_membrane_mpnn": 0.20,
     "global_label_membrane_mpnn": 0.20,
 }
-_PUBLIC_MPNN_PACKER = (
+_MPNN_PACKER = (
     "ligandmpnn_sc_v_32_002_16.pt",
     "799a9de6c1c72bb0c7ceb37998391a6fd0e3e21cb42928ee31a28313a3b1b46a",
 )
-_PUBLIC_MPNN_ALL_CHECKPOINTS = [
+_MPNN_ALL_CHECKPOINTS = [
     entry
-    for versions in _PUBLIC_MPNN_CHECKPOINTS.values()
+    for versions in _MPNN_CHECKPOINTS.values()
     for entry in versions.values()
-] + [_PUBLIC_MPNN_PACKER]
+] + [_MPNN_PACKER]
 
 
 def _available_versions() -> str:
     return "; ".join(
         f"{model_type}: {', '.join(f'{noise:g}' for noise in versions)}"
-        for model_type, versions in _PUBLIC_MPNN_CHECKPOINTS.items()
+        for model_type, versions in _MPNN_CHECKPOINTS.items()
     )
 
 
-def _public_checkpoint(model_type: str, noise_level: float | None = None) -> str:
+def _checkpoint_path(model_type: str, noise_level: float | None = None) -> str:
     """Image path of the checkpoint for ``model_type`` at ``noise_level``.
 
     Raises ``ValueError`` listing every valid combination if there is none.
     """
-    versions = _PUBLIC_MPNN_CHECKPOINTS.get(model_type)
+    versions = _MPNN_CHECKPOINTS.get(model_type)
     if versions is None:
         raise ValueError(
             f"Unknown MPNN model_type {model_type!r}; "
-            f"choose one of {sorted(_PUBLIC_MPNN_CHECKPOINTS)}."
+            f"choose one of {sorted(_MPNN_CHECKPOINTS)}."
         )
-    noise = _PUBLIC_MPNN_DEFAULT_NOISE[model_type] if noise_level is None else round(noise_level, 2)
+    noise = _MPNN_DEFAULT_NOISE[model_type] if noise_level is None else round(noise_level, 2)
     if noise not in versions:
         raise ValueError(
             f"model_type={model_type!r} has no checkpoint with noise_level={noise_level}. "
             f"Available noise_level values by model_type: {_available_versions()}."
         )
-    return f"{_PUBLIC_MPNN_ROOT}/model_params/{versions[noise][0]}"
+    return f"{_MPNN_ROOT}/model_params/{versions[noise][0]}"
 
 
-_PUBLIC_MPNN_PACKER_PATH = f"{_PUBLIC_MPNN_ROOT}/model_params/{_PUBLIC_MPNN_PACKER[0]}"
+_MPNN_PACKER_PATH = f"{_MPNN_ROOT}/model_params/{_MPNN_PACKER[0]}"
 
 
 # These removed NumPy aliases were aliases of the corresponding Python types.
 # Pin expected replacements so an upstream source change fails the build gate.
-_PUBLIC_MPNN_NUMPY_COMPATIBILITY_PATCH = f"""
+_MPNN_NUMPY_COMPATIBILITY_PATCH = f"""
 from pathlib import Path
 import re
-root = Path({_PUBLIC_MPNN_ROOT!r}) / "openfold"
+root = Path({_MPNN_ROOT!r}) / "openfold"
 for filename, alias, expected in [
     ("np/residue_constants.py", "int", 3),
     ("data/templates.py", "object", 2),
@@ -214,12 +214,12 @@ class ChainRename:
 
 # ── Container ───────────────────────────────────────────────────────────
 #
-# LigandMPNN (dauparas/LigandMPNN, MIT) built from source with every official
+# LigandMPNN (dauparas/LigandMPNN) built from source with every official
 # checkpoint baked in, so a model_type / noise_level choice never needs a weights
-# directory on the host. Install it with ``chaperone install ligandmpnn_public``.
+# directory on the host. Install it with ``chaperone install ligandmpnn``.
 
-LIGANDMPNN_PUBLIC_CONTAINER = (
-    Image("ligandmpnn_public")
+LIGANDMPNN_CONTAINER = (
+    Image("ligandmpnn")
     .base_image("ubuntu:24.04")
     .packages("build-essential", "git", "wget", "ca-certificates", "python3.12", "python3.12-dev", "python3.12-venv")
     .run(
@@ -228,27 +228,27 @@ LIGANDMPNN_PUBLIC_CONTAINER = (
         "/opt/mpnn-env/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
         "/opt/mpnn-env/bin/pip install numpy==1.26.4 prody==2.6.1 scipy biopython ml-collections dm-tree",
     )
-    .git_clone("https://github.com/dauparas/LigandMPNN", _PUBLIC_MPNN_ROOT)
+    .git_clone("https://github.com/dauparas/LigandMPNN", _MPNN_ROOT)
     .run(
-        f"git -C {_PUBLIC_MPNN_ROOT} checkout {_PUBLIC_MPNN_REVISION}",
-        "/opt/mpnn-env/bin/python -c " + shlex.quote(_PUBLIC_MPNN_NUMPY_COMPATIBILITY_PATCH),
-        f"mkdir -p {_PUBLIC_MPNN_ROOT}/model_params",
+        f"git -C {_MPNN_ROOT} checkout {_MPNN_REVISION}",
+        "/opt/mpnn-env/bin/python -c " + shlex.quote(_MPNN_NUMPY_COMPATIBILITY_PATCH),
+        f"mkdir -p {_MPNN_ROOT}/model_params",
         *[
             f"wget -q https://files.ipd.uw.edu/pub/ligandmpnn/{filename} "
-            f"-O {_PUBLIC_MPNN_ROOT}/model_params/{filename} && "
-            f"echo '{checksum}  {_PUBLIC_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -"
-            for filename, checksum in _PUBLIC_MPNN_ALL_CHECKPOINTS
+            f"-O {_MPNN_ROOT}/model_params/{filename} && "
+            f"echo '{checksum}  {_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -"
+            for filename, checksum in _MPNN_ALL_CHECKPOINTS
         ],
         "/opt/mpnn-env/bin/pip check",
-        f"cd {_PUBLIC_MPNN_ROOT} && /opt/mpnn-env/bin/python -c "
+        f"cd {_MPNN_ROOT} && /opt/mpnn-env/bin/python -c "
         "'import run, data_utils, model_utils, sc_utils; import pathlib, torch; "
         "[torch.load(p, map_location=\"cpu\", weights_only=True)[\"model_state_dict\"] "
         "for p in pathlib.Path(\"model_params\").glob(\"*.pt\")]'",
-        f"/opt/mpnn-env/bin/python {_PUBLIC_MPNN_ROOT}/run.py --help >/dev/null",
+        f"/opt/mpnn-env/bin/python {_MPNN_ROOT}/run.py --help >/dev/null",
         "apt-get clean && rm -rf /var/lib/apt/lists/*",
     )
-    .env(PATH="/opt/mpnn-env/bin:$PATH", VIRTUAL_ENV="/opt/mpnn-env", PYTHONPATH=_PUBLIC_MPNN_ROOT)
-    .label(Version=f"LigandMPNN-{_PUBLIC_MPNN_REVISION}", License="MIT", CUDA="12.8")
+    .env(PATH="/opt/mpnn-env/bin:$PATH", VIRTUAL_ENV="/opt/mpnn-env", PYTHONPATH=_MPNN_ROOT)
+    .label(Version=f"LigandMPNN-{_MPNN_REVISION}", License="MIT", CUDA="12.8")
     .runscript('"$@"')
     .template_command(exec_mode="exec")
 )
@@ -348,12 +348,12 @@ class MPNNArgs(BaseModel):
     pack_side_chains: int = Field(
         1,
         description=(
-            "Legacy structure-mode side-chain packing flag. output_mode='sequences' "
+            "Side-chain packing flag. output_mode='sequences' "
             "forces this to 0; output_mode='structures' requires 1."
         ),
     )
     checkpoint_path_sc: str = Field(
-        _PUBLIC_MPNN_PACKER_PATH,
+        _MPNN_PACKER_PATH,
         description=(
             "Path to side chain packer weights. The default is the official "
             "checkpoint baked into the image; a custom host file is bound in "
@@ -441,7 +441,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     """Inverse folding with LigandMPNN.
 
     ``model_type`` picks the model family and ``noise_level`` the checkpoint
-    version within it (see ``_PUBLIC_MPNN_CHECKPOINTS``).
+    version within it (see ``_MPNN_CHECKPOINTS``).
     """
 
     # An option this block no longer has (such as one for a removed model) must fail
@@ -451,7 +451,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     _name = "mpnn"
     _display_name = "ProteinMPNN"
     _description = "Inverse folding with LigandMPNN (protein, ligand, soluble and membrane models)"
-    _image = LIGANDMPNN_PUBLIC_CONTAINER
+    _image = LIGANDMPNN_CONTAINER
     _resources = JobArgs(
         partition="cpu",
         mem_gb=8,
@@ -472,17 +472,17 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         runtime_env = {"CUDA_VISIBLE_DEVICES": ""} if self.device == "cpu" else None
         binds = []
         packer = self.args.checkpoint_path_sc
-        if packer != _PUBLIC_MPNN_PACKER_PATH and self.output_mode == "structures":
+        if packer != _MPNN_PACKER_PATH and self.output_mode == "structures":
             path = Path(packer).expanduser().absolute()
             if not path.is_file():
                 raise FileNotFoundError(f"MPNN custom packer checkpoint does not exist: {path}")
             binds.append((str(path), f"{path}:ro"))
-        cmd = LIGANDMPNN_PUBLIC_CONTAINER.build_command(
-            "python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds, env=runtime_env
+        cmd = LIGANDMPNN_CONTAINER.build_command(
+            "python", "-u", f"{_MPNN_ROOT}/run.py", binds=binds, env=runtime_env
         )
-        for model_type in _PUBLIC_MPNN_CHECKPOINTS:
+        for model_type in _MPNN_CHECKPOINTS:
             noise = self.noise_level if model_type == self.model_type else None
-            cmd += [f"--checkpoint_{model_type}", _public_checkpoint(model_type, noise)]
+            cmd += [f"--checkpoint_{model_type}", _checkpoint_path(model_type, noise)]
         return cmd
 
     # Model family and version
@@ -521,7 +521,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         default="sequences",
         json_schema_extra={"tier": TIER_PRIMARY},
         description=(
-            "Return compact sequence rows (default) or legacy side-chain-packed "
+            "Return compact sequence rows (default) or side-chain-packed "
             "structures. Sequence mode disables packing."
         ),
     )
@@ -570,7 +570,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     def validate_model_version(self):
         # Also raised by get_command_template when the template is built; this
         # keeps the check when a command_template is supplied explicitly.
-        _public_checkpoint(self.model_type, self.noise_level)
+        _checkpoint_path(self.model_type, self.noise_level)
         membrane_only = {
             "transmembrane_buried": "per_residue_label_membrane_mpnn",
             "transmembrane_interface": "per_residue_label_membrane_mpnn",
@@ -651,7 +651,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         return data.load_array().atom_array
 
     @staticmethod
-    def _write_portable_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
+    def _write_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
         """Stage a PDB for LigandMPNN, preserving the original CIF as parent."""
         from chaperone.io import write_pdb
 
@@ -797,8 +797,8 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 if option in chain_options and chain_options[option] != value:
                     raise ValueError(f"MPNN {option} needs different chain mappings across inputs; run those inputs in separate chunks.")
                 chain_options[option] = value
-            input_path = self._write_portable_pdb(
-                input_path, atoms, rename, inputdir / "portable_pdb"
+            input_path = self._write_pdb(
+                input_path, atoms, rename, inputdir / "pdb_inputs"
             )
             if self.output_mode == "sequences":
                 # LigandMPNN writes FASTA chains in sorted PDB-chain order.
@@ -904,7 +904,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         cli_args["fasta_seq_separation"] = "/"
         cli_args["number_of_packs_per_design"] = self.args.number_of_packs_per_design
         cli_args["pack_with_ligand_context"] = self.args.pack_with_ligand_context
-        if self.args.checkpoint_path_sc != _PUBLIC_MPNN_PACKER_PATH:
+        if self.args.checkpoint_path_sc != _MPNN_PACKER_PATH:
             cli_args["checkpoint_path_sc"] = str(Path(self.args.checkpoint_path_sc).expanduser().absolute())
         cli_args["pack_side_chains"] = 0 if self.output_mode == "sequences" else 1
         bias_path = cli_args.get("bias_AA_per_residue")

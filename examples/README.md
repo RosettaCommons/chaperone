@@ -86,18 +86,17 @@ for each run so a smoke test cannot reuse a production output directory.
 | Script (prefix with `python examples/`) | Smoke work before scientific filters | Required tools/assets |
 |---|---|---|
 | `benchmarks/ppi/pipeline_foundry.py --test` | One RFD3 backbone, one FoundryMPNN sequence, one RF3 sample | Foundry container and checkpoints |
-| `benchmarks/ppi/pipeline_mpnn.py --test` | One backbone, one `mpnn` sequence, one RF3 sample | Foundry and the `ligandmpnn_public` image |
+| `benchmarks/ppi/pipeline_mpnn.py --test` | One backbone, one `mpnn` sequence, one RF3 sample | Foundry and the `ligandmpnn` image |
 | `benchmarks/disco/pipeline.py --test` | One DISCO heme-binder design at the fast preset, one AF3 sample | DISCO weights/container and licensed AF3 weights/container |
-| `benchmarks/ame/pipeline.py --test` | One `M0024_1nzy` and one `dera_aldolase` backbone, one sequence and AF3 sample each | Foundry, `ligandmpnn_public`, AF3, Dunbrack library |
+| `benchmarks/ame/pipeline.py --test` | One `M0024_1nzy` and one `dera_aldolase` backbone, one sequence and AF3 sample each | Foundry, `ligandmpnn`, AF3, Dunbrack library |
 | `benchmarks/ame/pipeline_full.py --test` | One `M0024_1nzy` backbone, one sequence, one AF3 sample | Same AME dependencies |
-| `fgfr2-binder/pipeline.py --test` | One backbone, one sequence, one templated AF3 sample | Foundry, `ligandmpnn_public`, AF3; enough GPU memory for the full receptor |
-| `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, `ligandmpnn_public`, AF3; explicit flags re-enable the storage behavior under test |
+| `fgfr2-binder/pipeline.py --test` | One backbone, one sequence, one templated AF3 sample | Foundry, `ligandmpnn`, AF3; enough GPU memory for the full receptor |
+| `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, `ligandmpnn`, AF3; explicit flags re-enable the storage behavior under test |
 
-The `mpnn` block runs LigandMPNN from the `ligandmpnn_public` image
-(`chaperone install ligandmpnn_public`). The filename `pipeline_mpnn.py`
-distinguishes the `mpnn` block from `foundry_mpnn`. Earlier recorded GPU example
-runs used a different, now removed MPNN runtime; public-backend example validation
-and scientific equivalence remain separate checks.
+The `mpnn` block runs LigandMPNN from the `ligandmpnn` image
+(`chaperone install ligandmpnn`); `pipeline_mpnn.py` uses it, while
+`pipeline_foundry.py` uses `foundry_mpnn`. GPU validation of the `mpnn` example and
+scientific equivalence between the two remain separate checks.
 
 For example:
 

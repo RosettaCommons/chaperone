@@ -32,11 +32,11 @@ def option(command, name):
 
 def run_py_arguments(command):
     """Everything after the interpreter and ``run.py`` (container prefix dropped)."""
-    return [str(part) for part in command[command.index(f"{mpnn._PUBLIC_MPNN_ROOT}/run.py") + 1 :]]
+    return [str(part) for part in command[command.index(f"{mpnn._MPNN_ROOT}/run.py") + 1 :]]
 
 
 def params(filename):
-    return f"{mpnn._PUBLIC_MPNN_ROOT}/model_params/{filename}"
+    return f"{mpnn._MPNN_ROOT}/model_params/{filename}"
 
 
 # Every checkpoint of the pinned upstream revision (get_model_params.sh), by
@@ -68,25 +68,25 @@ UPSTREAM_DEFAULTS = {
 
 
 def test_recipe_pins_source_and_bakes_every_official_checkpoint():
-    recipe = mpnn.LIGANDMPNN_PUBLIC_CONTAINER.to_singularity()
-    assert mpnn._PUBLIC_MPNN_REVISION in recipe
+    recipe = mpnn.LIGANDMPNN_CONTAINER.to_singularity()
+    assert mpnn._MPNN_REVISION in recipe
     assert "torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128" in recipe
-    filenames = {name for name, _ in mpnn._PUBLIC_MPNN_ALL_CHECKPOINTS}
+    filenames = {name for name, _ in mpnn._MPNN_ALL_CHECKPOINTS}
     assert filenames == set(EXPECTED_CHECKPOINTS.values()) | {"ligandmpnn_sc_v_32_002_16.pt"}
-    for filename, checksum in mpnn._PUBLIC_MPNN_ALL_CHECKPOINTS:
+    for filename, checksum in mpnn._MPNN_ALL_CHECKPOINTS:
         assert f"https://files.ipd.uw.edu/pub/ligandmpnn/{filename} " in recipe
-        assert f"echo '{checksum}  {mpnn._PUBLIC_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -" in recipe
+        assert f"echo '{checksum}  {mpnn._MPNN_ROOT}/model_params/{filename}' | sha256sum -c -" in recipe
     assert recipe.count("sha256sum -c -") == len(EXPECTED_CHECKPOINTS) + 1 == 15
-    assert len({checksum for _, checksum in mpnn._PUBLIC_MPNN_ALL_CHECKPOINTS}) == 15
+    assert len({checksum for _, checksum in mpnn._MPNN_ALL_CHECKPOINTS}) == 15
     assert "pip check" in recipe and "import run, data_utils, model_utils, sc_utils" in recipe
 
 
-def test_block_image_is_the_public_image():
-    assert mpnn.ClassicMPNNBlock._get_image() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
-    assert mpnn.LIGANDMPNN_PUBLIC_CONTAINER.name == "ligandmpnn_public"
+def test_block_image_is_the_ligandmpnn_image():
+    assert mpnn.ClassicMPNNBlock._get_image() is mpnn.LIGANDMPNN_CONTAINER
+    assert mpnn.LIGANDMPNN_CONTAINER.name == "ligandmpnn"
 
 
-def test_public_numpy_patch_replaces_only_removed_aliases_and_checks_pinned_source(tmp_path):
+def test_numpy_patch_replaces_only_removed_aliases_and_checks_pinned_source(tmp_path):
     sources = {
         "np/residue_constants.py": "np.int, np.int32, np.int, np.int64, np.int\n",
         "data/templates.py": "np.object, np.object_, np.object\n",
@@ -96,7 +96,7 @@ def test_public_numpy_patch_replaces_only_removed_aliases_and_checks_pinned_sour
         path = tmp_path / "openfold" / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(source)
-    patch = mpnn._PUBLIC_MPNN_NUMPY_COMPATIBILITY_PATCH.replace(mpnn._PUBLIC_MPNN_ROOT, str(tmp_path))
+    patch = mpnn._MPNN_NUMPY_COMPATIBILITY_PATCH.replace(mpnn._MPNN_ROOT, str(tmp_path))
     exec(compile(patch, "numpy_compatibility_patch", "exec"), {})
     assert (tmp_path / "openfold/np/residue_constants.py").read_text() == "int, np.int32, int, np.int64, int\n"
     assert (tmp_path / "openfold/data/templates.py").read_text() == "object, np.object_, object\n"
@@ -252,7 +252,7 @@ def test_membrane_options_reach_run_py_with_renamed_chains(tmp_path):
     assert option(command, "global_transmembrane_label") == "1"
 
 
-def test_default_public_command_is_unchanged(tmp_path):
+def test_default_command_is_unchanged(tmp_path):
     """Golden: the default ligand_mpnn command, as before the routing rework."""
     block = mpnn.ClassicMPNNBlock()
     sandbox = tmp_path / "chunk"
@@ -282,10 +282,10 @@ def test_default_public_command_is_unchanged(tmp_path):
         "--number_of_packs_per_design", "4",
         "--pack_with_ligand_context", "1",
     ]
-    assert command[command.index("python") :][:3] == ["python", "-u", f"{mpnn._PUBLIC_MPNN_ROOT}/run.py"]
+    assert command[command.index("python") :][:3] == ["python", "-u", f"{mpnn._MPNN_ROOT}/run.py"]
 
 
-def test_public_sequence_contract_and_original_chain_lineage(tmp_path):
+def test_sequence_contract_and_original_chain_lineage(tmp_path):
     block = mpnn.ClassicMPNNBlock(num_seq_per_pdb=1, args={"chains_to_design": "X1", "symmetry_residues": "X15,Z1"})
     sandbox = tmp_path / "chunk"
     command = block.create_command(input_handler(tmp_path), sandbox, 0)
@@ -295,7 +295,7 @@ def test_public_sequence_contract_and_original_chain_lineage(tmp_path):
     assert option(command, "symmetry_residues") == "A5,Z1"
     assert option(command, "checkpoint_ligand_mpnn") == params("ligandmpnn_v_32_010_25.pt")
     ((path, positions),) = json.loads((sandbox / "inputs/pdb_position_fixed_chunk0.json").read_text()).items()
-    assert path.endswith("portable_pdb/design.pdb")
+    assert path.endswith("pdb_inputs/design.pdb")
     assert positions == "A5"  # run.py calls value.split() on the fixed-residue string
     assert set(parse_to_atom_array(path).chain_id) == {"A", "Z"}
     seqs = sandbox / "seqs"
@@ -308,7 +308,7 @@ def test_public_sequence_contract_and_original_chain_lineage(tmp_path):
     assert get_sequences_from_row(row) == {"X1": "W", "Z": "AA"}
 
 
-def test_public_chain_filter_updates_fasta_contract(tmp_path):
+def test_chain_filter_updates_fasta_contract(tmp_path):
     block = mpnn.ClassicMPNNBlock(args={"parse_these_chains_only": "X1"})
     sandbox = tmp_path / "chunk"
     command = block.create_command(input_handler(tmp_path), sandbox, 0)
@@ -320,7 +320,7 @@ def test_public_chain_filter_updates_fasta_contract(tmp_path):
     assert get_sequences_from_row(row) == {"X1": "W"}
 
 
-def test_public_packing_uses_public_weights_and_restores_chain_ids(tmp_path):
+def test_packing_uses_bundled_weights_and_restores_chain_ids(tmp_path):
     block = mpnn.ClassicMPNNBlock(output_mode="structures", num_seq_per_pdb=1)
     sandbox = tmp_path / "chunk"
     command = block.create_command(input_handler(tmp_path), sandbox, 0)
@@ -330,7 +330,7 @@ def test_public_packing_uses_public_weights_and_restores_chain_ids(tmp_path):
     assert option(command, "pack_with_ligand_context") == "1"
     packed = sandbox / "packed"
     packed.mkdir()
-    shutil.copy(sandbox / "inputs/portable_pdb/design.pdb", packed / "design__0_1.pdb")
+    shutil.copy(sandbox / "inputs/pdb_inputs/design.pdb", packed / "design__0_1.pdb")
     row, = block.compile(sandbox)._df.to_dicts()
     assert set(parse_to_atom_array(row["structures"][0]["path"]).chain_id) == {"X1", "Z"}
 
@@ -346,7 +346,7 @@ def test_custom_packer_is_bound_read_only_and_must_exist(tmp_path):
         mpnn.ClassicMPNNBlock(output_mode="structures", args={"checkpoint_path_sc": str(tmp_path / "missing.pt")})
 
 
-def test_public_rejects_ambiguous_residue_bias_before_execution(tmp_path):
+def test_rejects_ambiguous_residue_bias_before_execution(tmp_path):
     bias = tmp_path / "bias.json"
     bias.write_text('{"X15": {"A": 1.0}}')
     block = mpnn.ClassicMPNNBlock(args={"bias_AA_per_residue": str(bias)})
@@ -354,7 +354,7 @@ def test_public_rejects_ambiguous_residue_bias_before_execution(tmp_path):
         block.create_command(input_handler(tmp_path), tmp_path / "chunk", 0)
 
 
-def test_portable_pdb_missing_optional_fields_preserves_source_and_finite_values(tmp_path):
+def test_pdb_missing_optional_fields_preserves_source_and_finite_values(tmp_path):
     import numpy as np
     from biotite.structure.io.pdb import PDBFile
 
@@ -362,7 +362,7 @@ def test_portable_pdb_missing_optional_fields_preserves_source_and_finite_values
     source.set_annotation("b_factor", np.array([np.nan, 12.5] * (len(source) // 2)))
     source.set_annotation("occupancy", np.array([0.5, np.nan] * (len(source) // 2)))
     before = source.copy()
-    path = mpnn.ClassicMPNNBlock._write_portable_pdb(
+    path = mpnn.ClassicMPNNBlock._write_pdb(
         "source.cif", source, mpnn.ChainRename.for_atoms(source), tmp_path / "staged",
     )
     written = PDBFile.read(path).get_structure(model=1, extra_fields=["b_factor", "occupancy"])
@@ -374,6 +374,6 @@ def test_portable_pdb_missing_optional_fields_preserves_source_and_finite_values
     np.testing.assert_array_equal(source.chain_id, before.chain_id)
     source.coord[0, 0] = np.nan
     with pytest.raises(ValueError, match="PDB-representable"):
-        mpnn.ClassicMPNNBlock._write_portable_pdb(
+        mpnn.ClassicMPNNBlock._write_pdb(
             "invalid.cif", source, mpnn.ChainRename.for_atoms(source), tmp_path / "invalid",
         )

@@ -14,8 +14,8 @@ from chaperone.io import ensure_bonds
 
 
 def load_helper():
-    path = Path(__file__).with_name("public_mpnn_packing_smoke.py")
-    spec = importlib.util.spec_from_file_location("public_packing_smoke", path)
+    path = Path(__file__).with_name("mpnn_packing_smoke.py")
+    spec = importlib.util.spec_from_file_location("mpnn_packing_smoke", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
