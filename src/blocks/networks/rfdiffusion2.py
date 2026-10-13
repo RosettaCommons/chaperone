@@ -22,7 +22,6 @@ from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
-    get_setting_field,
 )
 from chaperone.block_config import TIER_PRIMARY
 from chaperone.containers import Image
@@ -41,9 +40,8 @@ logger = logging.getLogger(__name__)
 #   2. A portable buildable variant (`chaperone install rfdiffusion2_portable`)
 #      that follows the upstream spec (RosettaCommons/RFdiffusion2,
 #      rf_diffusion/exec/rf_diffusion_aa.spec) and clones the public repo into
-#      /opt/RFdiffusion2 at build time. Checkpoints are not baked in: run
-#      `chaperone weights install rfd2` to download RFD_173.pt into the
-#      directory named by the RFD2_WEIGHTS_DIR setting.
+#      /opt/RFdiffusion2 at build time, along with the RFD_173.pt checkpoint
+#      (downloaded and sha256-checked during the build).
 #
 # We auto-select at import time: if the on-prem SIF exists on disk, prefer it
 # (so IPD runs stay byte-identical to the past); otherwise fall back to the
@@ -68,8 +66,15 @@ _RFD2_SIF_CONTAINER = Image.from_existing(
 RFD2_REPO_URL = "https://github.com/RosettaCommons/RFdiffusion2"
 RFD2_COMMIT = "d365cbf4db3958814a9f8e4f6f94fa309dfebc2b"
 _RFD2_CODE_DIR = "/opt/RFdiffusion2"
-# The checkpoint the upstream README recommends.
-_RFD2_DEFAULT_CKPT = "RFD_173.pt"
+# The checkpoint upstream recommends (RosettaCommons/RFdiffusion2 docs, usage.rst),
+# baked into the image. Upstream publishes no checksum; this one was computed
+# from the served file.
+_RFD2_CKPT_NAME = "RFD_173.pt"
+_RFD2_CKPT_URL = (
+    f"https://files.ipd.uw.edu/pub/rfdiffusion2/model_weights/{_RFD2_CKPT_NAME}"
+)
+_RFD2_CKPT_SHA256 = "590e126057f780afc1249d29545f0f90635562b1a3df5aff013afcfc39c3d3c3"
+_RFD2_BAKED_CKPT = f"/opt/rfd2-weights/{_RFD2_CKPT_NAME}"
 
 _RFD2_PORTABLE_CONTAINER = (
     Image("rfdiffusion2_portable")
@@ -131,6 +136,9 @@ _RFD2_PORTABLE_CONTAINER = (
     )
     .git_clone(RFD2_REPO_URL, _RFD2_CODE_DIR)
     .run(
+        # Fails the build if the download does not match the pinned hash.
+        f"mkdir -p /opt/rfd2-weights && curl -fL --retry 5 -o {_RFD2_BAKED_CKPT} {_RFD2_CKPT_URL}"
+        f" && echo '{_RFD2_CKPT_SHA256}  {_RFD2_BAKED_CKPT}' | sha256sum -c -",
         f"cd {_RFD2_CODE_DIR} && git checkout {RFD2_COMMIT}",
         "/opt/conda/bin/conda clean -a -y",
         "apt-get clean && rm -rf /var/lib/apt/lists/*",
@@ -166,10 +174,7 @@ RFD2_PORTABLE_CONTAINER = _RFD2_PORTABLE_CONTAINER
 def _default_ckpt_path() -> str:
     if RFD2_CONTAINER is not _RFD2_PORTABLE_CONTAINER:
         return _ONPREM_RFD2_CKPT
-    weights_dir = get_setting_field("RFD2_WEIGHTS_DIR", default=None)
-    return (
-        f"{(weights_dir or '/weights/rfdiffusion2').rstrip('/')}/{_RFD2_DEFAULT_CKPT}"
-    )
+    return _RFD2_BAKED_CKPT
 
 
 ###########################################################################
@@ -323,15 +328,18 @@ class RFD2Block(CompiledBlockFunction):
     def get_command_template(self) -> List[str]:
         image = self._get_image()
         if image is _RFD2_PORTABLE_CONTAINER:
-            # Code is baked into the image; only the checkpoint directory is
-            # bound in from the host.
-            ckpt_dir = os.path.dirname(os.path.abspath(self.ckpt_path))
+            # Code and the default checkpoint are baked into the image; a custom
+            # ckpt_path is bound in from the host.
+            binds = []
+            if self.ckpt_path != _RFD2_BAKED_CKPT:
+                ckpt_dir = os.path.dirname(os.path.abspath(self.ckpt_path))
+                binds.append((ckpt_dir, ckpt_dir))
             # The checkpoint's embedded training config interpolates $USER,
             # which --cleanenv would otherwise leave unset.
             return image.build_command(
                 f"{_RFD2_CODE_DIR}/rf_diffusion/run_inference.py",
                 env={"PYTHONPATH": _RFD2_CODE_DIR, "USER": getpass.getuser()},
-                binds=[(ckpt_dir, ckpt_dir)],
+                binds=binds,
             )
         return image.build_command(
             f"{_ONPREM_RFD2_CODE}/rf_diffusion/run_inference.py",
@@ -352,7 +360,7 @@ class RFD2Block(CompiledBlockFunction):
         default_factory=_default_ckpt_path,
         json_schema_extra={"tier": TIER_PRIMARY},
         description="Path to RFdiffusion2 checkpoint file. The portable image "
-        "defaults to RFD_173.pt under the RFD2_WEIGHTS_DIR setting.",
+        "defaults to the RFD_173.pt baked into it.",
     )
     raise_on_missing_trbs: bool = Field(
         True, description="Raise error if TRB file is missing for a design"
@@ -369,13 +377,13 @@ class RFD2Block(CompiledBlockFunction):
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id):
-        if self._get_image() is _RFD2_PORTABLE_CONTAINER and not os.path.isfile(
-            self.ckpt_path
+        if (
+            self._get_image() is _RFD2_PORTABLE_CONTAINER
+            and self.ckpt_path != _RFD2_BAKED_CKPT
+            and not os.path.isfile(self.ckpt_path)
         ):
             raise FileNotFoundError(
-                f"RFdiffusion2 checkpoint not found: {self.ckpt_path}. Run "
-                "`chaperone weights install rfd2` to download RFD_173.pt into "
-                "the RFD2_WEIGHTS_DIR directory, or pass ckpt_path."
+                f"RFdiffusion2 checkpoint not found: {self.ckpt_path}"
             )
         cfgs = self.inputs if isinstance(self.inputs, list) else self.inputs.split(",")
         cmds = []
