@@ -1,0 +1,2 @@
+pyarrow>=0.0.0
+torch

@@ -1,0 +1,87 @@
+{
+    "ornithine_decarboxylase": {
+        "input": "ame2_inputs/structure_with_split_llp.cif",
+        "ligand": "ORN",
+        "unindex": "A79,A284,A287,A399,B370,D286",
+        "length": "130-220",
+        "ori_token": [
+            4.69,
+            5.575,
+            -13.237
+        ],
+        "select_fixed_atoms": {
+            "A79": "ALL",
+            "A284": "TIP",
+            "A287": "BKBN",
+            "A399": "OH,CZ,CG",
+            "B370": "TIP",
+            "D286": "BKBN"
+        }
+    },
+    "dera_aldolase": {
+        "input": "ame2_inputs/dera_6res.pdb",
+        "ligand": "HPD",
+        "unindex": "A18,A47,A102,A167,A201,A238",
+        "length": "130-220",
+        "ori_token": [
+            29.433,
+            3.528,
+            19.066
+        ],
+        "select_fixed_atoms": {
+            "A18": "CB,OG1",
+            "A47": "CB,SG",
+            "A102": "TIP",
+            "A167": "CG,CD,CE,NZ",
+            "A201": "CG,CD,CE,NZ",
+            "A238": "ALL"
+        }
+    },
+    "glycosidase": {
+        "input": "ame2_inputs/glycosidase_theozyme_no_ori.pdb",
+        "ligand": "L:1",
+        "unindex": "A77,A86,A88,A122,A136,A177",
+        "length": "130-165",
+        "ori_token": [
+            8.295,
+            35.229,
+            -21.162
+        ],
+        "select_fixed_atoms": {
+            "A77": "OH,CZ,CE1,CE2,CD1,CD2,CG,CB",
+            "A86": "OE1,OE2,CD,CG,CB",
+            "A88": "OH,CZ,CE1,CE2,CD1,CD2,CG,CB",
+            "A122": "CD,NE,CZ,NH1,NH2",
+            "A136": "OE1,NE2,CD",
+            "A177": "OE1,OE2,CD,CG,CB"
+        }
+    },
+    "phosphotriesterase": {
+        "input": "ame2_inputs/group1_pte_pxon_ChenJACS_exact_v0__lig_YYE_0000_EEEE_rotP_1_E__RFd3.pdb",
+        "unindex": "A1,B2,C3,D4,E5,F6",
+        "length": "150-250",
+        "ligand": "YYE",
+        "select_fixed_atoms": {
+            "A1": "NE2,CD2,CE1",
+            "B2": "NE2,CD2,CG,CB,ND1,CE1",
+            "C3": "NZ,CE",
+            "D4": "NE2,CD2,CG,CB,ND1,CE1",
+            "E5": "NE2,CD2,CG,CB,ND1,CE1",
+            "F6": "OE1,OE2,CD,CG"
+        },
+        "select_buried": {
+            "YYE": "C1,O1,O2,ZN1,ZN2,P1,O3,O4,O5,O6,O7,C8,C9,C10,C11"
+        },
+        "select_partially_buried": {
+            "YYE": "C5,C6,C7"
+        },
+        "select_exposed": {
+            "YYE": "N1,O8,O9"
+        },
+        "ori_token": [
+            -0.614,
+            -0.591,
+            0.269
+        ]
+    }
+}

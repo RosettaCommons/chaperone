@@ -1,0 +1,56 @@
+site_name: Pipelines Documentation
+site_description: A framework for making structural biology tools interoperable
+site_author: Pipelines Team
+site_url: ""
+docs_dir: docs/site
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/claude.css
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Simple Example: simple.md
+  - All Blocks: blocks-reference.md
+  - Syntax Reference: syntax.md
+  - Validation: validation.md
+  - Evaluations: evaluations.md
+  - Claude Skills: skills.md

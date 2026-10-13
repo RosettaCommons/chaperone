@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blocks Reference"
+  short_description: "Choose Pipelines blocks by task and tradeoff"
+  default_prompt: "Use $blocks-reference to choose the fastest appropriate blocks and explain their tradeoffs."

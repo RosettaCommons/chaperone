@@ -1,0 +1,10 @@
+{
+    "fgfr2_binder": {
+        "input": "1djs_target.pdb",
+        "contig": "40-50,/0,B287-296,B307-328,B339-350",
+        "length": "84-94",
+        "select_hotspots": "B289,B291,B311,B344,B352",
+        "infer_ori_strategy": "hotspots",
+        "is_non_loopy": true
+    }
+}

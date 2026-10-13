@@ -1,0 +1,57 @@
+{
+  "source_pdb": "1VFB",
+  "description": "IgG1-kappa D1.3 Fv bound to hen egg-white lysozyme. Chains relabelled VH->H, VL->L, antigen->T. Residues are numbered sequentially from 1 in each chain.",
+  "antigen": {
+    "chain": "T",
+    "name": "hen egg-white lysozyme",
+    "sequence": "KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSRWWCNDGRTPGSRNLCNIPCSALLSSDITASVNCAKKIVSDGNGMNAWVAWRNRCKGTDVQAWIRGCRL"
+  },
+  "framework": {
+    "numbering": "sequential, 1-based, as deposited in 1VFB",
+    "sequence_H": "QVQLQESGPGLVAPSQSLSITCTVSGFSLTGYGVNWVRQPPGKGLEWLGMIWGDGNTDYNSALKSRLSISKDNSKSQVFLKMNSLHTDDTARYYCARERDYRLDYWGQGTTLTVSS",
+    "sequence_L": "DIVLTQSPASLSASVGETVTITCRASGNIHNYLAWYQQKQGKSPQLLVYYTTTLADGVPSRFSGSGSGTQYSLKINSLQPEDFGSYYCQHFWSTPRTFGGGTKLEIK"
+  },
+  "cdr_definition": "AbM",
+  "cdr_spans": {
+    "CDR-H1": {
+      "chain": "H",
+      "start": 26,
+      "end": 35
+    },
+    "CDR-H2": {
+      "chain": "H",
+      "start": 50,
+      "end": 58
+    },
+    "CDR-H3": {
+      "chain": "H",
+      "start": 98,
+      "end": 105,
+      "min_length": 5,
+      "max_length": 20
+    },
+    "CDR-L1": {
+      "chain": "L",
+      "start": 24,
+      "end": 34
+    },
+    "CDR-L2": {
+      "chain": "L",
+      "start": 50,
+      "end": 56
+    },
+    "CDR-L3": {
+      "chain": "L",
+      "start": 89,
+      "end": 97
+    }
+  },
+  "cdr_reference_sequences": {
+    "CDR-H1": "GFSLTGYGVN",
+    "CDR-H2": "MIWGDGNTD",
+    "CDR-H3": "ERDYRLDY",
+    "CDR-L1": "RASGNIHNYLA",
+    "CDR-L2": "YTTTLAD",
+    "CDR-L3": "QHFWSTPRT"
+  }
+}

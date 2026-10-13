@@ -1,0 +1,48 @@
+{
+  "protease_contig1": {
+    "input": "../../inputs/theozyme.pdb",
+    "contig": "15-100,A293-297,10-100,A28-30,10-100,A376-378,10-100,A315-317,15-100,/0,B1-10",
+    "length": "170-200",
+    "ligand": "ZnO",
+    "select_unfixed_sequence": "A28-A30,A295-296,A376,A315,A317",
+    "select_hotspots": "B3-7",
+    "select_fixed_atoms": {
+      "B1": "",
+      "B2": "",
+      "B3": "",
+      "B4": "",
+      "B5": "",
+      "B6": "",
+      "B7": "BKBN",
+      "B8": "BKBN",
+      "B9": "",
+      "B10": ""
+    },
+    "ori_token": [7.875, 45.967, -3.867],
+    "redesign_motif_sidechains": false,
+    "is_non_loopy": true
+  },
+  "protease_contig2": {
+    "input": "../../inputs/theozyme.pdb",
+    "contig": "15-100,A376-378,10-100,A315-317,10-100,A293-297,10-100,A28-30,15-100,/0,B1-10",
+    "length": "170-200",
+    "ligand": "ZnO",
+    "select_unfixed_sequence": "A28-A30,A295-296,A376,A315,A317",
+    "select_hotspots": "B3-7",
+    "select_fixed_atoms": {
+      "B1": "",
+      "B2": "",
+      "B3": "",
+      "B4": "",
+      "B5": "",
+      "B6": "",
+      "B7": "BKBN",
+      "B8": "BKBN",
+      "B9": "",
+      "B10": ""
+    },
+    "ori_token": [7.875, 45.967, -3.867],
+    "redesign_motif_sidechains": false,
+    "is_non_loopy": true
+  }
+}

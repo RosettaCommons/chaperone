@@ -1,0 +1,94 @@
+"""The tracked examples/ tree must not carry held-out material, or reach agents."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from scripts.snapshot_harness import build, validate_snapshot
+from task_paths import EVALS_ROOT, PUBLIC_TASKS_ROOT
+
+REPO = EVALS_ROOT.parent.parent
+STRUCTURE_SUFFIXES = {
+    ".pdb",
+    ".cif",
+    ".sdf",
+    ".mol2",
+}  # coordinates match digit patterns
+
+
+def _tracked_examples() -> list[Path]:
+    listing = subprocess.run(
+        ["git", "-C", str(REPO), "ls-files", "-z", "--", "examples"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if listing.returncode != 0 or not listing.stdout:
+        pytest.skip("examples/ is not tracked in this checkout")
+    return [REPO / name for name in listing.stdout.split("\0") if name]
+
+
+def _held_out_digests() -> dict[str, str]:
+    digests = {}
+    for task in PUBLIC_TASKS_ROOT.iterdir():
+        for part in ("score", "example"):
+            for path in (task / part).rglob("*") if (task / part).is_dir() else []:
+                if path.is_file():
+                    digests[hashlib.sha256(path.read_bytes()).hexdigest()] = (
+                        f"{task.name}/{part}/{path.relative_to(task / part)}"
+                    )
+    return digests
+
+
+def test_no_example_is_a_copy_of_a_held_out_file():
+    held_out = _held_out_digests()
+    assert held_out
+    copies = [
+        f"{path.relative_to(REPO)} == {held_out[digest]}"
+        for path in _tracked_examples()
+        if (digest := hashlib.sha256(path.read_bytes()).hexdigest()) in held_out
+    ]
+
+    assert not copies, copies
+
+
+def test_no_example_text_matches_an_audit_pattern():
+    hints = [
+        (
+            entry["label"],
+            re.compile(entry["pattern"], re.I if entry.get("ignore_case", True) else 0),
+        )
+        for entry in json.loads((PUBLIC_TASKS_ROOT / "audit_hints.json").read_text())
+    ]
+    hits = []
+    for path in _tracked_examples():
+        if path.suffix in STRUCTURE_SUFFIXES:
+            continue
+        text = path.read_text(errors="ignore")
+        hits += [
+            f"{path.relative_to(REPO)}: {label}"
+            for label, pattern in hints
+            if pattern.search(text)
+        ]
+
+    assert not hits, hits
+
+
+def test_real_bundle_contains_no_example_files(tmp_path):
+    examples = {path.relative_to(REPO).as_posix() for path in _tracked_examples()}
+
+    seed = build(REPO, tmp_path / "bundles")
+
+    bundled = {
+        path.relative_to(seed).as_posix() for path in seed.rglob("*") if path.is_file()
+    }
+    assert bundled
+    assert not bundled & examples
+    assert not [name for name in bundled if "examples" in Path(name).parts]
+    assert validate_snapshot(seed, seed.name) == seed.name

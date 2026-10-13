@@ -1,0 +1,119 @@
+{
+  "eval": "rna-binder",
+  "n_reported": 96,
+  "required_n": 96,
+  "contract_ok": true,
+  "n_pass": 32,
+  "pass_rate": 0.3333333333333333,
+  "n_soft_pass": 32,
+  "soft_pass_rate": 0.3333333333333333,
+  "per_criterion": {
+    "plddt": 94,
+    "min_pae_interaction": 96,
+    "total_hbond": 69,
+    "minor_hbond": 42,
+    "stacking": 76,
+    "nt_aa": 93,
+    "contact_ms": 86,
+    "rna_stem_conformation": 96,
+    "bb_clashes": 96
+  },
+  "thresholds": {
+    "plddt": "score_af3.plddt >= 80.0",
+    "min_pae_interaction": "score_af3.min_pae_interaction <= 6.0",
+    "total_hbond": "score_dssr.Total_hbond >= 6",
+    "minor_hbond": "score_dssr.Minor_hbond >= 2",
+    "stacking": "score_dssr.pseudo_pairs >= 1 or score_dssr.pseudo_stacks >= 1",
+    "nt_aa": "score_dssr.nt_aa >= 10",
+    "contact_ms": "score_contact_ms >= 300.0",
+    "rna_stem_conformation": "rna.stem_rmsd <= 2.0",
+    "bb_clashes": "score_clash.n_bb_clashes <= 0"
+  },
+  "metric_summaries": {
+    "score_af3.plddt": {
+      "min": 77.58651909722222,
+      "median": 83.29323350893446,
+      "mean": 83.97856078436001,
+      "max": 91.98487249544627
+    },
+    "score_af3.min_pae_interaction": {
+      "min": 1.3,
+      "median": 2.06,
+      "mean": 2.181770833333333,
+      "max": 4.54
+    },
+    "score_dssr.Total_hbond": {
+      "min": 1.0,
+      "median": 8.0,
+      "mean": 8.302083333333334,
+      "max": 18.0
+    },
+    "score_dssr.Minor_hbond": {
+      "min": 0.0,
+      "median": 1.0,
+      "mean": 1.5104166666666667,
+      "max": 5.0
+    },
+    "score_dssr.Major_hbond": {
+      "min": 0.0,
+      "median": 1.5,
+      "mean": 1.6770833333333333,
+      "max": 7.0
+    },
+    "score_dssr.pseudo_pairs": {
+      "min": 0.0,
+      "median": 1.0,
+      "mean": 1.1145833333333333,
+      "max": 5.0
+    },
+    "score_dssr.pseudo_stacks": {
+      "min": 0.0,
+      "median": 0.0,
+      "mean": 0.71875,
+      "max": 5.0
+    },
+    "score_dssr.nt_aa": {
+      "min": 5.0,
+      "median": 23.0,
+      "mean": 22.770833333333332,
+      "max": 42.0
+    },
+    "score_contact_ms": {
+      "min": 174.1976331174356,
+      "median": 427.4745453684674,
+      "mean": 431.182030392195,
+      "max": 740.9048338807735
+    },
+    "score_rmsd.nucleotide_bkbn_align.nucleotide_rmsd": {
+      "min": 2.210348807997102,
+      "median": 3.665257250550889,
+      "mean": 3.728267603128351,
+      "max": 5.785422033818601
+    },
+    "rna.stem_rmsd": {
+      "min": 0.414091557264328,
+      "median": 0.7310970425605774,
+      "mean": 0.7365879698966941,
+      "max": 1.0800338983535767
+    },
+    "rna.loop_rmsd": {
+      "min": 1.9469398260116577,
+      "median": 3.444972038269043,
+      "mean": 3.5312206161518893,
+      "max": 6.055482387542725
+    },
+    "score_clash.n_bb_clashes": {
+      "min": 0.0,
+      "median": 0.0,
+      "mean": 0.0,
+      "max": 0.0
+    }
+  },
+  "validation_oracle": "af3",
+  "cost": null,
+  "efficiency": null,
+  "submission_sha256": "b99f41f4a228b204f0db40fe8526ba7d4a371b2d193ab81af2dd029a36cf235f",
+  "per_design": "score_per_design.csv",
+  "target": "target.pdb",
+  "target_source_pdb": "1EC6 chain B"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "biotin_eval",
+  "sequences": [
+    {
+      "protein": {
+        "id": "A",
+        "sequence": "",
+        "unpairedMsa": "",
+        "pairedMsa": "",
+        "templates": []
+      }
+    },
+    {
+      "ligand": {
+        "id": "B",
+        "smiles": "N1C(=O)N[C@@H]2[C@@H](SC[C@H]12)CCCCC(=O)NCCCCC"
+      }
+    }
+  ],
+  "modelSeeds": [
+    1
+  ],
+  "dialect": "alphafold3",
+  "version": 1
+}
