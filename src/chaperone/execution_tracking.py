@@ -184,7 +184,7 @@ def load_execution_records(step_dir: str | Path) -> list[ExecutionRecord]:
         try:
             with open(path) as f:
                 records.append(ExecutionRecord(**json.load(f)))
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError):
             # Path.glob() doesn't hide dotfiles, so it can pick up another
             # worker's in-flight .tmp_*.json right before _write_execution_record's
             # os.replace() renames it away underneath us.
@@ -235,7 +235,7 @@ def next_execution_attempt(step_dir: str | Path, sandbox_dir: str | Path) -> int
         try:
             with open(path) as f:
                 payload = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError):
             # Path.glob() doesn't hide dotfiles, so it can pick up another
             # worker's in-flight .tmp_*.json right before _write_execution_record's
             # os.replace() renames it away underneath us.

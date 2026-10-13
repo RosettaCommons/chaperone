@@ -1,12 +1,38 @@
 """Pipeline manifest for tracking execution state."""
 
 import json
+import logging
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import List, Optional
 
 from chaperone.execution_tracking import ExecutionSummary, summarize_execution_dir
+
+
+logger = logging.getLogger(__name__)
+
+
+def _from_dict(cls, data: dict, context: str):
+    """Build a dataclass from *data*, dropping keys the dataclass does not define.
+
+    ``pipeline.json`` lives in a shared rundir and is routinely read by a
+    checkout other than the one that wrote it.  Splatting the stored dict
+    straight into the constructor makes every field ever added to the schema a
+    hard ``TypeError`` for older readers, which takes down the whole manifest
+    rather than the one field they cannot interpret.  Drop unknown keys with a
+    warning instead so an old reader degrades rather than dies.
+    """
+    known = {f.name for f in fields(cls)}
+    extra = sorted(set(data) - known)
+    if extra:
+        logger.warning(
+            "%s: ignoring unknown field(s) %s -- this manifest was written by a "
+            "newer version of chaperone than the one reading it",
+            context,
+            extra,
+        )
+    return cls(**{k: v for k, v in data.items() if k in known})
 
 
 @dataclass
@@ -21,7 +47,11 @@ class StepInfo:
 
     def __post_init__(self):
         if isinstance(self.execution_summary, dict):
-            self.execution_summary = ExecutionSummary(**self.execution_summary)
+            self.execution_summary = _from_dict(
+                ExecutionSummary,
+                self.execution_summary,
+                f"manifest step {self.name!r} execution_summary",
+            )
 
 
 class PipelineManifest:
@@ -39,7 +69,10 @@ class PipelineManifest:
         if manifest.path.exists():
             with open(manifest.path) as f:
                 data = json.load(f)
-            manifest.steps = [StepInfo(**step) for step in data.get("steps", [])]
+            manifest.steps = [
+                _from_dict(StepInfo, step, f"manifest step {step.get('name', '?')!r}")
+                for step in data.get("steps", [])
+            ]
         return manifest
 
     def save(self) -> None:

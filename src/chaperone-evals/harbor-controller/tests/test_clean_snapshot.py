@@ -690,3 +690,47 @@ class CleanSnapshotTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
+    """The bundle has no dotenv files; the controller must supply its site map."""
+    import json
+    import os
+    import subprocess
+    import sys
+
+    from environments.apptainer import SCIENTIFIC_ENV_DEFAULTS
+    from scripts.slurm_gpu_guard import validate_request
+    from scripts.snapshot_harness import build
+
+    root = Path(__file__).resolve().parents[4]
+    snapshot = build(root, tmp_path / "snapshots")
+    assert not list(snapshot.glob(".env*"))
+    env = {
+        **os.environ,
+        **SCIENTIFIC_ENV_DEFAULTS,
+        "PYTHONPATH": str(snapshot / "src"),
+    }
+    code = """
+import json
+import chaperone
+from blocks import Blocks
+from chaperone.settings import ChaperoneSettings
+from chaperone.engine.resolve import _resolve_job_args, RuntimeArgs
+chaperone._global_settings = ChaperoneSettings(_env_file=())
+result = {}
+for name in ('boltz2', 'mpnn', 'rfd2'):
+    args = _resolve_job_args(None, Blocks[name].model_construct(name=name),
+                             RuntimeArgs(use_local_gpus=False))
+    result[name] = [args.partition, args.gres]
+print(json.dumps(result))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code], env=env, cwd=snapshot,
+        check=True, capture_output=True, text=True,
+    )
+    resources = json.loads(result.stdout)
+    assert resources["mpnn"] == ["cpu", None]
+    for name in ("boltz2", "rfd2"):
+        assert resources[name] == ["gpu", "gpu:small:1"]
+        assert validate_request([], [f"#SBATCH --gres={resources[name][1]}"], 5) == 1

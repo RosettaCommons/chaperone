@@ -100,6 +100,12 @@ class ExecutionEngine:
         _parent: "ExecutionEngine" = None,
         _namespace: str = None,
     ):
+        """Attach to *rundir*, loading its existing manifest by default.
+
+        ``reinit=True`` starts an empty in-memory manifest; it does not disable
+        output caching. Leave ``reinit=False`` to inspect or resume an existing
+        run, including its recorded steps and execution summaries.
+        """
         from chaperone import get_settings
 
         settings = get_settings()

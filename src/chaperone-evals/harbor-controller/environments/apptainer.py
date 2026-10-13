@@ -137,6 +137,12 @@ _HOST_ENV_PASSTHROUGH = (
 _ALLOWLISTED_WORKER_ENV_PASSTHROUGH = ("USALIGN_BIN",)
 
 SCIENTIFIC_ENV_DEFAULTS = {
+    # Sanitized snapshots intentionally omit .env.ipd. Pass the scheduler
+    # profile explicitly so block resource classes agree with the broker's
+    # cpu/gpu partitions and typed-GPU policy.
+    "CHAPERONE_DEFAULT_PARTITION": "cpu",
+    "CHAPERONE_GPU_PARTITION": "gpu",
+    "CHAPERONE_GRES_MAP": '{"small":"gpu:small:1","large":"gpu:large:1"}',
     "HF_HUB_CACHE": "/projects/ml/pipelines/weights/huggingface/hub",
     "BOLTZ_CACHE_DIR": "/projects/ml/pipelines/weights/boltz2",
     "AF3_JAX_CACHE_DIR": "/projects/ml/pipelines/weights/af3_cache",
