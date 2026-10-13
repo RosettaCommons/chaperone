@@ -8,6 +8,8 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit"]
 
 Comprehensive reference for generating, modifying, and troubleshooting Rosetta `.params` files for small molecule ligands.
 
+> **IPD-specific paths.** Tool locations below (`/software/...`) are the Baker-lab / IPD digs cluster. Elsewhere, install the tools yourself and substitute your paths. Helper scripts that live in individual users' directories on digs are written as `$XTB`, `$CHEMCRAFT`, `$DUMP_ROTAMERS`, `$ADD_VXS`, `$RIGID_BODY_ROTAMERS`; get them from the lab or substitute your own equivalents.
+
 ## Example Questions This Skill Can Answer
 
 - "How do I generate a params file for my ligand?"
@@ -45,7 +47,7 @@ Override the params directory with `CHAPERONE_LIGAND_PARAMS_DIR` env var.
 
 Options (pick one):
 - **Draw in VMD**: `/software/utils/vmd`
-- **Draw in Chemcraft**: `/home/ikalvet/software/Chemcraft/Chemcraft` — copy XYZ from "Coords" tab
+- **Draw in Chemcraft**: `$CHEMCRAFT` — copy XYZ from "Coords" tab
 - **From ChemDraw**: Save as `.sdf`, convert to SMILES, generate 3D with RDKit
 - **From PDB**: Save ligand coordinates directly (likely needs hydrogen/charge fixing in Step 2)
 
@@ -66,7 +68,7 @@ antechamber -i input.mol2 -fi mol2 -o charged.mol2 -fo mol2 -c bcc -pf y -dr n -
 
 Or minimize geometry with XTB (semiempirical QM):
 ```bash
-/home/ikalvet/software/xtb/6.4.0/bin/xtb input.xyz --opt --chrg <CHARGE> --gbsa h2o -v > xtb.out
+$XTB input.xyz --opt --chrg <CHARGE> --gbsa h2o -v > xtb.out
 # Optimized geometry in xtbopt.xyz
 ```
 
@@ -111,7 +113,7 @@ python /software/rosetta/main/source/scripts/python/public/generic_potential/mol
 - Verify `NBR_RADIUS` (increase if too small — default may miss neighboring atom interactions)
 - Dump and visually check rotamers:
 ```bash
-python /home/drhicks1/for_/for_small_mols/dump_rotamers.py --pdb_in ligand.pdb --params_in ligand.params
+python $DUMP_ROTAMERS --pdb_in ligand.pdb --params_in ligand.params
 ```
 
 ### Step 7 (optional): Rigid Body Rotamer Sampling
@@ -119,8 +121,8 @@ python /home/drhicks1/for_/for_small_mols/dump_rotamers.py --pdb_in ligand.pdb -
 **Do NOT use if your score function has `cart_bonded` or other Cartesian terms during design.**
 
 ```bash
-python /home/drhicks1/for_/for_small_mols/add_VXs_to_params.py
-python /home/drhicks1/for_/for_small_mols/rigid_body_rotamer_generator.py
+python $ADD_VXS
+python $RIGID_BODY_ROTAMERS
 ```
 
 ### Step 8 (optional): Add Rotamer Library
@@ -163,7 +165,7 @@ mv LG.params LIG_ref2015.params
 
 # 6. Dump rotamers with PROTON_CHI angles
 for i in *_00*_genpot.pdb; do
-    python /home/linnaan/software/generate_conformer/dump_rotamers.py \
+    python $DUMP_ROTAMERS \
         --pdb_in $i --params_in LIG_0001_genpot.params
 done
 # Fix ligand names
@@ -263,18 +265,20 @@ PROTON_CHI 3 SAMPLES 2 80 180 EXTRA 2 20 10
 
 ---
 
-## Key Paths on Digs
+## Key Paths on Digs (IPD-specific)
+
+User-installed helpers have no fixed location; the variables below are placeholders.
 
 | Tool | Path |
 |------|------|
 | OpenBabel | `/software/openbabel/latest/obabel` |
 | VMD | `/software/utils/vmd` |
-| Chemcraft | `/home/ikalvet/software/Chemcraft/Chemcraft` |
-| XTB | `/home/ikalvet/software/xtb/6.4.0/bin/xtb` |
+| Chemcraft | `$CHEMCRAFT` |
+| XTB | `$XTB` |
 | CSD Conformer Gen | `/software/csds/CSD_2022/bin/conformer_generator` |
 | molfile_to_params | `$ROSETTA_PATH/rosetta/main/source/scripts/python/public/molfile_to_params.py` |
 | mol2genparams | `/software/rosetta/main/source/scripts/python/public/generic_potential/mol2genparams.py` |
-| dump_rotamers | `/home/drhicks1/for_/for_small_mols/dump_rotamers.py` |
-| rigid_body_rotamers | `/home/drhicks1/for_/for_small_mols/rigid_body_rotamer_generator.py` |
-| add_VXs_to_params | `/home/drhicks1/for_/for_small_mols/add_VXs_to_params.py` |
+| dump_rotamers | `$DUMP_ROTAMERS` |
+| rigid_body_rotamers | `$RIGID_BODY_ROTAMERS` |
+| add_VXs_to_params | `$ADD_VXS` |
 | Rosetta database | `$ROSETTA_PATH/main/database/chemical/` |

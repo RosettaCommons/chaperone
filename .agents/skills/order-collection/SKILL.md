@@ -159,7 +159,7 @@ def best_model_companions(cif_path, _parent_cache={}):
     Replaces the prior parent-wide \"*confidences*.json/*scores*.npz\" glob, which
     on Boltz2/Chai1/Protenix-cycle layouts pulled all 5 samples per design.
     Caches one os.listdir() per parent directory to replace the per-file
-    NFS-cache-busting fh.read(1) that hangs at 20K+ files against /net/scratch.
+    NFS-cache-busting fh.read(1) that hangs at 20K+ files on a network filesystem.
     '''
     parent = os.path.dirname(cif_path)
     cif_stem = os.path.splitext(os.path.basename(cif_path))[0]

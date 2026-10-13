@@ -1,7 +1,7 @@
 """Per-row chirality check vs a reference ligand structure.
 
-Ports the chirality logic from `/mnt/net/software/lab/af3_sm/v2/run_alphafold_sm.py`
-(functions `_build_rdkit_mol_from_atom_array`, `check_chirality`).
+Ports the chirality logic from the AF3 small-molecule runner (`run_alphafold_sm.py`;
+functions `_build_rdkit_mol_from_atom_array`, `check_chirality`).
 
 Use AFTER `remap_predicted_ligand` so the output ligand atom names line up
 with the reference. This block does NOT remap atoms itself — atom-name

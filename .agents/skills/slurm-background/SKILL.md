@@ -6,6 +6,8 @@ allowed-tools: ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
 
 # SLURM Background Submission
 
+> **IPD-specific values.** Partition names, GRES types, and `/net/scratch` paths below are the Baker-lab / IPD cluster's. On another cluster, set your own in `.env.local`.
+
 Run work **detached** on the cluster. Prefer one autonomous campaign driver that
 contains its bounded theories, stages, scorer calls, and promotion rules. The
 engine owns its inner jobs. Detached work survives disconnect and scales to many

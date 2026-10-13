@@ -9,7 +9,7 @@ import os
 #     input_path: os.PathLike, output_path: os.PathLike
 # ) -> None:
 #     """This function takes in a PDB file and renumbers the res_ids such that they are monotonically increasing, even across chains.
-#     This is necessary for using the AF-multimer PPI script at /mnt/net/software/containers/users/drhicks1/colabfold_ig/AlphaFold2_initial_guess_multimer.py
+#     This is necessary for using the AF-multimer initial-guess PPI script.
 #     """
 #     atom_array = load_any(input_path)
 #     num_res = len(struc.get_residue_starts(atom_array, add_exclusive_stop=False))

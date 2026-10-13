@@ -41,8 +41,6 @@ SITE_AND_IMAGE_PATHS = [
     # the symlink the unvendored agent/ tooling refers to.
     r"pipelines_agent(?:_base|_hardened_\d+)?\.sif",
     r"agent/pipelines\.sif",
-    # A previous developer's home checkout in a pixi task; not ours, not editable.
-    r"/home/anmittal/Code/protein-design-pipelines[\w./-]*",
 ]
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
