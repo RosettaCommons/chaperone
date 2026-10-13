@@ -44,48 +44,31 @@ claude
 
 ## Installation (Manual)
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/):
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+
 ```bash
-git clone git@github.com:baker-laboratory/pipelines.git
-cd pipelines
+git clone git@github.com:RosettaCommons/chaperone.git
+cd chaperone
 export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 uv venv && source .venv/bin/activate
 uv pip install -e '.[all]' --override overrides.txt
-python -m ipykernel install --user --name pipelines --display-name "Pipelines"  # optional jupyter kernel
+chaperone --help
 ```
 
-The `PYTHONPATH` command prepends the checkout containing the current shell,
-preventing an older Pipelines clone from taking precedence. Run it from the
-repository root before starting an agent or using Pipelines. After activating
-the environment, verify that both modules resolve inside the current checkout:
+The `PYTHONPATH` line stops an older checkout elsewhere on your path from shadowing this one. To confirm which copy you are running:
 
 ```bash
-python - <<'PY'
-from pathlib import Path
-
-import pipelines
-import pipelines_cli.main
-
-root = Path.cwd().resolve()
-for module in (pipelines, pipelines_cli.main):
-    origin = Path(module.__file__).resolve()
-    print(f"{module.__name__}: {origin}")
-    if not origin.is_relative_to(root):
-        raise SystemExit(
-            "another checkout is shadowing this one; remove its entry from "
-            "PYTHONPATH and restart the shell"
-        )
-PY
+python -c "import chaperone, blocks; print(chaperone.__file__, blocks.__file__)"
 ```
 
-PyRosetta-backed blocks are optional. `.[all]` installs the `pyrosetta-installer`
-helper, but not the PyRosetta wheel itself. At IPD, `.env.ipd` sets
-`PYROSETTA_PATH` to the shared install automatically. Elsewhere, either set
-`PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run:
+Both paths should be inside this checkout.
 
-```bash
-python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"
-```
+Optional extras:
+
+- **Jupyter kernel:** `python -m ipykernel install --user --name chaperone --display-name "Chaperone"`
+- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`. At IPD, `.env.ipd` already points to the shared install.
+
+Block containers are built on demand: `chaperone list-available` shows them and `chaperone install <name> ...` builds one (`/setup` does this for you). Model weights are separate; each block's entry in the block reference says what it needs.
 
 # Overview
 
