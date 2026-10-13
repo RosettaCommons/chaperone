@@ -19,7 +19,7 @@ People have used Chaperone for PPI, symmetric design, and enzyme design — reac
 This repo ships with [agent skills](docs/site/skills.md) and project context (`AGENTS.md`) for writing, running, and debugging pipelines. The guides are Markdown files readable by Claude Code, Codex, and other coding agents; automatic discovery and slash commands depend on the agent installation.
 
 > [!TIP]
-> Start with the [documentation home](docs/site/index.md), [simple example](docs/site/simple.md), and [core examples](docs/site/core-examples.md).
+> Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/). Start with the [simple example](https://rosettacommons.github.io/chaperone/simple/) and [core examples](https://rosettacommons.github.io/chaperone/core-examples/).
 
 > [!NOTE]
 > Chaperone-authored code is [MIT licensed](LICENSE). External collaborators are welcome. Bundled third-party code and example outputs retain the terms listed in [Third-party notices](THIRD_PARTY_NOTICES.md); external tools and model weights retain their own licenses and access requirements.
