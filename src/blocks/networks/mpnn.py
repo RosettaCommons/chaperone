@@ -8,8 +8,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
-
 from atomworks.io.utils.chain import create_chain_id_generator
 from pydantic import BaseModel, Field, model_validator
 
@@ -843,31 +841,22 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     @staticmethod
     def _write_portable_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
         """Stage a PDB for upstream main, preserving the original CIF as parent."""
-        from biotite.structure.io.pdb import PDBFile
+        from chaperone.io import write_pdb
 
         stem = Path(input_path).name
         for suffix in (".gz", ".cif", ".pdb"):
             stem = stem.removesuffix(suffix)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"{stem}.pdb"
-        pdb = PDBFile()
-        staged = rename.rename(atoms)
-        # CIF readers represent absent optional columns as NaN. PDB cannot
-        # encode NaN; use the writer's absent-column defaults on this staging
-        # copy only. Coordinates and supplied finite annotations stay untouched.
-        for annotation, default in (("b_factor", 0.0), ("occupancy", 1.0)):
-            if annotation in staged.get_annotation_categories():
-                values = staged.get_annotation(annotation).copy()
-                values[np.isnan(values)] = default
-                staged.set_annotation(annotation, values)
         try:
-            pdb.set_structure(staged)
+            write_pdb(rename.rename(atoms), out_path)
+        except OSError:
+            raise
         except Exception as error:
             raise ValueError(
                 f"Portable MPNN requires PDB-representable inputs: {input_path}. "
                 "Check chain/residue identifiers and ligand component names."
             ) from error
-        pdb.write(str(out_path))
         return str(out_path)
 
     @staticmethod

@@ -12,6 +12,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def write_pdb(atom_array: struc.AtomArray, path: str | Path) -> None:
+    """Write a PDB without modifying the source array.
+
+    CIF readers may represent missing optional annotations as NaN. Replace
+    those values with Biotite's defaults for absent PDB fields: B-factor 0.0
+    and occupancy 1.0. Finite values and coordinates are preserved (subject
+    to PDB precision); other PDB representability checks remain with Biotite.
+    The destination's parent directory must already exist.
+    """
+    from biotite.structure.io.pdb import PDBFile
+
+    staged = atom_array.copy()
+    for annotation, default in (("b_factor", 0.0), ("occupancy", 1.0)):
+        if annotation in staged.get_annotation_categories():
+            values = staged.get_annotation(annotation).copy()
+            values[np.isnan(values)] = default
+            staged.set_annotation(annotation, values)
+    pdb = PDBFile()
+    pdb.set_structure(staged)
+    pdb.write(str(path))
+
+
 def ensure_bonds(atom_array):
     """Return ``atom_array`` with a bond list, adding an empty one if missing.
 
