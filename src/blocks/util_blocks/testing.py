@@ -7,8 +7,8 @@ Useful for expanding a dataset or creating replicate runs.
 
 from pathlib import Path
 
-from pipelines.block_config import CompiledBlockFunction
-from pipelines import PipelineDataHandler
+from chaperone.block_config import CompiledBlockFunction
+from chaperone import PipelineDataHandler
 from pydantic import Field
 
 

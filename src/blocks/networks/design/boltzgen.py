@@ -7,16 +7,16 @@ import logging
 from pydantic import Field, field_validator
 from typing import Optional
 
-from pipelines import (
+from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
     get_setting_field,
 )
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.containers import Image
-from pipelines.data import make_row
-from pipelines.data.schema import Column
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.containers import Image
+from chaperone.data import make_row
+from chaperone.data.schema import Column
 from blocks.constants import cuda_python_base
 
 logger = logging.getLogger(__name__)

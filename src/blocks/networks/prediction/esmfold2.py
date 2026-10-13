@@ -29,11 +29,11 @@ from blocks.networks.prediction.monomer_reference import (
     resolve_msa_path,
     stage_query_a3m,
 )
-from pipelines import JobArgs, PipelineDataHandler, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, ScriptSpec
-from pipelines.block_config.base import TIER_PRIMARY, TIER_SECONDARY
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone import JobArgs, PipelineDataHandler, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
+from chaperone.block_config.base import TIER_PRIMARY, TIER_SECONDARY
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineMetricBlock
+from chaperone import InlineMetricBlock
 
 
 def compute_ligand_clash_metrics(

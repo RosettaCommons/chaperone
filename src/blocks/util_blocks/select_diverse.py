@@ -12,8 +12,8 @@ from typing import Optional
 import polars as pl
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
-from pipelines.data.schema import Column, dump_sequences
+from chaperone import BlockFunction, PipelineDataHandler
+from chaperone.data.schema import Column, dump_sequences
 
 from ._sequence_resolution import resolve_sequences
 

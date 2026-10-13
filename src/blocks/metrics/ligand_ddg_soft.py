@@ -31,7 +31,7 @@ from typing import ClassVar
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs
+from chaperone import InlineMetricBlock, JobArgs
 
 logger = logging.getLogger(__name__)
 

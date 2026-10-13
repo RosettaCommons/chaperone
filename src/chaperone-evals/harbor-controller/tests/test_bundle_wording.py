@@ -16,7 +16,7 @@ FORBIDDEN = (
         r"\beval(?:uation)? (?:transcript|snapshot|worker|controller|task|run|harness)s?\b",
         "refers to the evaluation setup",
     ),
-    (r"\bpipelines\.evals\b", "points at a module the bundle does not contain"),
+    (r"\bchaperone\.evals\b", "points at a module the bundle does not contain"),
 )
 
 

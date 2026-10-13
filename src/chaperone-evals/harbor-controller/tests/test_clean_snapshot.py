@@ -136,7 +136,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -173,7 +173,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -203,7 +203,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -216,7 +216,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
 
@@ -230,13 +230,13 @@ class CleanSnapshotTest(unittest.TestCase):
                             site_environment={name: "value"},
                         )
 
-    def test_worker_wrapper_mounts_pipelines_checkout_at_its_path_alias(self) -> None:
+    def test_worker_wrapper_mounts_chaperone_checkout_at_its_path_alias(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
             workspace.mkdir()
-            pipelines_repo = root / "pipelines"
-            (pipelines_repo / "src").mkdir(parents=True)
+            chaperone_repo = root / "chaperone"
+            (chaperone_repo / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -244,7 +244,7 @@ class CleanSnapshotTest(unittest.TestCase):
             original_alias = ApptainerEnvironment._project_path_alias
 
             def project_alias(path: Path) -> Path | None:
-                if path == pipelines_repo:
+                if path == chaperone_repo:
                     return alias
                 return original_alias(path)
 
@@ -257,18 +257,18 @@ class CleanSnapshotTest(unittest.TestCase):
                     wrapper,
                     workspace,
                     image,
-                    pipelines_repo=pipelines_repo,
+                    chaperone_repo=chaperone_repo,
                 )
 
-            self.assertIn(f"{pipelines_repo}:{alias}:ro", wrapper.read_text())
+            self.assertIn(f"{chaperone_repo}:{alias}:ro", wrapper.read_text())
 
     def test_worker_wrapper_mounts_task_assets_at_both_project_spellings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
             workspace.mkdir()
-            pipelines_repo = root / "pipelines"
-            (pipelines_repo / "src").mkdir(parents=True)
+            chaperone_repo = root / "chaperone"
+            (chaperone_repo / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -286,7 +286,7 @@ class CleanSnapshotTest(unittest.TestCase):
                     wrapper,
                     workspace,
                     image,
-                    pipelines_repo=pipelines_repo,
+                    chaperone_repo=chaperone_repo,
                     worker_readonly_paths=(task,),
                 )
 
@@ -298,7 +298,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -314,7 +314,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             image = root / "worker.sif"
             image.touch()
             wrapper = root / "slurm-python"
@@ -342,9 +342,9 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
-            (workspace / "pipelines" / "src").mkdir(parents=True)
+            (workspace / "chaperone" / "src").mkdir(parents=True)
             with self.assertRaisesRegex(
-                FileNotFoundError, "Shared Pipelines worker SIF was not found"
+                FileNotFoundError, "Shared Chaperone worker SIF was not found"
             ):
                 ApptainerEnvironment._prepare_slurm_python(
                     root / "slurm-python", workspace, root / "missing.sif"
@@ -369,7 +369,7 @@ class CleanSnapshotTest(unittest.TestCase):
             with self.subTest(hint=hint), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                leak = source / "src" / "pipelines" / "target_hint.py"
+                leak = source / "src" / "chaperone" / "target_hint.py"
                 leak.write_text(f'TARGET_HINT = "{hint}"\n')
 
                 with self.assertRaisesRegex(
@@ -387,14 +387,14 @@ class CleanSnapshotTest(unittest.TestCase):
             with self.subTest(variant=name), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                (source / "src" / "pipelines" / name).write_bytes(payload)
+                (source / "src" / "chaperone" / name).write_bytes(payload)
                 with self.assertRaisesRegex(RuntimeError, "evaluation-specific hints"):
                     build(source, root / f"bundles-{index}")
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = self._minimal_source(root)
-            (source / "src" / "pipelines" / "secret-target-notes.py").write_text(
+            (source / "src" / "chaperone" / "secret-target-notes.py").write_text(
                 "X = 1\n"
             )
             with self.assertRaisesRegex(RuntimeError, "in the file name"):
@@ -408,7 +408,7 @@ class CleanSnapshotTest(unittest.TestCase):
             ):
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                folder = source / "src" / "pipelines" / directory
+                folder = source / "src" / "chaperone" / directory
                 folder.mkdir(parents=True)
                 (folder / "run.py").write_text("X = 1\n")
                 with self.assertRaisesRegex(
@@ -428,7 +428,7 @@ class CleanSnapshotTest(unittest.TestCase):
     def test_snapshot_hint_audit_accepts_generic_rna_apis(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             source = self._minimal_source(Path(temporary))
-            generic = source / "src" / "pipelines" / "rna_api.py"
+            generic = source / "src" / "chaperone" / "rna_api.py"
             generic.write_text(
                 'DESCRIPTION = "RNA motif base pairing and sequence identity"\n'
             )
@@ -439,21 +439,21 @@ class CleanSnapshotTest(unittest.TestCase):
     def _minimal_source(root: Path) -> Path:
         source = root / "source"
         (source / "src" / "blocks").mkdir(parents=True)
-        (source / "src" / "pipelines").mkdir(parents=True)
-        (source / "src" / "pipelines_cli").mkdir(parents=True)
+        (source / "src" / "chaperone").mkdir(parents=True)
+        (source / "src" / "chaperone_cli").mkdir(parents=True)
         (source / ".agents" / "skills" / "design").mkdir(parents=True)
         for name in ("AGENTS.md", "README.md", "SKILL.md"):
             (source / name).write_text(f"{name}\n")
-        (source / "pyproject.toml").write_text("[project]\nname='pipelines'\n")
+        (source / "pyproject.toml").write_text("[project]\nname='chaperone'\n")
         (source / "src" / "blocks" / "__init__.py").write_text("BLOCKS = True\n")
-        (source / "src" / "pipelines" / "__init__.py").write_text("PIPELINES = True\n")
-        (source / "src" / "pipelines_cli" / "job_wait.py").write_text(
+        (source / "src" / "chaperone" / "__init__.py").write_text("CHAPERONE = True\n")
+        (source / "src" / "chaperone_cli" / "job_wait.py").write_text(
             "def wait_for_completion(): pass\n"
             "def launch_and_wait(): pass\n"
             "def serve_mcp(): pass\n"
         )
-        (source / "src" / "pipelines_cli" / "main.py").write_text(
-            "from pipelines_cli.job_wait import serve_mcp\n"
+        (source / "src" / "chaperone_cli" / "main.py").write_text(
+            "from chaperone_cli.job_wait import serve_mcp\n"
         )
         (source / ".agents" / "skills" / "design" / "SKILL.md").write_text("# Design\n")
         return source
@@ -480,15 +480,15 @@ class CleanSnapshotTest(unittest.TestCase):
             (source / "campaigns" / "old" / "selection.py").write_text(
                 "SECRET = True\n"
             )
-            (source / "src" / "pipelines" / "fresh.py").write_text("FRESH = True\n")
-            (source / "src" / "pipelines" / "evals.py").write_text(
+            (source / "src" / "chaperone" / "fresh.py").write_text("FRESH = True\n")
+            (source / "src" / "chaperone" / "evals.py").write_text(
                 "EVALUATION_HELPER = True\n"
             )
 
             seed = build(source, root / "bundles")
             validate_snapshot(seed)
 
-            self.assertTrue((seed / "src" / "pipelines" / "fresh.py").is_file())
+            self.assertTrue((seed / "src" / "chaperone" / "fresh.py").is_file())
             self.assertTrue(
                 (seed / ".agents" / "skills" / "design" / "SKILL.md").is_file()
             )
@@ -496,7 +496,7 @@ class CleanSnapshotTest(unittest.TestCase):
             self.assertTrue((seed / "docs" / "site" / "blocks-reference.md").is_file())
             self.assertFalse((seed / "docs" / "site" / "evals").exists())
             self.assertFalse((seed / "campaigns").exists())
-            self.assertFalse((seed / "src" / "pipelines" / "evals.py").exists())
+            self.assertFalse((seed / "src" / "chaperone" / "evals.py").exists())
             self.assertFalse((seed / "README.md").exists())
             self.assertFalse(any(seed.rglob("score_per_design.csv")))
             self.assertFalse(any(seed.rglob(".git")))
@@ -601,13 +601,13 @@ class CleanSnapshotTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 validate_snapshot(seed)
 
-    def test_snapshot_requires_pipelines_monitor_backend(self) -> None:
+    def test_snapshot_requires_chaperone_monitor_backend(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = self._minimal_source(root)
-            (source / "src" / "pipelines_cli" / "job_wait.py").unlink()
+            (source / "src" / "chaperone_cli" / "job_wait.py").unlink()
 
-            with self.assertRaisesRegex(RuntimeError, "pipelines_cli/job_wait.py"):
+            with self.assertRaisesRegex(RuntimeError, "chaperone_cli/job_wait.py"):
                 build(source, root / "bundles")
 
     def test_concurrent_bundle_publisher_reuses_valid_winner(self) -> None:
@@ -632,7 +632,7 @@ class CleanSnapshotTest(unittest.TestCase):
             source = self._minimal_source(root)
             outside = root / "outside.py"
             outside.write_text("SECRET = True\n")
-            (source / "src" / "pipelines" / "escape.py").symlink_to(outside)
+            (source / "src" / "chaperone" / "escape.py").symlink_to(outside)
             with self.assertRaisesRegex(RuntimeError, "Refusing symlink"):
                 build(source, root / "bundles")
 
@@ -640,7 +640,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             seed = build(self._minimal_source(root), root / "bundles")
-            (seed / "src" / "pipelines" / "__init__.py").write_text("TAMPERED = True\n")
+            (seed / "src" / "chaperone" / "__init__.py").write_text("TAMPERED = True\n")
             with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
                 validate_snapshot(seed, seed.name)
 
@@ -674,13 +674,13 @@ class CleanSnapshotTest(unittest.TestCase):
 
             ApptainerEnvironment._prepare_workspace(workspace, seed, inputs)
 
-            pipelines = workspace / "pipelines"
-            validate_snapshot(pipelines)
-            self.assertFalse((pipelines / ".git").exists())
+            chaperone = workspace / "chaperone"
+            validate_snapshot(chaperone)
+            self.assertFalse((chaperone / ".git").exists())
             self.assertNotEqual(
                 subprocess.run(
                     ["git", "rev-parse", "--is-inside-work-tree"],
-                    cwd=pipelines,
+                    cwd=chaperone,
                     capture_output=True,
                     text=True,
                 ).returncode,

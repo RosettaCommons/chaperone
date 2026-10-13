@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """End-to-end exercise of ``auto_store_format="catcif"`` + ``auto_store_cleanup=True``.
 
 Pipeline:
@@ -18,8 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data import SELECTIONS
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FILES_DIR = SCRIPT_DIR / "files"

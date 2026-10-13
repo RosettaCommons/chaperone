@@ -15,9 +15,9 @@ from typing import ClassVar
 import numpy as np
 from pydantic import Field
 
-from pipelines import CompiledBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.data.schema import make_row
-from pipelines import get_setting_field
+from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.data.schema import make_row
+from chaperone import get_setting_field
 
 logger = logging.getLogger(__name__)
 

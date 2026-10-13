@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """DISCO ligand-conditioned protein co-design benchmark.
 
 Evaluates DISCO's ability to jointly generate protein sequences and structures
@@ -11,8 +11,8 @@ Pipeline: disco -> af3 -> rmsd
 from pathlib import Path
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 init_cli()
 

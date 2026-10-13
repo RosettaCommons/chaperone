@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 
 from run_eval import (  # noqa: E402
     DEFAULT_HARNESS_IMAGE,
-    DEFAULT_PIPELINES_REPO,
+    DEFAULT_CHAPERONE_REPO,
     _score,
     _wait_for_job,
     resolve_task,
@@ -35,7 +35,7 @@ def main() -> None:
     )
     parser.add_argument("--task", required=True)
     parser.add_argument("--run-dir", required=True, type=Path)
-    parser.add_argument("--pipelines-repo", type=Path, default=DEFAULT_PIPELINES_REPO)
+    parser.add_argument("--chaperone-repo", type=Path, default=DEFAULT_CHAPERONE_REPO)
     parser.add_argument("--worker-image", type=Path, default=DEFAULT_HARNESS_IMAGE)
     parser.add_argument("--required-n", type=_positive_integer, default=96)
     parser.add_argument("--public-contract", type=Path)
@@ -50,7 +50,7 @@ def main() -> None:
 
     task = resolve_task(args.task)
     run_dir = Path(os.path.abspath(args.run_dir.expanduser()))
-    pipelines_repo = Path(os.path.abspath(args.pipelines_repo.expanduser()))
+    chaperone_repo = Path(os.path.abspath(args.chaperone_repo.expanduser()))
     worker_image = Path(os.path.abspath(args.worker_image.expanduser()))
     if args.harbor_job_id:
         print(
@@ -72,7 +72,7 @@ def main() -> None:
     _score(
         task,
         run_dir,
-        pipelines_repo,
+        chaperone_repo,
         worker_image,
         required_n=args.required_n,
         public_contract=args.public_contract,

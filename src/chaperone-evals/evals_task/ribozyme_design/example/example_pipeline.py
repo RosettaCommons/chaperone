@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Reference submission for the hammerhead rescaffolding eval.
 
 Hands RFdiffusion3NA only the six catalytic nucleotides of the full-length
@@ -30,7 +30,7 @@ from blocks import Blocks
 from blocks.metrics.sequence_identity_gate import nw_identity
 from blocks.networks.foundry.rfd3na_input import build_motif_spec, write_rfd3na_json
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 
 flags.DEFINE_integer("required_n", 96, "Designs to submit. Override to 1 to smoke test.")
 FLAGS = flags.FLAGS

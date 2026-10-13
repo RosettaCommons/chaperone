@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Reference pipeline for the nanoparticle-c3 eval: 96 C3 protomer sequences.
 
     rfd1 (C3 symmetric)  ->  mpnn (tied homo-oligomer)  ->  af3  ->  rank
@@ -38,7 +38,7 @@ import polars as pl
 from absl import flags
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 INPUTS_DIR = SCRIPT_DIR.parent / "inputs"

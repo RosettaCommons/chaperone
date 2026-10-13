@@ -9,9 +9,9 @@ from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import Atom, array
 
 from blocks.networks.mpnn import ChainRename, ClassicMPNNBlock
-from pipelines import PipelineDataHandler
-from pipelines.data import make_row
-from pipelines.io import ensure_bonds, parse_to_atom_array
+from chaperone import PipelineDataHandler
+from chaperone.data import make_row
+from chaperone.io import ensure_bonds, parse_to_atom_array
 
 
 def _atoms(chains):

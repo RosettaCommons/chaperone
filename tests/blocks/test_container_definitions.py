@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import blocks
-from pipelines.containers import Image
+from chaperone.containers import Image
 
 BLOCKS_DIR = Path(blocks.__file__).parent
 

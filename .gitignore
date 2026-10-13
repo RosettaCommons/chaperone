@@ -55,7 +55,7 @@ test_logs/** */
 */wandb/
 *.err
 *.log
-src/pipelines/PIPELINE_HEAD
+src/chaperone/PIPELINE_HEAD
 *pixi.*
 .delta/
 DUMMY/*
@@ -96,7 +96,7 @@ design-docs-old/
 # Derived inputs for bcov sm-binder-chop experiments
 examples/bcov/sm-binder-chop-v2/derived_inputs/
 
-# Local nested project (not part of pipelines)
+# Local nested project (not part of Chaperone)
 smol_binder_design/
 .claude/worktrees/
 analysis/

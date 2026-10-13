@@ -33,8 +33,8 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import numpy as np
 
-from pipelines.data import make_row
-from pipelines.data.handler import PipelineDataHandler
+from chaperone.data import make_row
+from chaperone.data.handler import PipelineDataHandler
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def write_rna_design_cif(
     from atomworks.io.utils.io_utils import to_cif_file
     from biotite.structure import AtomArray
 
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     sequence = sequence.upper()
     invalid = sorted(set(sequence) - RNA_BASES)

@@ -1,6 +1,6 @@
-site_name: Pipelines Documentation
+site_name: Chaperone Documentation
 site_description: A framework for making structural biology tools interoperable
-site_author: Pipelines Team
+site_author: Chaperone Team
 site_url: ""
 docs_dir: docs/site
 

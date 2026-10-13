@@ -1,8 +1,8 @@
 """Prepare BindCraft presets and execute the upstream entry point.
 
 This script is copied into the BindCraft container.  Keeping preset resolution
-inside the image lets the Pipelines block expose small override dictionaries
-without vendoring BindCraft's large JSON files into Pipelines itself.
+inside the image lets the Chaperone block expose small override dictionaries
+without vendoring BindCraft's large JSON files into Chaperone itself.
 """
 
 from __future__ import annotations

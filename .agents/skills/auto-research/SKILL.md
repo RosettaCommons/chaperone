@@ -1,6 +1,6 @@
 ---
 name: auto-research
-description: Iteratively improve a weak, uncertain, or stalled Pipelines design workflow using user-provided thresholds or an existing Pipelines-compatible scorer.
+description: Iteratively improve a weak, uncertain, or stalled Chaperone design workflow using user-provided thresholds or an existing Chaperone-compatible scorer.
 ---
 
 # Auto research
@@ -13,10 +13,10 @@ instructions in `AGENTS.md` remain authoritative.
 Accept either:
 
 - user-provided thresholds or acceptance criteria; or
-- an existing `score.py`/`scorer.py` that uses Pipelines for downstream scoring.
+- an existing `score.py`/`scorer.py` that uses Chaperone for downstream scoring.
 
 When the user supplies thresholds, translate them once into a tested `score.py`.
-Use Pipelines metric/oracle blocks and filter expressions. The scorer must retain every candidate, treat missing or failed metrics as
+Use Chaperone metric/oracle blocks and filter expressions. The scorer must retain every candidate, treat missing or failed metrics as
 failures, report each threshold and the joint pass result, and write per-design
 scores. If the user supplies a scorer, use its CLI and outputs directly rather
 than wrapping it in another format.

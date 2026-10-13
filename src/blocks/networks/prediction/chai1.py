@@ -11,11 +11,11 @@ from pydantic import Field, model_validator
 from blocks.constants import CUDA_INSTALL
 
 from blocks.networks.prediction.helpers import create_chai_fasta_from_design
-from pipelines import PipelineDataHandler, JobArgs, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, ScriptSpec
-from pipelines.block_config.prediction import select_best_models
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone import PipelineDataHandler, JobArgs, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
+from chaperone.block_config.prediction import select_best_models
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 logger = logging.getLogger(__name__)
 

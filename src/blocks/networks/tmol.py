@@ -23,10 +23,10 @@ from pathlib import Path
 
 from pydantic import Field
 
-from pipelines import CompiledBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.block_config import ScriptSpec
-from pipelines.containers import Image
-from pipelines.data.schema import make_row
+from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.block_config import ScriptSpec
+from chaperone.containers import Image
+from chaperone.data.schema import make_row
 from blocks.constants import cuda_python_base
 
 logger = logging.getLogger(__name__)

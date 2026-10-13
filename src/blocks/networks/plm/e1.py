@@ -5,9 +5,9 @@ from typing import Literal
 
 from pydantic import Field
 
-from pipelines import CompiledBlockFunction, PipelineDataHandler, JobArgs
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.containers import Image
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.containers import Image
 from blocks.constants import cuda_python_base
 
 logger = logging.getLogger(__name__)

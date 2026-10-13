@@ -95,7 +95,7 @@ def main() -> None:
 
     from rf3.cli import app
 
-    msa_dirs = os.environ.get("PIPELINES_LOCAL_MSA_DIRS")
+    msa_dirs = os.environ.get("CHAPERONE_LOCAL_MSA_DIRS")
     if msa_dirs:
         os.environ["LOCAL_MSA_DIRS"] = msa_dirs
         os.environ["PROTEIN_MSA_DIRS"] = msa_dirs

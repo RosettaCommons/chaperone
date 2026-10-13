@@ -1,9 +1,9 @@
 import logging
 
 from blocks.constants import TIP_BY_RESTYPE
-from pipelines import PipelineDataHandler
-from pipelines.block_config.inline import InlineBlockFunction
-from pipelines.data.schema import DesignMetadata
+from chaperone import PipelineDataHandler
+from chaperone.block_config.inline import InlineBlockFunction
+from chaperone.data.schema import DesignMetadata
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

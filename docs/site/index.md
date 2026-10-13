@@ -1,8 +1,8 @@
-# Pipelines
+# Chaperone
 
 A framework for making structural biology tools interoperable.
 
-Pipelines provides a unified interface for running protein design and prediction tools
+Chaperone provides a unified interface for running protein design and prediction tools
 (RFdiffusion3, AlphaFold3, ProteinMPNN, Boltz-2, and more) as composable blocks with
 automatic job orchestration, data lineage tracking, and reproducible execution.
 
@@ -23,7 +23,7 @@ source .venv/bin/activate
 uv pip install -e '.[all]' --override overrides.txt
 
 # Check which blocks and containers are available
-pipelines list-blocks
+chaperone list-blocks
 ```
 
 ## Architecture

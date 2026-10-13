@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Reference pipeline for the `dna-binder` eval — 96 major-groove DNA binders.
 
 Diffuses protein backbones around the supplied dsDNA duplex (`inputs/target.pdb`,
@@ -33,8 +33,8 @@ from absl import flags
 
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 flags.DEFINE_integer(
     "required_n",

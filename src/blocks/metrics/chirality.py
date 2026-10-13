@@ -13,8 +13,8 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs
-from pipelines.io import parse_to_atom_array
+from chaperone import InlineMetricBlock, JobArgs
+from chaperone.io import parse_to_atom_array
 
 logger = logging.getLogger(__name__)
 

@@ -397,7 +397,7 @@ def create_af3_json_from_design(
     """
     from blocks.constants import AF3_RELEASE_LINES
 
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     # empty JSON start
     json_data = {
@@ -1308,7 +1308,7 @@ def _scan_one_structure(
     from rdkit import Chem
 
     from blocks.utils.ligand import _rebuild_mol_from_geometry
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     try:
         arr = parse_to_atom_array(path, remove_hydrogens=True)
@@ -1386,7 +1386,7 @@ def build_remap_reference(
     from rdkit import Chem
 
     from blocks.utils.ligand import _rebuild_mol_from_geometry
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     core_atoms = core_atoms if core_atoms is not None else buried_atoms
 
@@ -1574,7 +1574,7 @@ def remap_predicted_ligand(
             core_atoms=["C0", "C1", "N1", "O3"],  # rigid core
         )
     """
-    from pipelines.data.components import apply_atom_name_remap
+    from chaperone.data.components import apply_atom_name_remap
 
     # ── 1. Build reference bundle (SMILES, ref-mol, core index) ─────
     reference = build_remap_reference(

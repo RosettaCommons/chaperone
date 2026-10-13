@@ -11,11 +11,11 @@ from types import SimpleNamespace
 
 import pytest
 
-import pipelines
+import chaperone
 from blocks import get_all_containers, get_container
 from blocks.networks import mpnn, rfdiffusion2
 from blocks.networks.prediction import colabfold
-from pipelines import containers
+from chaperone import containers
 
 COLABFOLD_SIF = "/net/software/containers/colabfold.sif"
 RFD2_SIF = (
@@ -47,8 +47,8 @@ CONTAIN_FLAGS = [
 @pytest.fixture
 def settings(monkeypatch):
     """Pin the container backend and host probes; return the settings object."""
-    values = SimpleNamespace(PIPELINES_CONTAINER_BACKEND="apptainer")
-    monkeypatch.setattr(pipelines, "get_settings", lambda: values)
+    values = SimpleNamespace(CHAPERONE_CONTAINER_BACKEND="apptainer")
+    monkeypatch.setattr(chaperone, "get_settings", lambda: values)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: True)
     monkeypatch.setattr(getpass, "getuser", lambda: "tester")
     return values
@@ -174,7 +174,7 @@ def test_colabfold_portable_is_registered_when_selected(monkeypatch):
 
 
 def test_colabfold_portable_installs_from_a_definition(monkeypatch, settings, tmp_path):
-    from pipelines_cli import install
+    from chaperone_cli import install
 
     portable = _select_colabfold(monkeypatch, onprem=False)
 

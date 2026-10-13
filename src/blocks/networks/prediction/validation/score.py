@@ -8,7 +8,7 @@ from functools import partial
 from pydantic import Field
 
 from blocks.metrics.peppr import peppr_metrics
-from pipelines import InlineMetricBlock
+from chaperone import InlineMetricBlock
 
 from .lddt import rf3_allatom_lddt
 from .remap import remap_output_to_input

@@ -16,7 +16,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
+from chaperone import BlockFunction, PipelineDataHandler
 
 from ._sequence_resolution import resolve_sequences
 

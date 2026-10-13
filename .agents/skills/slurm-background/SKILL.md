@@ -1,6 +1,6 @@
 ---
 name: slurm-background
-description: "Submit BACKGROUND (detached, fire-and-forget) SLURM work that survives disconnect — for pilots, production, campaigns, long runs, and fanned-out job arrays. Covers the pipelines ExecutionEngine, raw sbatch, and detaching a long driver (nohup/tmux), plus how to monitor and cancel. Use when the user says 'submit a job', 'run in background', 'production/pilot run', 'kick off a campaign', 'sbatch', 'fire and forget', or 'don't babysit it'. For a live shell on a node, use the slurm-interactive skill instead."
+description: "Submit BACKGROUND (detached, fire-and-forget) SLURM work that survives disconnect — for pilots, production, campaigns, long runs, and fanned-out job arrays. Covers the Chaperone ExecutionEngine, raw sbatch, and detaching a long driver (nohup/tmux), plus how to monitor and cancel. Use when the user says 'submit a job', 'run in background', 'production/pilot run', 'kick off a campaign', 'sbatch', 'fire and forget', or 'don't babysit it'. For a live shell on a node, use the slurm-interactive skill instead."
 allowed-tools: ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
 ---
 
@@ -15,7 +15,7 @@ jobs without reasoning-thread polling.
 
 Use **background** (this skill) when:
 - The run is long — pilot / production / campaign (hundreds → 100k+ backbones).
-- The pipelines engine fans work into many chunks / parallel blocks.
+- The Chaperone engine fans work into many chunks / parallel blocks.
 - You don't want to babysit it and it must survive your session ending.
 
 Use **interactive** (`slurm-interactive` skill) when you're iterating command-by-command on a node (testing a block, debugging on-GPU).
@@ -24,7 +24,7 @@ Use **interactive** (`slurm-interactive` skill) when you're iterating command-by
 
 ## Three ways to submit
 
-### 1. Pipelines ExecutionEngine (the primary path)
+### 1. Chaperone ExecutionEngine (the primary path)
 
 The engine submits each block to SLURM via submitit, auto-chunking rows across jobs. Pass `job_args` as a **dict** (a dict lets defaults apply; `JobArgs()` would not):
 
@@ -46,12 +46,12 @@ engine.run(blocks, job_args={"partition": "gpu-bf", "gres": "gpu:small:1",
 | `exclude` | None | comma-separated nodes to avoid |
 
 - **Parallel metric overlays:** `engine.run_parallel(...)` runs independent update blocks concurrently. Sequential design pipelines use `engine.run([...])` with a list of blocks.
-- `engine.run` **blocks until the cluster jobs finish** (it is orchestrating them). To run the *driver itself* outside the model loop, use the Pipelines monitor's `launch_and_wait` tool (see #3).
+- `engine.run` **blocks until the cluster jobs finish** (it is orchestrating them). To run the *driver itself* outside the model loop, use the Chaperone monitor's `launch_and_wait` tool (see #3).
 - **Re-running resumes:** completed chunks are cached; only missing/failed chunks re-run. Use `--force_exec` to redo everything. (See the `scripting` skill for the full test → pilot → production flow.)
 
-### 2. Raw `sbatch` (custom / non-pipelines scripts)
+### 2. Raw `sbatch` (custom / non-chaperone scripts)
 
-> Use this only for non-Pipelines scripts, and only where manual submission is allowed. When a task prompt or harness instruction says Pipelines/Submitit owns job submission, do not call `sbatch`, `srun` or `salloc` yourself; use the engine (section 1).
+> Use this only for non-Chaperone scripts, and only where manual submission is allowed. When a task prompt or harness instruction says Chaperone/Submitit owns job submission, do not call `sbatch`, `srun` or `salloc` yourself; use the engine (section 1).
 
 ```bash
 sbatch --partition=gpu-bf --gres=gpu:small:1 --mem=32G --time=24:00:00 \
@@ -64,13 +64,13 @@ Or a script with `#SBATCH` directives + `sbatch script.sh`. Returns a job id imm
 When a pipeline driver runs for hours and submits and waits on many cluster
 jobs, have it write a completion marker on success and a failure marker on
 failure. Call `campaign-monitor.launch_and_wait` when the runtime provides the monitor, or
-`pipelines-monitor.launch_and_wait` with a standalone `pipelines monitor-mcp`
+`chaperone-monitor.launch_and_wait` with a standalone `chaperone monitor-mcp`
 server. Pass an argv array, the driver cwd, and at least one completion marker.
 The tool launches the driver without a shell and blocks outside the model loop.
 Do not improvise `nohup`, `setsid`, shell backgrounding, or a terminal-managed
 process, and do not wait on each inner engine job.
 
-Start the argv array with the active Pipelines Python/CLI or a workspace
+Start the argv array with the active Chaperone Python/CLI or a workspace
 executable. Do not use `/usr/bin/env` to prefix environment assignments: the
 monitor rejects generic wrapper executables. Express smoke/pilot/production
 selection through driver CLI flags or defaults instead.
@@ -79,14 +79,14 @@ For a non-agent shell or another process supervisor, an already-running process
 can instead be observed with the equivalent CLI:
 
 ```bash
-pipelines wait --process-id <pid> \
+chaperone wait --process-id <pid> \
   --completion-marker <run>/driver.done \
   --failure-marker <run>/driver.failed
 ```
 
 For a standalone Slurm submission, call `campaign-monitor.wait` when the runtime provides the monitor, or
-`pipelines-monitor.wait` with a standalone server, passing `job_ids`; the CLI
-equivalent is `pipelines wait --job-id <jobid>`. A marker-only wait is also
+`chaperone-monitor.wait` with a standalone server, passing `job_ids`; the CLI
+equivalent is `chaperone wait --job-id <jobid>`. A marker-only wait is also
 valid. The waiter keeps no registration or monitor state and returns only on
 completion, failure, or an explicit timeout. Never implement a reasoning-loop
 polling cadence.
@@ -115,5 +115,5 @@ squeue -u $USER -o "%i %j %T %P %M %N"     # detailed (id, name, state, partitio
 sacct -j <jobid> -o JobID,State,Elapsed,MaxRSS,NodeList   # post-hoc accounting
 scancel <jobid>                            # cancel one
 scancel -u $USER -n <name>                 # cancel by name
-tail -f <rundir>/.pipeline/.../*.out       # logs (pipelines writes per-chunk logs under the rundir)
+tail -f <rundir>/.pipeline/.../*.out       # logs (chaperone writes per-chunk logs under the rundir)
 ```

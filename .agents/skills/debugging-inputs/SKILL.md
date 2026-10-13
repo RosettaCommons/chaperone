@@ -118,7 +118,7 @@ for c in np.unique(a.chain_id):
 f = pdb.PDBFile.read(path)
 atoms = f.get_structure(model=1, include_bonds=False)
 ```
-Or use `parse_to_atom_array` from `pipelines.io` which handles this automatically.
+Or use `parse_to_atom_array` from `chaperone.io` which handles this automatically.
 
 ---
 
@@ -128,7 +128,7 @@ When debugging input issues, check these in order:
 
 1. **Chain IDs in source theozyme**: Does each ligand component have its own chain?
    ```python
-   from pipelines.io import parse_to_atom_array
+   from chaperone.io import parse_to_atom_array
    atoms = parse_to_atom_array("theozyme.pdb")
    for c in np.unique(atoms.chain_id):
        mask = atoms.chain_id == c

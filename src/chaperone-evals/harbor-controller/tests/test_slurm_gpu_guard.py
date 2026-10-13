@@ -470,7 +470,7 @@ class SlurmGpuGuardTest(unittest.TestCase):
                     "PATH": "/tmp/attacker-bin",
                     "HBPLUS_COPY": "/science/hbplus",
                     "CCD_MIRROR_PATH": "/science/ccd",
-                    "PIPELINES_EXPERIMENT_FLAG": "enabled",
+                    "CHAPERONE_EXPERIMENT_FLAG": "enabled",
                 },
                 "sbatch_env": {},
             }
@@ -489,7 +489,7 @@ class SlurmGpuGuardTest(unittest.TestCase):
             captured["argv"],
             [
                 f"--chdir={self.workspace}",
-                "--export=CCD_MIRROR_PATH,HBPLUS_COPY,HOME,LANG,LC_ALL,PATH,PIPELINES_EXPERIMENT_FLAG,TMPDIR",
+                "--export=CCD_MIRROR_PATH,CHAPERONE_EXPERIMENT_FLAG,HBPLUS_COPY,HOME,LANG,LC_ALL,PATH,TMPDIR",
                 "--gres=gpu:small:2",
                 "--constraint=A4000",
                 "--exclude=g1120",
@@ -502,7 +502,7 @@ class SlurmGpuGuardTest(unittest.TestCase):
         self.assertEqual(captured["env"]["PATH"], "/usr/bin:/bin")
         self.assertEqual(captured["env"]["HBPLUS_COPY"], "/science/hbplus")
         self.assertEqual(captured["env"]["CCD_MIRROR_PATH"], "/science/ccd")
-        self.assertEqual(captured["env"]["PIPELINES_EXPERIMENT_FLAG"], "enabled")
+        self.assertEqual(captured["env"]["CHAPERONE_EXPERIMENT_FLAG"], "enabled")
 
     def test_forwarded_environment_rejects_non_string_values(self) -> None:
         with self.assertRaisesRegex(GUARD.GuardError, "must be strings"):
@@ -532,6 +532,18 @@ class SlurmGpuGuardTest(unittest.TestCase):
                 }
             ),
             {"HBPLUS_COPY": "/science/hbplus"},
+        )
+
+    def test_forwarded_environment_skips_controller_only_chaperone_names(self) -> None:
+        self.assertEqual(
+            GUARD._forwarded_environment(
+                {
+                    "CHAPERONE_EVALS_PRIVATE": "/held-out/evals_task",
+                    "CHAPERONE_PYTHON_VERSION": "3.12",
+                    "CHAPERONE_COMPUTE_BACKEND": "slurm",
+                }
+            ),
+            {"CHAPERONE_COMPUTE_BACKEND": "slurm"},
         )
 
     def test_broker_enforces_total_across_overlapping_submissions(self) -> None:

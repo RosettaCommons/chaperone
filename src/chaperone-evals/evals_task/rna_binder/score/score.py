@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for sequence-only RNA-hairpin binder submissions.
 
 Supplies the canonical RNA hairpin (`../inputs/target.pdb`, chain B) as
@@ -21,8 +21,8 @@ from pathlib import Path
 from absl import flags
 
 from blocks import Blocks
-from pipelines import init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import init_cli
+from chaperone.data.schema import SELECTIONS
 from scoring import (
     SequenceSubmissionSpec,
     define_score_flags,
@@ -97,7 +97,7 @@ def _region_backbone_rmsd(prediction_path: str) -> tuple[float, float]:
     import numpy as np
     from biotite.structure import superimpose
 
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     prediction = parse_to_atom_array(prediction_path)
     target = parse_to_atom_array(TARGET_PDB)

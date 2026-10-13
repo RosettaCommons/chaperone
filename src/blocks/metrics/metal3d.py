@@ -14,10 +14,10 @@ from pathlib import Path
 
 from pydantic import Field
 
-from pipelines import CompiledBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 logger = logging.getLogger(__name__)
 

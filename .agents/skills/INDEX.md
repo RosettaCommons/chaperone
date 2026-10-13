@@ -14,8 +14,8 @@ than it saves.
 | `build-block` | Add a new block for a tool the harness does not yet wrap. |
 | `slurm-background` | Submit detached Slurm work for pilots, production, or campaigns. |
 | `slurm-interactive` | Hold a persistent interactive Slurm session for live iteration. |
-| `auto-research` | Iteratively improve a pipeline using user thresholds or an existing Pipelines scorer. |
-| `setup` | Install or verify Pipelines itself. Rarely needed — the container is prebuilt. |
+| `auto-research` | Iteratively improve a pipeline using user thresholds or an existing Chaperone scorer. |
+| `setup` | Install or verify Chaperone itself. Rarely needed — the container is prebuilt. |
 | `visualize` | Inspect structures in PyMOL. |
 | `notebook-editing` | Edit, create, or execute Jupyter notebooks. |
 | `rosetta-params` | Generate or debug Rosetta `.params` files for a ligand. |

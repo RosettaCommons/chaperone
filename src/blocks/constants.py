@@ -126,7 +126,7 @@ def cuda_venv_env(image, venv: str):
 
 
 ###########################################################################
-# Pipelines constants
+# Chaperone constants
 ###########################################################################
 
 TASK_COLUMN_NAME = "task"

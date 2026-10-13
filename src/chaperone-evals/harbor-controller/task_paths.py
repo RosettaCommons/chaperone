@@ -31,9 +31,9 @@ def default_chaperone_repo() -> Path:
     """Return the Chaperone checkout used for held-out scoring.
 
     The controller is part of that checkout (``<repo>/src/chaperone-evals``), so
-    the default is the repository containing it. ``PIPELINES_REPO`` overrides it.
+    the default is the repository containing it. ``CHAPERONE_REPO`` overrides it.
     """
-    configured = os.environ.get("PIPELINES_REPO")
+    configured = os.environ.get("CHAPERONE_REPO")
     return Path(configured) if configured else EVALS_ROOT.parent.parent
 
 

@@ -20,20 +20,20 @@ from blocks.networks.prediction.helpers import (
     create_protenix_json_from_design,
     create_rf3_json_from_design,
 )
-from pipelines.data import (
+from chaperone.data import (
     PipelineDataHandler,
     SequenceOnlyInputError,
     make_row,
     make_sequence_row,
 )
-from pipelines.data.schema import Column, get_sequences_from_row
+from chaperone.data.schema import Column, get_sequences_from_row
 from types import SimpleNamespace
 import pandas as pd
 from blocks.util_blocks import select_diverse as select_diverse_module
 from blocks.util_blocks.package_submission import PackageSubmissionBlock
 from blocks.util_blocks.rna_designs import write_rna_design_cif
 from blocks.util_blocks.select_diverse import SelectDiverseBlock
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 
 # test_sequence_native_mpnn.py

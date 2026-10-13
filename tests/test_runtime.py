@@ -3,31 +3,31 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from pipelines import ExecutionEngine, InlineMetricBlock, JobArgs, PipelineDataHandler
+from chaperone import ExecutionEngine, InlineMetricBlock, JobArgs, PipelineDataHandler
 import importlib
 import sys
-from pipelines.engine.chunking import ChainStep, ChunkContext
-from pipelines.data.schema import Column
-from pipelines.data import make_row
-from pipelines.engine.chunking import (
+from chaperone.engine.chunking import ChainStep, ChunkContext
+from chaperone.data.schema import Column
+from chaperone.data import make_row
+from chaperone.engine.chunking import (
     _reset_chunk_sandbox_for_execution,
     execute_chunk_job,
 )
 from pathlib import Path
 import polars as pl
-from pipelines.engine import chunking
-import pipelines
-from pipelines import containers
+from chaperone.engine import chunking
+import chaperone
+from chaperone import containers
 import pytest
-from pipelines.execution_tracking import load_execution_records, track_execution
+from chaperone.execution_tracking import load_execution_records, track_execution
 import json
 import numpy as np
 from biotite.structure import AtomArray
 from blocks.util_blocks.annotate import find_aromatic_residues_near_ligand
-from pipelines.orchestration.slurm_executors import _sanitize_env
-from pipelines.engine.resolve import RuntimeArgs, _resolve_job_args
-from pipelines.orchestration import job_args as job_args_module
-from pipelines.orchestration.slurm_futures import SlurmFuture
+from chaperone.orchestration.slurm_executors import _sanitize_env
+from chaperone.engine.resolve import RuntimeArgs, _resolve_job_args
+from chaperone.orchestration import job_args as job_args_module
+from chaperone.orchestration.slurm_futures import SlurmFuture
 
 
 # test_cache_fingerprint.py
@@ -297,13 +297,13 @@ def test_parquet_visibility_retry_bypasses_stale_polars_path_cache(
 
 
 def _settings():
-    return SimpleNamespace(PIPELINES_CONTAINER_BACKEND="apptainer")
+    return SimpleNamespace(CHAPERONE_CONTAINER_BACKEND="apptainer")
 
 
 def test_apptainer_runs_directly_when_private_mount_namespace_is_unavailable(
     monkeypatch,
 ):
-    monkeypatch.setattr(pipelines, "get_settings", _settings)
+    monkeypatch.setattr(chaperone, "get_settings", _settings)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: False)
     image = containers.Image.from_existing("test", "/tmp/test.sif")
 
@@ -316,7 +316,7 @@ def test_apptainer_runs_directly_when_private_mount_namespace_is_unavailable(
 
 
 def test_apptainer_keeps_private_mount_wrapper_when_supported(monkeypatch):
-    monkeypatch.setattr(pipelines, "get_settings", _settings)
+    monkeypatch.setattr(chaperone, "get_settings", _settings)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: True)
     image = containers.Image.from_existing("test", "/tmp/test.sif")
 
@@ -485,10 +485,10 @@ def test_submitit_parameters_are_forwarded(executor):
 
 def test_array_parallelism_falls_back_to_pipeline_setting(monkeypatch):
     monkeypatch.setattr(
-        pipelines,
+        chaperone,
         "get_setting_field",
         lambda name, default: (
-            5 if name == "PIPELINES_SLURM_ARRAY_PARALLELISM" else default
+            5 if name == "CHAPERONE_SLURM_ARRAY_PARALLELISM" else default
         ),
     )
 
@@ -529,7 +529,7 @@ def test_result_ready_refreshes_parent_directory_before_exists(tmp_path, monkeyp
         return [result.name]
 
     monkeypatch.setattr(
-        "pipelines.orchestration.slurm_futures.os.listdir", record_listdir
+        "chaperone.orchestration.slurm_futures.os.listdir", record_listdir
     )
 
     assert future._result_ready() is True

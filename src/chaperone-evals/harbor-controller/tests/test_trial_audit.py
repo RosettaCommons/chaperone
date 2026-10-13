@@ -67,7 +67,7 @@ def test_execution_records_reconcile_a_job_missing_from_sacct(tmp_path: Path):
 
     assert compute["accounting_complete"] is True
     assert compute["gpu_hours"] == 45 / 3600
-    assert compute["jobs"]["300"]["source"] == "pipelines_execution"
+    assert compute["jobs"]["300"]["source"] == "chaperone_execution"
     assert any("execution fallback" in warning for warning in warnings)
 
 

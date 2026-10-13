@@ -38,17 +38,17 @@ import re
 from pydantic import Field
 
 from blocks.constants import CUDA_INSTALL, cuda_python_base, cuda_venv_env
-from pipelines import (
+from chaperone import (
     CompiledBlockFunction,
     JobArgs,
     PipelineDataHandler,
     get_setting_field,
 )
-from pipelines.block_config import TIER_PRIMARY
-from pipelines.common import try_float
-from pipelines.containers import Image
-from pipelines.data import make_row
-from pipelines.data.schema import Column, DesignMetadata, merge_rows
+from chaperone.block_config import TIER_PRIMARY
+from chaperone.common import try_float
+from chaperone.containers import Image
+from chaperone.data import make_row
+from chaperone.data.schema import Column, DesignMetadata, merge_rows
 
 logger = logging.getLogger(__name__)
 

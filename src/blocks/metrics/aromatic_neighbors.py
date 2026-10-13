@@ -4,7 +4,7 @@ import logging
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock
+from chaperone import InlineMetricBlock
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Reference antibody-CDR submission: MPNN CDR redesign on the D1.3 Fv.
 
 The supplied framework is the point of this benchmark, so the reference
@@ -36,11 +36,11 @@ import polars as pl
 from absl import flags
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.handler import PipelineDataHandler
-from pipelines.data.schema import make_row
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.handler import PipelineDataHandler
+from chaperone.data.schema import make_row
 from scoring import FixedRegionSpec, VariableRegion
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 flags.DEFINE_integer(
     "required_n", 96, "Sequences to submit. Override to 1 only for a smoke test."

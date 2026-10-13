@@ -4,7 +4,7 @@ Below is a minimal pipeline that generates backbones with RFdiffusion3, then des
 
 
 ```python
-from pipelines import ExecutionEngine
+from chaperone import ExecutionEngine
 
 engine = ExecutionEngine(
     rundir="output/", 

@@ -5,7 +5,7 @@ import pytest
 from biotite.structure import AtomArray
 
 from blocks.metrics.rmsd import RMSDBlock, _design_order_like_source
-from pipelines.data.schema import SELECTIONS, get_selection_mask
+from chaperone.data.schema import SELECTIONS, get_selection_mask
 
 LIGAND_ATOMS = [
     ("C1", "C", (2.0, 6.0, 0.0)),

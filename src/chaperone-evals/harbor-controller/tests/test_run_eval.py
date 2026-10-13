@@ -47,10 +47,10 @@ class RunEvalTest(unittest.TestCase):
 
         self.assertEqual(required, {"campaign-monitor"})
 
-    def test_runtime_manifest_uses_pipelines_campaign_monitor_backend(self) -> None:
+    def test_runtime_manifest_uses_chaperone_campaign_monitor_backend(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             seed = Path(temporary)
-            backend = seed / "src" / "pipelines_cli" / "job_wait.py"
+            backend = seed / "src" / "chaperone_cli" / "job_wait.py"
             backend.parent.mkdir(parents=True)
             backend.write_text(
                 "def wait_for_completion(): pass\n"
@@ -66,7 +66,7 @@ class RunEvalTest(unittest.TestCase):
             if item["name"] == "campaign-monitor"
         )
         self.assertTrue(monitor["available"])
-        self.assertEqual(monitor["version"], "pipelines-monitor-v2.1")
+        self.assertEqual(monitor["version"], "chaperone-monitor-v2.1")
         self.assertEqual(monitor["tools"], ["wait", "launch_and_wait", "inspect"])
 
     def test_shared_job_parents_are_precreated_concurrently(self) -> None:
@@ -84,7 +84,7 @@ class RunEvalTest(unittest.TestCase):
             for name in run_eval._SHARED_JOB_DIRECTORIES:
                 self.assertTrue((jobs_root / name).is_dir(), name)
 
-    def test_harness_requires_explicit_pipelines_path(self) -> None:
+    def test_harness_requires_explicit_chaperone_path(self) -> None:
         stderr = io.StringIO()
         with (
             patch.object(
@@ -97,9 +97,9 @@ class RunEvalTest(unittest.TestCase):
         ):
             run_eval.main()
         self.assertEqual(raised.exception.code, 2)
-        self.assertIn("requires an explicit --pipelines-path", stderr.getvalue())
+        self.assertIn("requires an explicit --chaperone-path", stderr.getvalue())
 
-    def test_baseline_rejects_pipelines_path(self) -> None:
+    def test_baseline_rejects_chaperone_path(self) -> None:
         stderr = io.StringIO()
         with (
             patch.object(
@@ -110,8 +110,8 @@ class RunEvalTest(unittest.TestCase):
                     "ppi_pdl1",
                     "--arm",
                     "baseline",
-                    "--pipelines-path",
-                    "/tmp/pipelines",
+                    "--chaperone-path",
+                    "/tmp/chaperone",
                     "--dry-run",
                 ],
             ),
@@ -242,14 +242,14 @@ class RunEvalTest(unittest.TestCase):
             self.assertIn("timeout_sec = 43200", task_toml)
             self.assertIn('HARBOR_AGENT_TIMEOUT_SEC = "43200"', task_toml)
             self.assertNotIn("MEMORY_POLICY", task_toml)
-            self.assertIn('PIPELINES_CONTAINER_BIND_RUNDIR = "true"', task_toml)
-            self.assertIn('PIPELINES_CONTAINER_BIND_WORKSPACE = "true"', task_toml)
+            self.assertIn('CHAPERONE_CONTAINER_BIND_RUNDIR = "true"', task_toml)
+            self.assertIn('CHAPERONE_CONTAINER_BIND_WORKSPACE = "true"', task_toml)
             self.assertIn(
                 'command = "/opt/pipelines/.venv/bin/python"',
                 task_toml,
             )
             self.assertIn(
-                'args = ["-m", "pipelines_cli.main", "monitor-mcp", '
+                'args = ["-m", "chaperone_cli.main", "monitor-mcp", '
                 '"--server-name", "campaign-monitor"]',
                 task_toml,
             )
@@ -760,7 +760,7 @@ class RunEvalTest(unittest.TestCase):
                 run_eval._score(
                     task,
                     job,
-                    root / "pipelines",
+                    root / "chaperone",
                     root / "worker.sif",
                     required_n=96,
                 )
@@ -773,11 +773,11 @@ class RunEvalTest(unittest.TestCase):
             )
 
     @patch.object(run_eval.subprocess, "run")
-    def test_host_scoring_python_probes_pipelines_environment(self, run) -> None:
+    def test_host_scoring_python_probes_chaperone_environment(self, run) -> None:
         run.return_value.returncode = 0
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
             python.touch()
@@ -822,10 +822,10 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            canonical = root / "pipelines"
+            canonical = root / "chaperone"
             canonical_venv = canonical / ".venv"
             canonical_venv.mkdir(parents=True)
-            frozen = root / "frozen-pipelines"
+            frozen = root / "frozen-chaperone"
             frozen.mkdir()
             (frozen / ".venv").symlink_to(canonical_venv)
             tools = self._site_tools(root)
@@ -856,7 +856,7 @@ class RunEvalTest(unittest.TestCase):
             (site / ".env").write_text("PYROSETTA_PATH=/from/config\n")
             (site / ".env.ipd").write_text("HBPLUS_COPY=/from/config\n")
             shell = {name: str(path) for name, path in tools.items()}
-            shell["PIPELINES_SITE_CONFIG_REPO"] = str(site)
+            shell["CHAPERONE_SITE_CONFIG_REPO"] = str(site)
 
             resolved = run_eval._scoring_site_environment(root / "repo", shell)
 
@@ -867,7 +867,7 @@ class RunEvalTest(unittest.TestCase):
             site = Path(temporary)
             (site / ".env").write_text("PYROSETTA_PATH=/somewhere\n")
             (site / ".env.ipd").touch()
-            environment = {"PIPELINES_SITE_CONFIG_REPO": str(site)}
+            environment = {"CHAPERONE_SITE_CONFIG_REPO": str(site)}
 
             with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY"):
                 run_eval._scoring_site_environment(site, environment)
@@ -875,7 +875,7 @@ class RunEvalTest(unittest.TestCase):
     def test_scoring_site_environment_needs_a_config_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             empty = Path(temporary)
-            environment = {"PIPELINES_SITE_CONFIG_REPO": str(empty)}
+            environment = {"CHAPERONE_SITE_CONFIG_REPO": str(empty)}
 
             with self.assertRaisesRegex(SystemExit, "Could not locate"):
                 run_eval._scoring_site_environment(empty, environment)
@@ -896,7 +896,7 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
@@ -920,7 +920,7 @@ class RunEvalTest(unittest.TestCase):
             self.assertEqual(command[:2], [str(python), str(scorer.resolve())])
             self.assertNotIn("apptainer", command)
             self.assertEqual(
-                environment["PIPELINES_PLIP_PYTHONPATH"],
+                environment["CHAPERONE_PLIP_PYTHONPATH"],
                 str(trial / "scoring" / ".runtime" / "python-packages"),
             )
             for name in run_eval._SCORING_SITE_ENV_NAMES:
@@ -978,7 +978,7 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
@@ -1004,7 +1004,7 @@ class RunEvalTest(unittest.TestCase):
             with (
                 patch.dict(
                     run_eval.os.environ,
-                    {**overrides, "PIPELINES_SITE_CONFIG_REPO": str(site)},
+                    {**overrides, "CHAPERONE_SITE_CONFIG_REPO": str(site)},
                 ),
                 patch.object(run_eval, "_preflight_scoring_site_environment"),
             ):
@@ -1027,7 +1027,7 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
@@ -1065,7 +1065,7 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
@@ -1117,7 +1117,7 @@ class RunEvalTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             python = repo / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
@@ -1299,10 +1299,10 @@ class RunEvalTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             task = self._task(root / "tasks", "ppi_pdl1")
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             image = root / "worker.sif"
             args = SimpleNamespace(
-                pipelines_repo=repo,
+                chaperone_repo=repo,
                 worker_image=image,
                 required_n=96,
                 poll_seconds=30.0,
@@ -1394,7 +1394,7 @@ class RunEvalTest(unittest.TestCase):
         self.assertEqual(environment["HARBOR_JOBS_DIR"], str(jobs_root))
         self.assertEqual(environment["HARBOR_AGENT_TIMEOUT_SEC"], "43200")
         self.assertNotIn("MEMORY_POLICY", environment)
-        self.assertNotIn("PIPELINES_MEMORY_POLICY", environment)
+        self.assertNotIn("CHAPERONE_MEMORY_POLICY", environment)
         self.assertNotIn("HARNESS_SKILL", environment)
 
     @patch.object(run_eval, "_run_capture")

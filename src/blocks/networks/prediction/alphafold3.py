@@ -33,23 +33,23 @@ from blocks.networks.prediction.helpers import (
     create_af3_json_from_design,
     fill_af3_json_from_template,
 )
-from pipelines import JobArgs, PipelineDataHandler, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, ScriptSpec
-from pipelines.block_config.prediction import (
+from chaperone import JobArgs, PipelineDataHandler, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
+from chaperone.block_config.prediction import (
     FULL_MEAN_PAE_KEY,
     INTERFACE_MEAN_PAE_KEY,
     MIN_PAE_INTERACTION_KEY,
 )
-from pipelines.common import glob_designs_in_dir
-from pipelines.containers import Image
-from pipelines.data import make_row
-from pipelines.io import parse_to_atom_array
+from chaperone.common import glob_designs_in_dir
+from chaperone.containers import Image
+from chaperone.data import make_row
+from chaperone.io import parse_to_atom_array
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).parent.parent.parent / "scripts"
-AF3_RUNTIME_SCRIPT_DIR = Path("/opt/pipelines-runtime-scripts")
+AF3_RUNTIME_SCRIPT_DIR = Path("/opt/chaperone-runtime-scripts")
 
 ###########################################################################
 # Container
@@ -159,7 +159,7 @@ ALPHAFOLD3_CONTAINER = (
     .template_command(
         exec_mode="exec",
         binds=[
-            # The runner is maintained by Pipelines rather than AlphaFold and
+            # The runner is maintained by Chaperone rather than AlphaFold and
             # therefore is not baked into the AF3 image.  Execute it through a
             # fixed container path instead of leaking the checkout's absolute
             # path into the command.  This is required for contained scoring
@@ -669,7 +669,7 @@ def build_af3_user_ccd(atom_array) -> str | None:
 
 def _write_structure_cif(atom_array, name: str, *, entity_source) -> str:
     """Write AF3's structure mmCIF with AtomWorks, including covalent bonds."""
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     atom_array = ensure_bonds(atom_array)
     extra_categories = _af3_entity_categories(entity_source)

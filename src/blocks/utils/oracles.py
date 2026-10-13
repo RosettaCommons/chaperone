@@ -36,7 +36,7 @@ import os
 
 def is_ccd_name(name):
     """Checks if the name is a CCD code based on whether the path exists"""
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     ccd_path = get_setting_field("CCD_MIRROR_PATH")
     path = os.path.join(ccd_path, name[0], name, f"{name}.cif")

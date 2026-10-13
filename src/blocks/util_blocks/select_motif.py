@@ -5,8 +5,8 @@ from typing import Callable, Optional
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
-from pipelines.data.structure import LoadedStructure
+from chaperone import BlockFunction, PipelineDataHandler
+from chaperone.data.structure import LoadedStructure
 
 logger = logging.getLogger(__name__)
 

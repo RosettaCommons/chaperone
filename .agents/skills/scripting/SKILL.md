@@ -1,19 +1,19 @@
 ---
 name: scripting
-description: Expert guidance on writing, running, and testing standalone pipelines scripts. Use when the user wants to write a pipeline script, debug CLI flags, understand the build process (test → pilot → production), set up cycling, or investigate how external tool scripts work.
+description: Expert guidance on writing, running, and testing standalone Chaperone scripts. Use when the user wants to write a pipeline script, debug CLI flags, understand the build process (test → pilot → production), set up cycling, or investigate how external tool scripts work.
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit"]
 ---
 
-# Pipelines Scripting
+# Chaperone Scripting
 
-Guide for writing, running, and testing standalone Python scripts that use the pipelines framework. Pipelines uses a code-based execution environment instead of a dedicated MCP for each tool. You are expected to know how to easily write, manage and debug scripts and pipelines code using the guidance provided as well as the repository structure.
+Guide for writing, running, and testing standalone Python scripts that use the Chaperone framework. Chaperone uses a code-based execution environment instead of a dedicated MCP for each tool. You are expected to know how to easily write, manage and debug scripts and Chaperone code using the guidance provided as well as the repository structure.
 
 A trimmed copy of the repository may omit optional directories such
 as `examples/` and `tests/`. Check that optional paths exist before including
 them in searches; use `src/`, `docs/site/`, and the task workspace when they are
 the only material supplied.
 
-You can both write pipelines code as single-call python scripts for flexibility:
+You can both write Chaperone code as single-call python scripts for flexibility:
 
 ```bash
 source .venv/bin/activate && python -c "..."
@@ -21,24 +21,24 @@ source .venv/bin/activate && python -c "..."
 
 Or build the pipeline as a standalone script. For scripts, there are additional tools like the shebang line and `init_cli`. In general, scripts follow a simple structure (see below for more details):
 
-## Pipelines scripts
+## Chaperone scripts
 
-Pipelines scripts function as configs but can be modified / tested easily by supplying command line args - you could also modify the script parameters directly, but using cli arguments will save you the extra steps to manage the file state.
+Chaperone scripts function as configs but can be modified / tested easily by supplying command line args - you could also modify the script parameters directly, but using cli arguments will save you the extra steps to manage the file state.
 They should be succinct, with minimal unnecessary overrides. For example:
 - Don't over-specify the block parameters and specify the necessary ones.
 - Bundle multiple steps into one (supplying lists of blocks instead of single blocks to each `engine.run` call) to maximize the amount of work each job submission step does.
 - DO create a specific 'files' directory for bespoke input files such as theozyme.pdb, af3_json_template.json, binder_target.pdb etc.
 
-Every script should start with this shebang so it auto-activates the pipelines venv (remember to `chmod +x`):
+Every script should start with this shebang so it auto-activates the Chaperone venv (remember to `chmod +x`):
 
 ```python
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Short description of what this script does."""
 from pathlib import Path
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 init_cli()  # MUST be called before any engine usage
 
@@ -88,17 +88,17 @@ print(df)
 
 ### `init_cli()`
 
-`init_cli()` enables CLI flag overrides without the `pipelines run` entry point:
+`init_cli()` enables CLI flag overrides without the `chaperone run` entry point:
 ```python
-from pipelines import init_cli, ExecutionEngine
+from chaperone import init_cli, ExecutionEngine
 init_cli()  # registers all block flags + global flags, parses sys.argv, sets up logging
 engine = ExecutionEngine(rundir="my_run")
 engine.run("rfd3", n_batches=10)  # --rfd3.n_batches=50 overrides this
 ```
 
-**Shebang** — use this so scripts automatically use the pipelines venv:
+**Shebang** — use this so scripts automatically use the Chaperone venv:
 ```
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 ```
 Requires GNU coreutils `env` with `-S` support. Portable fallback: `#!/usr/bin/env python`.
 
@@ -225,8 +225,8 @@ Do NOT guess parameter names or semantics — verify them. If you discover a dis
 
 When creating scripts for others to run:
 
-- **Shebang**: Use `#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'`
+- **Shebang**: Use `#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'`
 - **All paths must be absolute** — input parquets, rundirs, output paths
 - **Permissions**: `chmod +x script.py` and `chmod -R g+w` on any output directories so `baker` group members can write
 - **Container mounts**: `/home` and `/mnt/home` resolve differently — containers may only mount `/mnt/home`. Ensure blocks bind both (see AF3 container binds)
-- **Simple Run command**: `PIPELINES_REPO=/home/user/pipelines /home/user/pipelines/.venv/bin/python /path/to/script.py`
+- **Simple Run command**: `CHAPERONE_REPO=/home/user/chaperone /home/user/chaperone/.venv/bin/python /path/to/script.py`

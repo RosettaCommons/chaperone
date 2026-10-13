@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for sequence-only EIN2 site-1 peptide binder submissions.
 
 The target is a 15-residue, glycine/serine/proline-rich peptide — genuinely
@@ -32,14 +32,14 @@ import numpy as np
 from absl import flags
 
 from blocks import Blocks
-from pipelines import init_cli
+from chaperone import init_cli
 from scoring import (
     SequenceSubmissionSpec,
     define_score_flags,
     load_context_chains,
     run_sequence_scorer,
 )
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 define_score_flags()
 FLAGS = flags.FLAGS

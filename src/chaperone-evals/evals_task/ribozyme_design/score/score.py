@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for hammerhead ribozyme rescaffolding submissions.
 
 The public submission is RNA sequence plus a 0-based motif map. The scorer
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from absl import flags
 from blocks import Blocks
-from pipelines import init_cli
+from chaperone import init_cli
 
 from scoring import SequenceSubmissionSpec, define_score_flags, run_sequence_scorer
 

@@ -107,7 +107,7 @@ with open("/tmp/1qys.pdb") as f:
 
 ### Loading from `.catcif` archives
 
-Pipelines can consolidate step outputs into `.catcif` archives (see README → *Storage formats and cleanups*). Handler paths look like `/path/to/archive.catcif:entry_id`.
+Chaperone can consolidate step outputs into `.catcif` archives (see README → *Storage formats and cleanups*). Handler paths look like `/path/to/archive.catcif:entry_id`.
 
 The recommended setup is to install the PyMOL helper once in `~/.pymolrc`:
 
@@ -129,12 +129,12 @@ s.do("catcif_max_load 500")   # or `catcif_max_load 0` for no limit
 If the helper isn't installed, fall back to resolving the entry in Python and sending it via `read_pdbstr` (convert CIF → PDB as shown above):
 
 ```python
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 atom_array = parse_to_atom_array("/path/to/archive.catcif:design_0")
 # ... serialize to PDB and send via s.read_pdbstr ...
 ```
 
-## Sending atom arrays from pipelines
+## Sending atom arrays from Chaperone
 
 To send a biotite `AtomArray` (e.g. from `parse_to_atom_array` or a block output) directly to PyMOL, serialize it to **PDB format** and send via `read_pdbstr`. Do NOT serialize to CIF — there is no `read_cifstr` RPC method.
 
@@ -142,7 +142,7 @@ To send a biotite `AtomArray` (e.g. from `parse_to_atom_array` or a block output
 import io
 import biotite.structure.io.pdb as pdb
 from xmlrpc.client import ServerProxy
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 s = ServerProxy("http://localhost:{PORT}")
 

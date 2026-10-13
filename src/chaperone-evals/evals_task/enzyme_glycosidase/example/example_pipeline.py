@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Generate 96 de novo glycosidase sequences plus their catalytic motif maps.
 
 RFdiffusion3 scaffolds the six-residue theozyme of ``inputs/theozyme.pdb``
@@ -39,7 +39,7 @@ from absl import flags
 
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 from scoring import THREE_TO_ONE, format_motif_index_map
 
 flags.DEFINE_integer(

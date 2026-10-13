@@ -108,7 +108,7 @@ class ScoreSubmissionTest(unittest.TestCase):
                 json.dumps({"exception_info": None, "agent_execution": {"ok": True}})
             )
             (submission / "designs.csv").write_text("sequence\nAAAA\n")
-            repo = root / "pipelines"
+            repo = root / "chaperone"
             (repo / "src").mkdir(parents=True)
             host_python = repo / ".venv" / "bin" / "python"
             host_python.parent.mkdir(parents=True)
@@ -123,7 +123,7 @@ class ScoreSubmissionTest(unittest.TestCase):
                 str(job),
                 "--task",
                 "biotin_binder_design",
-                "--pipelines-repo",
+                "--chaperone-repo",
                 str(repo),
                 "--worker-image",
                 str(image),
