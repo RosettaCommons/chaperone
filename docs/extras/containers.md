@@ -71,3 +71,19 @@ requests `gpu:large` by default. PyRosetta in the image is licensed for
 academic/non-commercial use by default, and AlphaFold2 parameters are CC BY
 4.0. Keep the SIF access-controlled and verify dependency licensing before
 redistributing it or using it commercially.
+
+## RFdiffusion2 checkpoint (portable image)
+
+On the IPD cluster `rfd2` uses the prebuilt SIF and the checkpoint on site
+storage; nothing below applies there. Elsewhere, build the image and download
+the checkpoint (1.3 GB, not baked into the image) into `RFD2_WEIGHTS_DIR`:
+
+```bash
+chaperone install rfdiffusion2_portable
+chaperone weights install rfd2      # downloads RFD_173.pt into RFD2_WEIGHTS_DIR
+```
+
+`RFD_173.pt` is the checkpoint RosettaCommons/RFdiffusion2 recommends (the same
+file its `setup.py` downloads from `files.ipd.uw.edu`). The command does nothing
+if the file is already there. The block fails with a message naming
+`RFD2_WEIGHTS_DIR` if the file is missing.

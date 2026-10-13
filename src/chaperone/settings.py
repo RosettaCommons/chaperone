@@ -308,7 +308,7 @@ class ChaperoneSettings(BaseSettings):
         default=None,
         description=(
             "Directory containing RFdiffusion2 checkpoints (e.g. RFD_173.pt), "
-            "as fetched by the upstream repository's setup.py. Only used by "
+            "downloaded with `chaperone weights install rfd2`. Only used by "
             "the portable rfdiffusion2_portable image; the on-prem image keeps "
             "its checkpoints on site storage."
         ),
