@@ -169,7 +169,7 @@ def test_colabfold_portable_is_registered_when_selected(monkeypatch):
     portable = _select_colabfold(monkeypatch, onprem=False)
 
     assert get_container("colabfold_portable") is portable
-    assert get_container("colabfold") is None
+    assert get_container("colabfold") is portable
     assert get_all_containers()["colabfold_portable"] is portable
 
 

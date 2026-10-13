@@ -17,7 +17,7 @@ from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
 from chaperone.block_config.prediction import MIN_PAE_INTERACTION_KEY
 from chaperone.common import glob_designs_in_dir, tail_block_log
 from chaperone.data import make_row
-from blocks.networks.foundry.container import FOUNDRY_CONTAINER
+from blocks.networks.foundry.container import FOUNDRY_CONTAINER, default_checkpoint
 from blocks.networks.prediction.helpers import (
     create_rf3_json_from_design,
     fill_rf3_json_from_template,
@@ -184,16 +184,11 @@ class RosettaFold3Block(AF3LikePredictionBlock):
         ),
     )
 
-    # Unlike most AF3LikePredictionBlock subclasses, which resolve weights via
-    # cache_dir, this block only appends `ckpt_path=...` when the field is
-    # truthy. Inheriting the base class's None therefore sends `rf3 fold` no
-    # checkpoint argument at all, and foundry falls back to a per-user path
-    # under ~/.foundry that does not exist on a worker — surfacing as
-    # "Invalid checkpoint: rf3" long after the real cause. Default to the
-    # Shared Foundry checkpoint.
-    ckpt_path: Optional[str] = (
-        "/projects/ml/pipelines/weights/foundry/checkpoints/"
-        "rf3_foundry_01_24_latest_remapped.ckpt"
+    ckpt_path: Optional[str] = Field(
+        default_factory=lambda: default_checkpoint(
+            "rf3", "rf3_foundry_01_24_latest_remapped.ckpt"
+        ),
+        description="Checkpoint path or Foundry registry name (default: rf3).",
     )
 
     # Ligand bond graph assignment

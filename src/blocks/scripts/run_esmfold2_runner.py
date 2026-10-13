@@ -66,6 +66,16 @@ def _seq_length(spec) -> int:
     return sum(len(c["sequence"]) for c in spec.get("chains", []))
 
 
+def _model_class(esmfold2_module):
+    """Prefer the released implementation; retain support for existing IPD images."""
+    public_model = getattr(esmfold2_module, "EsmFold2Model", None)
+    if public_model is not None:
+        return public_model
+    # Legacy prebuilt site images used Biohub's former transformers fork.
+    from transformers.models.esmfold2.modeling_esmfold2 import ESMFold2Model
+    return ESMFold2Model
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--inputs", type=Path, required=True, help="dir of spec JSONs")
@@ -93,7 +103,8 @@ def main() -> int:
         ProteinInput,
         StructurePredictionInput,
     )
-    from transformers.models.esmfold2.modeling_esmfold2 import ESMFold2Model
+    from esm.models import esmfold2 as esmfold2_module
+    ESMFold2Model = _model_class(esmfold2_module)
 
     builder_types = (StructurePredictionInput, ProteinInput, LigandInput)
 

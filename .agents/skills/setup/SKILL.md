@@ -35,14 +35,19 @@ source .venv/bin/activate
 uv pip install -e '.[all]' --override overrides.txt
 ```
 
-### 2. Detect IPD Environment
+### 2. Select site configuration
 
-Check if the user is at the IPD:
-```bash
-[ -d /projects/ml/pipelines ] && echo "IPD: yes" || echo "IPD: no"
-```
+Portable defaults apply when no site file is supplied. Do not infer the site
+from the existence of `/projects` or `/net`.
 
-If `/projects/ml/pipelines/` exists, the user is on an IPD machine where containers, compute backends, and block installations are already managed centrally. **Skip directly to step 9 (Jupyter kernel).** Do not run steps 3–8.
+For IPD, accept the user's `.env.ipd` in the checkout root (untracked); it is
+loaded automatically when present. Alternatively export `CHAPERONE_SITE=digs`
+before starting Python to select packaged IPD defaults. Users can point
+`CHAPERONE_ENV_FILE` at a shared or external dotenv file. An existing supplied
+site file is authorization to use its settings; do not ask again.
+
+Verify configured containers/weights exist before skipping their installation.
+Continue the compute checks: a configured path alone does not prove availability.
 
 ### 3. Detect Container Backends
 
@@ -58,7 +63,7 @@ Report which backends are available. If neither is found, warn the user that con
 Check auto-detection result:
 ```bash
 source .venv/bin/activate
-python -c "from chaperone import get_settings; print(f'Auto-detected backend: {get_settings().CONTAINER_BACKEND}')"
+python -c "from chaperone import get_settings; print(f'Auto-detected backend: {get_settings().CHAPERONE_CONTAINER_BACKEND}')"
 ```
 
 Use `AskUserQuestion` to ask the user which container backend they want to use (showing what was auto-detected as default). If they want to override, write it to the project `.env` file (see step 5 for the write pattern).
@@ -74,7 +79,7 @@ nvidia-smi 2>/dev/null && echo "Local GPU: available" || echo "Local GPU: not fo
 Check current setting:
 ```bash
 source .venv/bin/activate
-python -c "from chaperone import get_settings; print(f'Current compute backend: {get_settings().COMPUTE_BACKEND}')"
+python -c "from chaperone import get_settings; print(f'Current compute backend: {get_settings().CHAPERONE_COMPUTE_BACKEND}')"
 ```
 
 Use `AskUserQuestion` with `multiSelect: true` to ask the user which compute resources are available to them. Show what was auto-detected in the descriptions:
@@ -84,9 +89,26 @@ Use `AskUserQuestion` with `multiSelect: true` to ask the user which compute res
 
 After the user selects, write their preference to `.env.local` (gitignored, user-specific overrides). If multiple backends are selected, join them with `/` as a priority list (e.g. `CHAPERONE_COMPUTE_BACKEND=local/slurm`). Use `CHAPERONE_`-prefixed variable names.
 
+For Slurm, configure `CHAPERONE_DEFAULT_PARTITION` (CPU),
+`CHAPERONE_GPU_PARTITION`, and `CHAPERONE_GRES_MAP` in `.env.local`. For example:
+
+```dotenv
+CHAPERONE_DEFAULT_PARTITION=batch
+CHAPERONE_GPU_PARTITION=accelerated
+CHAPERONE_GRES_MAP='{"small":"gpu:a100:1","large":"gpu:h100:1"}'
+```
+
+With these unset, blocks omit `--partition` and GPU blocks request `gpu:1`.
+IPD uses partitions `cpu`/`gpu` and types `gpu:small:1`/`gpu:large:1`.
+Process `CHAPERONE_GRES_MAP` overrides merge by key with dotenv settings.
+`CHAPERONE_DEFAULT_ACCOUNT` and `CHAPERONE_DEFAULT_QOS` are optional.
+Inspect resolved settings and run the smallest relevant block before a campaign.
+
 **Important: `.env` file structure:**
 - `.env` — generic defaults, checked into git (do NOT write user-specific values here)
-- `.env.ipd` — IPD-specific paths/mirrors, checked into git, auto-loaded when at IPD
+- `.env.ipd` — optional supplied IPD settings, gitignored, loaded when present
+- `CHAPERONE_SITE=digs` — optional packaged IPD preset
+- `~/.env.chaperone` / `CHAPERONE_ENV_FILE` — optional user/shared overrides
 - `.env.local` — user-specific overrides, gitignored (write overrides here)
 
 To update or add a setting in `.env.local`:
@@ -111,12 +133,12 @@ fi
 Verify the settings were persisted:
 ```bash
 source .venv/bin/activate
-python -c "from chaperone import get_settings; s = get_settings(); print(f'Compute: {s.COMPUTE_BACKEND}, Container: {s.CONTAINER_BACKEND}')"
+python -c "from chaperone import get_settings; s = get_settings(); print(f'Compute: {s.CHAPERONE_COMPUTE_BACKEND}, Container: {s.CHAPERONE_CONTAINER_BACKEND}')"
 ```
 
 ### 5b. Check External Dependencies & Data
 
-Check for external data mirrors, weight caches, and binaries that various blocks depend on. These are **optional** — only needed for specific blocks. At IPD these are all pre-configured via `.env.ipd`.
+Check for external data mirrors, weight caches, and binaries that various blocks depend on. These are **optional** — only needed for specific blocks. At IPD a supplied `.env.ipd` or `CHAPERONE_SITE=digs` supplies these paths. Verify they exist.
 
 Run this check to see what's configured:
 ```bash
@@ -173,7 +195,7 @@ Present the results as a table showing what's set and what's missing. Then use `
 
 **For `PYROSETTA_PATH`** (PyRosetta-backed blocks):
 - This should point at the PyRosetta `setup/` directory (for example `/path/to/pyrosetta/setup`).
-- At IPD this is preconfigured in `.env.ipd`; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]' --override overrides.txt` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
+- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]' --override overrides.txt` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
 
 Write any user-provided paths to `.env.local` using the same pattern as step 5:
 ```bash

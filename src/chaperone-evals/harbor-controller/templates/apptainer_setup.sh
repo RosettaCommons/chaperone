@@ -21,15 +21,14 @@ mkdir -p \
   "$TMPDIR" \
   "$WORKSPACE/submission"
 
-if [[ -f "$WORKSPACE/chaperone/.env" ]]; then
-  set -a
-  source "$WORKSPACE/chaperone/.env"
-  [[ ! -f "$WORKSPACE/chaperone/.env.ipd" ]] || \
-    source "$WORKSPACE/chaperone/.env.ipd"
-  set +a
-  export CHAPERONE_CONTAINER_BACKEND=apptainer
-fi
-
+# Invoke the sanitized source with the configured image interpreter. Older digs
+# images still contain the old CLI and must not select that baked-in code.
+mkdir -p "$WORKSPACE/.bin"
+cat > "$WORKSPACE/.bin/chaperone" <<'CHAPERONE_CLI'
+#!/usr/bin/env bash
+exec {{WORKER_PYTHON}} -m chaperone_cli.main "$@"
+CHAPERONE_CLI
+chmod 700 "$WORKSPACE/.bin/chaperone"
 export QHOP=false
-export PATH="/opt/harbor-codex/bin:/opt/harbor-codex/codex-path:/opt/pipelines/.venv/bin:$PATH"
+export PATH="/opt/harbor-codex/bin:/opt/harbor-codex/codex-path:$WORKSPACE/.bin:$PATH"
 export CODEX_MANAGED_BY_NPM=1

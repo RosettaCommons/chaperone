@@ -19,12 +19,12 @@ from pydantic import Field
 from chaperone import JobArgs
 from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 
-from blocks.networks.foundry.container import FOUNDRY_CONTAINER
+from blocks.networks.foundry.container import FOUNDRY_CONTAINER, default_checkpoint
 from blocks.networks.foundry.rfdiffusion3 import RFD3Block
 
 # Install with: foundry install rfd3na --checkpoint-dir <dir>
 # Source: https://files.ipd.uw.edu/pub/rfdiffusion3na/rfd3na-1190.ckpt
-RFD3NA_CKPT = "/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na_1190.ckpt"
+RFD3NA_CKPT = "rfd3na"
 
 
 class RFD3NABlock(RFD3Block):
@@ -48,7 +48,7 @@ class RFD3NABlock(RFD3Block):
     )
 
     ckpt_path: Optional[str] = Field(
-        RFD3NA_CKPT,
+        default_factory=lambda: default_checkpoint("rfd3na", "rfd3na_1190.ckpt"),
         json_schema_extra={"tier": TIER_PRIMARY},
         description=(
             "RFD3NA checkpoint path. Set to 'rfd3na' or None to use Foundry's "

@@ -5,11 +5,9 @@ diffusion structure decoder. It supports single-sequence inference and
 optional MSA conditioning, co-folds proteins with optional ligands, and
 reports per-residue pLDDT plus pTM / ipTM.
 
-Both the model and its ``transformers.models.esmfold2`` implementation live in
-Biohub forks (upstream ``transformers`` has no ESMFold2), so the container
-installs ``git+https://github.com/Biohub/transformers`` and
-``git+https://github.com/Biohub/esm``. Weights are not baked into the image —
-they are read from ``HF_HUB_CACHE`` (default ``/projects/ml/esm-weights``).
+The source recipe uses the released ``esm`` package, which exports the model
+and input builder directly. Weights are not baked into the image: they are
+read from ``ESM_WEIGHTS_DIR`` and passed to the container as ``HF_HUB_CACHE``.
 """
 
 import csv
@@ -46,8 +44,8 @@ ESMFOLD2_RUNNER_DEST = "/opt/esmfold2/run_esmfold2_runner.py"
 # Container
 ###########################################################################
 
-# torch 2.12 / CUDA 13.0 (matches the working esmc install); the ESMFold2 model
-# lives only in the Biohub transformers fork, installed before the esm fork.
+# Match esm 3.4.1.post1's torch>=2.11,<2.12 constraint and CUDA13 operators.
+# The old Biohub/transformers fork is no longer publicly accessible.
 ESMFOLD2_CONTAINER = (
     Image("esmfold2")
     .base_image("ubuntu:24.04")
@@ -70,14 +68,13 @@ ESMFOLD2_CONTAINER = (
     )
     .run(
         ". /opt/esmfold2-env/bin/activate && "
-        "pip install torch --index-url https://download.pytorch.org/whl/cu130",
+        "pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu130",
     )
     .run(
-        # transformers fork first — it provides transformers.models.esmfold2,
-        # which the esm fork imports at runtime.
         ". /opt/esmfold2-env/bin/activate && "
-        'pip install "git+https://github.com/Biohub/transformers.git@main" && '
-        'pip install "git+https://github.com/Biohub/esm.git@main"',
+        "pip install esm==3.4.1.post1 && pip check",
+        "/opt/esmfold2-env/bin/python -c "
+        "'from esm.models.esmfold2 import EsmFold2Model, ESMFold2InputBuilder'",
     )
     .run("mkdir -p /opt/esmfold2")
     .copy(str(ESMFOLD2_RUNNER_PATH), ESMFOLD2_RUNNER_DEST)
@@ -88,7 +85,7 @@ ESMFOLD2_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/esmfold2-env",
     )
-    .label(Version="esm-3.3.0/tfm-4.57.6", CUDA="13.0")
+    .label(Version="esm-3.4.1.post1/torch-2.11.0", CUDA="13.0")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",

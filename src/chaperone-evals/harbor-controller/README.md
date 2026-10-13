@@ -55,13 +55,26 @@ An existing `codex login` is also accepted. The submission host must provide
 Bootstrap installs `../pyproject.toml` (the checkout plus the controller's
 dependencies) into the checkout's own `.venv` and links this directory to it; no virtual environment is shared between users.
 
+## Select a cluster
+
+The default profile is portable and requires your own runtime images and asset
+paths. Pass `--site-config /absolute/path/to/site.json` using
+`harbor-controller/sites/portable.example.json` (relative to the eval project)
+as a starting point. On digs, use `--site digs` to retain the existing images,
+GPU usage accounting and A4000 policy. Add a site JSON override to select another
+GPU constraint such as B4000. Optional `env_file` imports scientific settings from
+a supplied `.env.ipd`; the controller JSON owns the scheduler policy.
+
+See the [cluster configuration and image build guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/evaluations.md#cluster-configuration)
+for the full configuration, image recipes, and external-cluster prerequisites.
+
 ## Launch a job
 
 Harness:
 
 ```bash
 ./run_eval.py rna_binder \
-  --arm harness \
+  --arm harness --site-config /absolute/path/to/site.json \
   --chaperone-path /absolute/path/to/chaperone \
   --run-dir /absolute/path/to/eval-runs \
   --run-name rna-binder-harness
@@ -71,7 +84,7 @@ Baseline:
 
 ```bash
 ./run_eval.py rna_binder \
-  --arm baseline \
+  --arm baseline --site-config /absolute/path/to/site.json \
   --run-name rna-binder-baseline
 ```
 

@@ -215,7 +215,9 @@ def test_compile_rejects_empty_run(tmp_path: Path) -> None:
 # test_boltzgen.py
 
 
-def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path) -> None:
+def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path, monkeypatch) -> None:
+    from chaperone import get_settings
+    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", "apptainer")
     config = tmp_path / "design.yaml"
     config.write_text("entities: []\n")
 
@@ -335,7 +337,7 @@ def test_rf3_single_seed_uses_supported_seed_setting():
         (RosettaFold3Block, "seed=20"),
         (RF3DevBlock, "+seed=20"),
     ):
-        command = block_cls(seed_offset=17, model_seeds=None)._append_common_cli_args(
+        command = block_cls(seed_offset=17, model_seeds=None, command_template=["rf3", "fold"])._append_common_cli_args(
             ["rf3", "fold"], chunk_id=3
         )
         assert seed_arg in command
@@ -345,7 +347,7 @@ def test_rf3_single_seed_uses_supported_seed_setting():
 def test_rf3_model_seeds_expand_to_independent_invocations():
     base = ["rf3", "fold", "inputs=in.json", "out_dir=outputs"]
     for block_cls, seed_prefix in ((RosettaFold3Block, ""), (RF3DevBlock, "+")):
-        command = block_cls(model_seeds=[101, 202])._expand_model_seed_commands(
+        command = block_cls(model_seeds=[101, 202], command_template=["rf3", "fold"])._expand_model_seed_commands(
             base, "outputs"
         )
         assert command[:2] == ["bash", "-lc"]

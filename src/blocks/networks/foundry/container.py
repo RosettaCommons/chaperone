@@ -14,6 +14,22 @@ from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 
+def default_checkpoint(model: str, filename: str) -> str:
+    """Use a configured installed checkpoint or Foundry's public model registry."""
+    directories = get_setting_field("FOUNDRY_CHECKPOINT_DIRS", "") or ""
+    for directory in directories.split(":"):
+        if directory and (path := Path(directory).expanduser() / filename).is_file():
+            return str(path.resolve())
+    return model
+
+
+def _checkpoint_binds() -> list[tuple[str, str]]:
+    directories = get_setting_field("FOUNDRY_CHECKPOINT_DIRS", "") or ""
+    paths = [Path(p).expanduser().resolve() for p in directories.split(":") if p]
+    paths.append(Path.home() / ".foundry")
+    return [(str(p), str(p)) for p in dict.fromkeys(paths) if p.is_dir()]
+
+
 def _foundry_binds() -> list[tuple[str, str]]:
     """Bind list for the foundry container.
 
@@ -41,7 +57,7 @@ def _foundry_binds() -> list[tuple[str, str]]:
         if distinct
         else ("/projects", "/mnt/projects")
     )
-    return binds
+    return binds + _checkpoint_binds()
 
 
 # ── CUDA variant (default for Linux / GPU clusters) ─────────────────────
@@ -91,7 +107,7 @@ _FOUNDRY_CUDA_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=_foundry_binds(),
+        binds=_foundry_binds,
         env={
             "FOUNDRY_CHECKPOINT_DIRS": lambda: get_setting_field(
                 "FOUNDRY_CHECKPOINT_DIRS", ""
@@ -135,6 +151,7 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
+        binds=_checkpoint_binds,
         env={
             "FOUNDRY_CHECKPOINT_DIRS": lambda: get_setting_field(
                 "FOUNDRY_CHECKPOINT_DIRS", ""

@@ -49,8 +49,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Simple Example: simple.md
+  - Core Examples: core-examples.md
   - All Blocks: blocks-reference.md
+  - Container Installation: containers.md
   - Syntax Reference: syntax.md
   - Validation: validation.md
   - Evaluations: evaluations.md
-  - Claude Skills: skills.md
+  - Agent Skills: skills.md

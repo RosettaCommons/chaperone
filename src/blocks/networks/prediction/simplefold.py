@@ -13,7 +13,7 @@ from typing import Literal
 import numpy as np
 from pydantic import Field, model_validator
 
-from blocks.constants import CUDA_INSTALL
+from blocks.constants import make_cuda_install
 from blocks.networks.prediction.monomer_reference import (
     load_monomer_references,
     stage_monomer_manifest,
@@ -52,12 +52,13 @@ SIMPLEFOLD_CONTAINER = (
         "ca-certificates",
         "curl",
         "git",
+        "gnupg",
         "python3.10",
         "python3.10-dev",
         "python3.10-venv",
         "python3-pip",
     )
-    .run(*CUDA_INSTALL)
+    .run(*make_cuda_install("12-6", ubuntu="2204"))
     .run(
         "python3.10 -m venv /opt/simplefold-env",
         ". /opt/simplefold-env/bin/activate && pip install --upgrade pip setuptools wheel",
@@ -182,7 +183,7 @@ class SimpleFoldBlock(AF3LikePredictionBlock):
     )
     weights_dir: str = Field(
         default_factory=lambda: get_setting_field(
-            "SIMPLEFOLD_WEIGHTS_DIR", "/projects/ml/pipelines/weights/simplefold"
+            "SIMPLEFOLD_WEIGHTS_DIR", str(Path.home() / ".cache" / "simplefold")
         ),
         description="Shared directory for folding, ESM2, and CCD downloads.",
     )

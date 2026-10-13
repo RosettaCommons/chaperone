@@ -159,6 +159,16 @@ def discover_all_blocks() -> dict[str, type["BlockFunction"]]:
     return dict(Blocks.items())
 
 
+# Build recipes remain discoverable even when a site selects a prebuilt SIF.
+_CONTAINER_VARIANTS = {
+    "modelhub_portable": ("blocks.networks.mpnn", "MODELHUB_PORTABLE_CONTAINER"),
+    "rfdiffusion2_portable": ("blocks.networks.rfdiffusion2", "RFD2_PORTABLE_CONTAINER"),
+    "colabfold_portable": ("blocks.networks.prediction.colabfold", "COLABFOLD_PORTABLE_CONTAINER"),
+    "foundry": ("blocks.networks.foundry.container", "_FOUNDRY_CUDA_CONTAINER"),
+    "foundry_public": ("blocks.networks.foundry.container", "FOUNDRY_PUBLIC_CONTAINER"),
+}
+
+
 def get_all_containers() -> dict[str, "Image"]:
     """Get all containers by collecting _image ClassVars from discovered blocks.
 
@@ -177,6 +187,9 @@ def get_all_containers() -> dict[str, "Image"]:
         image = _get() if _get else getattr(block_cls, "_image", None)
         if image is not None and image.name not in containers:
             containers[image.name] = image
+    for name, (module, attribute) in _CONTAINER_VARIANTS.items():
+        if name not in containers:
+            containers[name] = getattr(importlib.import_module(module), attribute)
     return containers
 
 
@@ -186,6 +199,15 @@ def get_container(container_name: str) -> "Image | None":
     Imports blocks one at a time, stopping as soon as the requested container
     is found. Much faster than get_all_containers() for targeted lookups.
     """
+    if container_name in _CONTAINER_VARIANTS:
+        module, attribute = _CONTAINER_VARIANTS[container_name]
+        return getattr(importlib.import_module(module), attribute)
+    if container_name in Blocks.keys():
+        block = Blocks[container_name]
+        get_image = getattr(block, "_get_image", None)
+        image = get_image() if get_image else getattr(block, "_image", None)
+        if image is not None:
+            return image
     for name in Blocks.keys():
         try:
             block_cls = Blocks[name]

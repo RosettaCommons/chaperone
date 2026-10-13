@@ -11,11 +11,10 @@ import time
 from pathlib import Path
 
 
+from site_config import get_site
+
 CONTROLLER_ROOT = Path(__file__).resolve().parents[1]
 SBATCH_GUARD = CONTROLLER_ROOT / "scripts" / "slurm_gpu_guard.py"
-MAX_TOTAL_GPUS = 5
-MAX_REQUESTED_GPUS_PER_SUBMISSION = 30
-ALLOWED_GPU_TYPE = os.environ.get("HARBOR_ALLOWED_GPU_TYPE", "small").lower()
 SOCKET_TARGET = "/run/harbor-slurm/sbatch.sock"
 _SOCKET_PATH_MAX_BYTES = 107
 
@@ -127,6 +126,7 @@ class SlurmBrokerProcess:
         # trial from missing controller bookkeeping during post-run audit.
         self.submission_registry.touch(exist_ok=True)
         self.submission_registry.chmod(0o600)
+        site = get_site()
         command = [
             sys.executable,
             str(self.client_path),
@@ -150,12 +150,20 @@ class SlurmBrokerProcess:
             "--policy",
             self.policy,
             "--max-total-gpus",
-            str(MAX_TOTAL_GPUS),
+            str(site["max_total_gpus"]),
             "--max-requested-gpus-per-submission",
-            str(MAX_REQUESTED_GPUS_PER_SUBMISSION),
+            str(site["max_requested_gpus_per_submission"]),
             "--allowed-gpu-type",
-            ALLOWED_GPU_TYPE,
+            site["gpu_type"],
         ]
+        for key in (
+            "cpu_partition",
+            "gpu_partition",
+            "gpu_constraint",
+            "account",
+            "qos",
+        ):
+            command.append("--" + key.replace("_", "-") + "=" + site[key])
         if self.exclude_nodes:
             command.extend(("--exclude-nodes", self.exclude_nodes))
         if self.slurm_python is not None:

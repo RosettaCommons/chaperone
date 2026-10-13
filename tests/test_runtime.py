@@ -305,6 +305,8 @@ def test_apptainer_runs_directly_when_private_mount_namespace_is_unavailable(
 ):
     monkeypatch.setattr(chaperone, "get_settings", _settings)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: False)
+    original_is_dir = Path.is_dir
+    monkeypatch.setattr(Path, "is_dir", lambda path: True if str(path) == "/projects" else original_is_dir(path))
     image = containers.Image.from_existing("test", "/tmp/test.sif")
 
     command = image.build_command("true", exec_mode="exec")

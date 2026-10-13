@@ -23,8 +23,7 @@
 -dunbrack_prob_buried_semi 0.8
 -dunbrack_prob_nonburied_semi 0.8
 
-# DAlphaBall for holes filter
--holes:dalphaball /software/rosetta/DAlphaBall.gcc
+# DAlphaBall is supplied by LigandDDGBlock.dalphaball_bin / DALPHABALL_BIN.
 
 # Suppress noisy protocol reports
 -mute protocols.rosetta_scripts.ParsedProtocol.REPORT

@@ -34,8 +34,8 @@ The shell and guarded workers already run in the hardened Chaperone image. Do
 not rebuild it or launch nested `apptainer exec`. Invoke it directly:
 
 ```bash
-/opt/pipelines/.venv/bin/chaperone --help
-/opt/pipelines/.venv/bin/python chaperone/path/to/campaign.py
+chaperone --help
+{{WORKER_PYTHON}} chaperone/path/to/campaign.py
 ```
 
 Campaign scripts created with `chaperone.init_cli()` support `-h`, `--help`,
@@ -55,24 +55,8 @@ The outer process has four CPU cores, limited memory, and no GPU. Keep
 `CHAPERONE_COMPUTE_BACKEND=auto` and route all work with explicit Chaperone
 `JobArgs`:
 
-- Use `partition="local"` only for lightweight CPU work that comfortably fits
-  alongside the agent.
-- Use `partition="cpu"` for larger or uncertain-memory CPU work, without
-  `gres` or another GPU request.
-- Use `partition="gpu"` with `gres="gpu:small:N"` for every GPU workload. The
-  controller pins accepted jobs to A4000 nodes; do not add a constraint
-  yourself. Untyped GPUs, model-specific GPU types, other GPU classes, and
-  other partitions are rejected.
-- At most five small-class GPUs may be reserved across the entire trial,
-  queued/running jobs and array concurrency. A one-GPU array may use `%5`, not
-  `%6`; an active three-GPU job leaves two GPUs for all other work.
-- Independently, each GPU submission may request at most 30 GPUs in aggregate
-  across all array tasks, ignoring its `%N` concurrency throttle. For example,
-  a one-GPU `--array=0-29%5` is allowed, but `--array=0-30%5` is rejected.
-  `HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION=30` reports this limit.
-- Set `JobArgs(slurm_array_parallelism=5)` on one-GPU arrays (or a lower value
-  while other GPU jobs are active). Choose `rows_per_job` from per-worker
-  memory and runtime; never enlarge chunks merely to reduce array concurrency.
+{{SLURM_POLICY}}
+
 - Do not call `sbatch`, `srun`, or `salloc` manually; Chaperone/Submitit owns
   submission through the guard.
 

@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: python:3.12-slim-bookworm
+
+# Build from the Chaperone repository root. Copy only framework packages;
+# never copy the repository root or src/chaperone-evals into an agent image.
+%files
+    pyproject.toml /tmp/chaperone-build/pyproject.toml
+    README.md /tmp/chaperone-build/README.md
+    LICENSE /tmp/chaperone-build/LICENSE
+    src/blocks /tmp/chaperone-build/src/blocks
+    src/chaperone /tmp/chaperone-build/src/chaperone
+    src/chaperone_cli /tmp/chaperone-build/src/chaperone_cli
+
+%post
+    set -eu
+    apt-get update
+    apt-get install -y --no-install-recommends bash ca-certificates curl git procps \
+        build-essential swig libopenbabel-dev libgomp1 libglib2.0-0 libfuse3-3
+    # Non-setuid Apptainer for nested scientific block containers.
+    # https://apptainer.org/docs/admin/1.4/installation.html
+    APPTAINER_VERSION=1.4.5
+    architecture=$(dpkg --print-architecture)
+    curl -fL "https://github.com/apptainer/apptainer/releases/download/v${APPTAINER_VERSION}/apptainer_${APPTAINER_VERSION}_${architecture}.deb" -o /tmp/apptainer.deb
+    apt-get install -y /tmp/apptainer.deb
+    rm /tmp/apptainer.deb
+    python3 -m venv /opt/chaperone/.venv
+    /opt/chaperone/.venv/bin/pip install --no-cache-dir /tmp/chaperone-build
+    rm -rf /tmp/chaperone-build /var/lib/apt/lists/*
+
+%environment
+    export PATH=/opt/chaperone/.venv/bin:$PATH
+    export OPENBLAS_NUM_THREADS=1
+
+%test
+    apptainer --version
+    /opt/chaperone/.venv/bin/python -c 'import chaperone, biotite, catcif_tools, ml_collections, openbabel, parasail, plip'

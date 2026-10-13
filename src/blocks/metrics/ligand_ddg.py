@@ -9,6 +9,10 @@ for explicit control.
 """
 
 import logging
+import os
+import shlex
+import shutil
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import ClassVar
 
@@ -78,6 +82,10 @@ class LigandDDGBlock(CompiledBlockFunction):
     flags: str = Field(
         default=_DEFAULT_FLAGS,
         description="Path to Rosetta flags file",
+    )
+    dalphaball_bin: str | None = Field(
+        default_factory=lambda: get_setting_field("DALPHABALL_BIN", default=None),
+        description="DAlphaBall executable required by the bundled Holes filter; also searches PATH.",
     )
     override_param_file: str | None = Field(
         default=None,
@@ -183,10 +191,36 @@ class LigandDDGBlock(CompiledBlockFunction):
 
         return info
 
+    def _dalphaball_command(self) -> list[str]:
+        # Custom protocols without Holes do not acquire an unrelated dependency.
+        uses_holes = next(ET.parse(self.protocol).iter("Holes"), None) is not None
+        if not uses_holes:
+            return []
+        configured = self.dalphaball_bin
+        if not configured:
+            tokens = shlex.split(Path(self.flags).read_text(), comments=True)
+            for index, token in enumerate(tokens):
+                if token == "-holes:dalphaball" and index + 1 < len(tokens):
+                    configured = tokens[index + 1]
+                elif token.startswith("-holes:dalphaball="):
+                    configured = token.split("=", 1)[1]
+        binary = shutil.which(configured or "DAlphaBall.gcc")
+        if binary is None and configured:
+            candidate = Path(configured).expanduser()
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                binary = str(candidate.resolve())
+        if binary is None:
+            raise FileNotFoundError(
+                "The ligand_ddg protocol uses Rosetta's Holes filter. Install DAlphaBall "
+                "and set DALPHABALL_BIN or dalphaball_bin to its executable path."
+            )
+        return ["-holes:dalphaball", binary]
+
     def create_command(self, handler, sandbox_dir, chunk_id):
         """Convert inputs to PDB, detect ligand info, and build DDG script."""
         import biotite.structure.io.pdb as pdb_io
 
+        dalphaball_args = self._dalphaball_command()
         sandbox_dir = Path(sandbox_dir)
         pdb_dir = sandbox_dir / "pdb_inputs"
         pdb_dir.mkdir(parents=True, exist_ok=True)
@@ -242,17 +276,16 @@ class LigandDDGBlock(CompiledBlockFunction):
                 param = str(self.stage_file(param, sandbox_dir))
 
             scorefile = str(output_dir / f"{data.basename}_ddg.sc")
-            cmd = (
-                f"{self.rosetta_bin} "
-                f"-parser:protocol {protocol} "
-                f"@{flags} "
-                f"-s {pdb_path} "
-                f"-out:file:score_only "
-                f"-out:file:scorefile {scorefile} "
-                f"-parser:script_vars ligand_res_number={lig_res}"
-            )
+            argv = [
+                self.rosetta_bin, "-parser:protocol", protocol, f"@{flags}",
+                "-s", str(pdb_path), "-out:file:score_only",
+                "-out:file:scorefile", scorefile,
+                "-parser:script_vars", f"ligand_res_number={lig_res}",
+                *dalphaball_args,
+            ]
             if param:
-                cmd += f" -extra_res {param}"
+                argv += ["-extra_res", param]
+            cmd = shlex.join(argv)
 
             script_lines.append(f"echo 'Running DDG: {data.basename}'")
             script_lines.append(cmd + " || echo 'FAILED: " + data.basename + "'")

@@ -133,11 +133,6 @@ def get_container_dirs() -> list[Path]:
     if env_dirs:
         dirs.extend(Path(p.strip()) for p in env_dirs.split(":") if p.strip())
 
-    # Shared location
-    shared = Path("/projects/ml/pipelines/containers")
-    if shared.exists():
-        dirs.append(shared)
-
     # User directory (fallback)
     dirs.append(Path.home() / ".chaperone" / "containers")
 
@@ -258,7 +253,11 @@ class Image:
             cmd.extend([url, str(host_path)])
 
             print(f"  Pre-cloning {url} -> {host_path}")
-            subprocess.run(cmd, check=True)
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as exc:
+                requirement = self._labels.get("BuildAccess", "Check repository access and network connectivity.")
+                raise RuntimeError(f"Cannot fetch container source {url}. {requirement}") from exc
             resolved.append((str(host_path), dest))
 
         new._copies = resolved + new._copies
@@ -274,12 +273,14 @@ class Image:
     def template_command(
         self,
         exec_mode: str = "run",
-        binds: list[tuple[str, str]] | None = None,
+        binds: list[tuple[str, str]] | Callable[[], list[tuple[str, str]]] | None = None,
         env: dict[str, str | Callable[[], str]] | None = None,
     ) -> Image:
         """Configure default container command parameters for this container.
 
-        Env values may be strings or zero-arg callables (evaluated lazily in build_command).
+        Env values and binds may be zero-arg callables, evaluated at command creation.
+        Missing default mounts on buildable recipes are optional site paths;
+        explicit per-call mounts and existing-image mounts remain required.
         """
         new = self._clone()
         new._command_config = {
@@ -305,7 +306,12 @@ class Image:
 
         config = self._command_config or {}
         eff_exec_mode = exec_mode or config.get("exec_mode", "run")
-        all_binds = config.get("binds", []) + (binds or [])
+        default_binds = config.get("binds", [])
+        if callable(default_binds):
+            default_binds = default_binds()
+        if not self.is_existing:
+            default_binds = [(src, dst) for src, dst in default_binds if Path(src).exists()]
+        all_binds = default_binds + (binds or [])
         all_env = {**config.get("env", {}), **(env or {})}
         resolved = {}
         for k, v in all_env.items():
@@ -320,24 +326,7 @@ class Image:
                 resolved[k] = v
         all_env = resolved
 
-        # On macOS dev boxes, filter out binds whose source path doesn't
-        # exist on the host (e.g. /mnt/home, /projects). Linux production
-        # paths must always be passed through unchanged so unit tests that
-        # use synthetic /tmp paths still see -v flags in the command.
         from chaperone.common import is_macos
-
-        if is_macos():
-            valid_binds = []
-            for src, dst in all_binds:
-                if Path(src).exists():
-                    valid_binds.append((src, dst))
-                else:
-                    import logging
-
-                    logging.getLogger(__name__).debug(
-                        "Skipping bind %s:%s (source does not exist)", src, dst
-                    )
-            all_binds = valid_binds
 
         # Resolve image reference
         if self._existing_path:

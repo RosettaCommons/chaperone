@@ -100,3 +100,6 @@ examples/bcov/sm-binder-chop-v2/derived_inputs/
 smol_binder_design/
 .claude/worktrees/
 analysis/
+
+# Site/user configuration is local; optional digs defaults are an explicit preset.
+.env.ipd

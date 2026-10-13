@@ -250,7 +250,11 @@ _MODELHUB_PORTABLE_CONTAINER = (
         # must be on PYTHONPATH.
         PYTHONPATH="/opt/fused_mpnn:/opt/openfold",
     )
-    .label(Version="fused_mpnn-main", Platform="cpu-or-gpu")
+    .label(
+        Version="fused_mpnn-main", Platform="cpu-or-gpu",
+        BuildAccess="Requires authorized access to private baker-laboratory/fused_mpnn; "
+        "foundry_mpnn is a separate public implementation, not a validated drop-in replacement",
+    )
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",

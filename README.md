@@ -16,13 +16,13 @@ Analysis blocks include RMSD, Foldseek, RASA, contact metrics, H-bond metrics,
 and aromatic-neighbor scoring.
 People have used Chaperone for PPI, symmetric design, and enzyme design — reach out to the respective experts if interested.
 
-This repo ships with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills and project context (`AGENTS.md`) that make Claude a first-class interface for writing, running, and debugging pipelines. If you hit an issue, ask Claude — it knows the codebase and will typically self-correct.
+This repo ships with [agent skills](docs/site/skills.md) and project context (`AGENTS.md`) for writing, running, and debugging pipelines. The guides are Markdown files readable by Claude Code, Codex, and other coding agents; automatic discovery and slash commands depend on the agent installation.
 
 > [!TIP]
-> Check out the documentation website [here](https://expert-disco-5vk634e.pages.github.io/)!
+> Start with the [documentation home](docs/site/index.md), [simple example](docs/site/simple.md), and [core examples](docs/site/core-examples.md).
 
 > [!NOTE]
-> Please DO distribute this software to others for use! External collaborators welcome (but please note the license!).
+> Chaperone is [MIT licensed](LICENSE). External collaborators are welcome. Third-party software and model weights retain their own licenses and access requirements.
 
 ## Installation (Agents)
 
@@ -31,14 +31,14 @@ First, install `uv` & Claude Code (or Codex):
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via `curl -fsSL https://claude.ai/install.sh | bash`.
 
 ```bash
-git clone git@github.com:RosettaCommons/chaperone.git
+git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
 export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 claude
 # inside Claude Code, just type: /setup
 ```
 
-`/setup` handles everything — creating the venv, installing dependencies, detecting your compute environment (local GPU, SLURM, etc.), configuring container backends, and installing block containers. It's a little intentionally verbose; the few lines below will suffice, but it should also give you a quick overview of the things claude can take care of for you.
+The setup guide walks through creating a venv, installing dependencies, choosing a compute environment, configuring a container backend, and installing selected block containers. If `/setup` is unavailable, ask your agent to read `.agents/skills/setup/SKILL.md`. Some tools or weights require a separate upstream download or access agreement.
 
 `/setup` is one of many skills Chaperone comes with, check out more below.
 
@@ -47,7 +47,7 @@ claude
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone git@github.com:RosettaCommons/chaperone.git
+git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
 export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 uv venv && source .venv/bin/activate
@@ -66,7 +66,9 @@ Both paths should be inside this checkout.
 Optional extras:
 
 - **Jupyter kernel:** `python -m ipykernel install --user --name chaperone --display-name "Chaperone"`
-- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`. At IPD, `.env.ipd` already points to the shared install.
+- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`. IPD users can supply an untracked `.env.ipd` pointing to their shared install.
+
+On IPD, place your site-provided `.env.ipd` in the checkout root; it is loaded when present and is not tracked in Git. Other systems do not need it. Configure your container directories, model weights, and Slurm settings in `.env.local` (or use `CHAPERONE_ENV_FILE=/absolute/path/to/site.env`). See [Slurm site configuration](docs/site/syntax.md#slurm-site-configuration) for partition and GPU mappings. The optional `CHAPERONE_SITE=digs` preset is for IPD shared infrastructure only.
 
 Block containers are built on demand: `chaperone list-available` shows them and `chaperone install <name> ...` builds one (`/setup` does this for you). Model weights are separate; each block's entry in the block reference says what it needs.
 
@@ -121,7 +123,7 @@ higher level; `--start-line` takes a line number, so `rg -n` output composes
 directly:
 
 ```bash
-chaperone artifact docs/blocks-reference.md --section rfd3
+chaperone artifact docs/site/blocks-reference.md --section rfd3
 rg -n 'def create_command' src/blocks/networks/rfd3.py
 chaperone artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
 ```
@@ -190,28 +192,23 @@ For anything else, build the pipeline from the block reference and the skills in
 
 ```bash
 chaperone list-blocks
-chaperone artifact docs/blocks-reference.md --section BLOCK_NAME
+chaperone artifact docs/site/blocks-reference.md --section BLOCK_NAME
 ```
 
 # Using agents and Claude Code
 
 Chaperone is designed to work hand-in-hand with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI agent. The repo includes an `AGENTS.md` project guide and a suite of **skills** — specialized prompts that Claude can execute to perform common tasks.
 
-## Apptainer agent container
+## Agent evaluation containers
 
-For hosts where you'd rather not install Claude + uv locally (or want throwaway agents for parallel work), prebuilt apptainer images live at `/net/software/containers/pipelines/pipelines_agent{_base,}.sif`. The agent is split into two layers: `pipelines_agent_base.sif` (OS + apptainer + Node + Claude CLI + uv; rarely rebuilt) and `pipelines_agent.sif` (the repo snapshot + uv venv layered on top, rebuilt whenever the repo changes). Each run gets its own in-memory overlay (`--writable-tmpfs`) so parallel agents stay isolated — edits disappear on exit unless written to a host-bound path.
-
-```bash
-./agent/run.sh -p "Respond with exactly: Hi from inside the chaperone agent container."
-# Hi from inside the chaperone agent container.
-```
-
-The wrapper sets `--writable-tmpfs --no-home --cleanenv`, binds the IPD keys dir for `claude-toggle on`, and binds the host's apptainer stack so `apptainer` subprocesses work from inside (e.g. Chaperone blocks running containerized tools). Raw Chaperone use (no Claude) works too: `apptainer exec agent/pipelines.sif chaperone list-blocks`.
-
-Rebuild against your current working tree with `./agent/build.sh` — the image writes through to the shared path via the `agent/pipelines.sif` symlink. Use `./agent/build.sh --base` to also rebuild the base layer (only needed when the OS/apptainer/Node/Claude/uv deps change).
+The agent evaluation harness lives under `src/chaperone-evals/harbor-controller/`,
+separate from the installable runtime. Its images, mounts, scheduler policy, and
+model assets are configured for the evaluation site. See the
+[evaluation guide](docs/site/evaluations.md) for portable setup and the optional
+digs configuration. Running ordinary blocks does not require an agent evaluation image.
 
 ## Agentic Skills
-*The Chaperone skills harness is built primarily for Claude but Codex can easily read the same files.*
+*Read the [skills guide](docs/site/skills.md) for discovery and use with different agents.*
 
 1. **Start Claude Code** in the repo: `cd chaperone && claude`
 2. **Use skills** by typing a slash command: `/setup`, `/design`, `/scripting`, etc. Claude will automatically read this but referencing them helps make it concrete which one to use

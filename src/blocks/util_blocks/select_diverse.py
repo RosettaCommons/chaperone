@@ -226,7 +226,7 @@ class SelectDiverseBlock(BlockFunction):
         # persist the chain map so downstream submission blocks do not need to
         # parse the structures a second time.
         selected_indices = [candidate_indices[index] for index in keep]
-        selected = handler._df.gather(selected_indices)
+        selected = handler._df[selected_indices]
         if resolution.sequence_maps is not None:
             selected = selected.with_columns(
                 pl.Series(

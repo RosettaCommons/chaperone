@@ -1,6 +1,8 @@
-# Claude Skills
+# Agent Skills
 
-Chaperone ships with a collection of [Claude Code](https://claude.com/claude-code) **skills** — domain-specific guides and workflows that Claude loads on demand. Skills live under `.agents/skills/` in the repo and are invoked either automatically (when the user's request matches the skill description) or explicitly via `/<skill-name>`.
+Chaperone ships with **skills**: Markdown guides for installing tools, planning experiments, writing workflows, and debugging failures. They live in [`.agents/skills/`](https://github.com/RosettaCommons/chaperone/tree/main/.agents/skills), with an [index](https://github.com/RosettaCommons/chaperone/blob/main/.agents/skills/INDEX.md) and the repository-wide `AGENTS.md` guide.
+
+Claude Code, Codex, and other agents that can read repository files can use these guides. Automatic skill discovery and `/<skill-name>` commands depend on the agent and its configuration. If a skill is not listed, ask the agent to read `.agents/skills/INDEX.md`, then the relevant `SKILL.md`; for example, “Read `.agents/skills/setup/SKILL.md` and help me install Chaperone.” The guides do not grant cluster access, install model weights by themselves, or guarantee a successful scientific result.
 
 Each skill provides focused context for a particular task so Claude can act with the right conventions, commands, and guardrails without flooding its main context window.
 
@@ -88,7 +90,7 @@ Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` 
 
 ### `/slurm-background`
 
-Submits **detached** SLURM work that survives disconnect — for pilots, production, and campaigns. Covers the Chaperone `ExecutionEngine` (`job_args`, `submit`/`gather`), raw `sbatch`, detaching a long driver with `nohup`/`tmux`, and how to monitor/cancel. **Scaling → background.**
+Submits **detached** SLURM work that survives disconnect — for pilots, production, and campaigns. Covers the Chaperone `ExecutionEngine` (`job_args`, `submit`/`gather`), raw `sbatch`, launching long drivers through the monitor's `launch_and_wait`, and how to monitor/cancel. **Scaling → background.**
 
 ### `/notebook-editing`
 

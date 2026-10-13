@@ -1,7 +1,7 @@
 # Running a Validation Dataset
 
 This page shows how to score a structure predictor on the PDB validation cohort.
-Every predictor goes through the same three steps, so results are comparable.
+Every predictor goes through the same three steps. Compare results only with matched targets, sampling counts, chain coverage, and scoring settings. This page describes the benchmark protocol, not a report that every listed predictor has completed it.
 
 ```
 manifest_val_structures  →  <predictor>  →  score_val_structures
@@ -27,7 +27,7 @@ needs no other input. Any `.csv` or `.parquet` with these columns works.
 
 ## Settings
 
-Set these in `.env` (the IPD values are in `.env.ipd`):
+Set these in `.env.local` for your installation. IPD users can supply an untracked `.env.ipd`; it is optional and is not distributed as an active configuration:
 
 | Setting | Used for |
 |---------|----------|

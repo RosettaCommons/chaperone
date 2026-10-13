@@ -32,7 +32,7 @@ class RunEvalTest(unittest.TestCase):
         self.assertGreaterEqual(
             names,
             {
-                *run_eval._HARNESS_RUNTIME_CAPABILITIES,
+                *run_eval._runtime_capabilities(),
                 "campaign-monitor",
             },
         )
@@ -817,68 +817,26 @@ class RunEvalTest(unittest.TestCase):
             (paths["X3DNA_BIN_DIR"] / executable).touch(mode=0o700)
         return paths
 
-    def test_scoring_site_environment_uses_canonical_config_for_frozen_repo(
-        self,
-    ) -> None:
+    def test_scoring_site_environment_uses_trusted_config_for_frozen_repo(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            canonical = root / "chaperone"
-            canonical_venv = canonical / ".venv"
-            canonical_venv.mkdir(parents=True)
-            frozen = root / "frozen-chaperone"
-            frozen.mkdir()
-            (frozen / ".venv").symlink_to(canonical_venv)
-            tools = self._site_tools(root)
-            (canonical / ".env").write_text(
-                f"PYROSETTA_PATH={tools['PYROSETTA_PATH']}\n"
-                f"X3DNA_BIN_DIR={tools['X3DNA_BIN_DIR']}\n"
-                f"X3DNA_DIR={tools['X3DNA_DIR']}\n"
-                "OPENAI_API_KEY=must-not-cross-the-boundary\n"
-            )
-            (canonical / ".env.ipd").write_text(
-                f"HBPLUS_COPY={tools['HBPLUS_COPY']}\n"
-                f"CCD_MIRROR_PATH={tools['CCD_MIRROR_PATH']}\n"
-            )
+            tools = {name: str(path) for name, path in self._site_tools(root).items()}
+            with patch.object(run_eval, "get_site", return_value={"environment": tools}):
+                resolved = run_eval._scoring_site_environment(root / "no-dotenv-snapshot", {})
+            self.assertEqual(resolved, tools)
 
-            resolved = run_eval._scoring_site_environment(frozen, {})
-
-        self.assertEqual(set(resolved), set(run_eval._SCORING_SITE_ENV_NAMES))
-        self.assertEqual(resolved["HBPLUS_COPY"], str(tools["HBPLUS_COPY"]))
-        self.assertEqual(resolved["CCD_MIRROR_PATH"], str(tools["CCD_MIRROR_PATH"]))
-        self.assertNotIn("OPENAI_API_KEY", resolved)
-
-    def test_scoring_site_environment_prefers_the_shell_over_config(self) -> None:
+    def test_scoring_site_environment_prefers_the_shell_over_config(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            tools = self._site_tools(root)
-            site = root / "site"
-            site.mkdir()
-            (site / ".env").write_text("PYROSETTA_PATH=/from/config\n")
-            (site / ".env.ipd").write_text("HBPLUS_COPY=/from/config\n")
-            shell = {name: str(path) for name, path in tools.items()}
-            shell["CHAPERONE_SITE_CONFIG_REPO"] = str(site)
+            tools = {name: str(path) for name, path in self._site_tools(root).items()}
+            with patch.object(run_eval, "get_site", return_value={"environment": {"HBPLUS_COPY": "/old"}}):
+                resolved = run_eval._scoring_site_environment(root, {**tools, "OPENAI_API_KEY": "secret"})
+            self.assertEqual(resolved, tools)
 
-            resolved = run_eval._scoring_site_environment(root / "repo", shell)
-
-        self.assertEqual(resolved, {name: str(path) for name, path in tools.items()})
-
-    def test_scoring_site_environment_requires_every_setting(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            site = Path(temporary)
-            (site / ".env").write_text("PYROSETTA_PATH=/somewhere\n")
-            (site / ".env.ipd").touch()
-            environment = {"CHAPERONE_SITE_CONFIG_REPO": str(site)}
-
+    def test_scoring_site_environment_requires_every_setting(self):
+        with patch.object(run_eval, "get_site", return_value={"environment": {}}):
             with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY"):
-                run_eval._scoring_site_environment(site, environment)
-
-    def test_scoring_site_environment_needs_a_config_checkout(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            empty = Path(temporary)
-            environment = {"CHAPERONE_SITE_CONFIG_REPO": str(empty)}
-
-            with self.assertRaisesRegex(SystemExit, "Could not locate"):
-                run_eval._scoring_site_environment(empty, environment)
+                run_eval._scoring_site_environment(Path("/unused"), {})
 
     def test_scoring_site_environment_requires_all_preflighted_paths(self) -> None:
         values = {name: "/missing" for name in run_eval._SCORING_SITE_ENV_NAMES}

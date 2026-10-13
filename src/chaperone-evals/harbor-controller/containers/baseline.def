@@ -1,0 +1,15 @@
+Bootstrap: docker
+From: python:3.12-slim-bookworm
+
+# No Chaperone, scientific dependencies, weights, skills or virtualenv.
+%post
+    set -eu
+    apt-get update
+    apt-get install -y --no-install-recommends python3 bash ca-certificates curl git procps \
+        build-essential libgomp1 libfuse3-3
+    pip install --no-cache-dir uv
+    rm -rf /var/lib/apt/lists/*
+
+%test
+    python3 --version
+    uv --version

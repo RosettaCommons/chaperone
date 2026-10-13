@@ -426,7 +426,7 @@ def test_no_bare_size_class_gres_literal_in_block_sources():
 @pytest.fixture
 def ipd_site(site, monkeypatch):
     """Apply the Slurm settings that .env.ipd carries."""
-    ipd = ChaperoneSettings(_env_file=REPO / ".env.ipd")
+    ipd = ChaperoneSettings(_env_file=REPO / "src/chaperone/site_profiles/digs.env")
     settings = chaperone.get_settings()
     for name in SITE_FIELDS:
         monkeypatch.setattr(settings, name, getattr(ipd, name))

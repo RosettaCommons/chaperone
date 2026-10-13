@@ -38,7 +38,6 @@ if str(ROOT) not in sys.path:
 
 from task_paths import task_scorer  # noqa: E402
 from run_eval import (  # noqa: E402
-    DEFAULT_HARNESS_IMAGE,
     DEFAULT_CHAPERONE_REPO,
     _scan_trials,
     _score_trial,
@@ -99,7 +98,7 @@ def main() -> None:
         "--scoring-image",
         dest="worker_image",
         type=Path,
-        default=DEFAULT_HARNESS_IMAGE,
+        default=None,
         help=(
             "Chaperone image used by scientific Slurm workers; the scorer "
             "itself runs in the host Chaperone .venv"
@@ -115,7 +114,14 @@ def main() -> None:
         ),
     )
     parser.add_argument("--dry-run", action="store_true")
+    from site_config import add_site_arguments, configure_site
+
+    add_site_arguments(parser)
     args = parser.parse_args()
+    try:
+        configure_site(args)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
 
     task = resolve_task(args.task)
     scorer = task_scorer(task.name)

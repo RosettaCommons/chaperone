@@ -114,7 +114,8 @@ class CleanSnapshotTest(unittest.TestCase):
         self.assertNotIn("/usr/bin/scontrol", mounted_sources)
         self.assertNotIn("/usr/bin/srun", mounted_sources)
 
-    def test_runtime_mounts_include_on_prem_mpnn_code(self) -> None:
+    @patch("environments.apptainer._optional_path_exists", return_value=True)
+    def test_runtime_mounts_include_on_prem_mpnn_code(self, _exists) -> None:
         mounted_sources = {
             str(mount["source"]) for mount in ApptainerEnvironment._runtime_mounts()
         }
@@ -132,7 +133,8 @@ class CleanSnapshotTest(unittest.TestCase):
             if str(mount["source"]) in required_sources:
                 self.assertTrue(mount["read_only"])
 
-    def test_worker_wrapper_uses_node_local_tmp_and_dns(self) -> None:
+    @patch("environments.apptainer._optional_path_exists", return_value=True)
+    def test_worker_wrapper_uses_node_local_tmp_and_dns(self, _exists) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / "workspace"
@@ -148,7 +150,7 @@ class CleanSnapshotTest(unittest.TestCase):
             self.assertIn("/run/systemd/resolve/resolv.conf", script)
             self.assertIn("elif [[ -s /etc/resolv.conf ]]", script)
             self.assertIn(
-                'if [[ -v "$name" ]]; then env_args+=(--env "$name=${!name}"); fi',
+                'if declare -p "$name" >/dev/null 2>&1; then env_args+=(--env "$name=${!name}"); fi',
                 script,
             )
             self.assertIn("HBPLUS_COPY", script)
@@ -190,14 +192,14 @@ class CleanSnapshotTest(unittest.TestCase):
             )
 
             script = wrapper.read_text()
-            source_position = script.index(".env.ipd")
+            source_position = script.index("source ")
             for export in ("export AF3_JAX_CACHE_DIR=", "export HBPLUS_COPY="):
                 self.assertGreater(script.index(export), source_position)
             self.assertIn(str(cache), script)
             self.assertIn("/trusted/hb plus", script)
             subprocess.run(["bash", "-n", str(wrapper)], check=True)
 
-    def test_worker_wrapper_without_site_environment_exports_nothing_extra(
+    def test_worker_wrapper_uses_selected_site_defaults(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -210,7 +212,7 @@ class CleanSnapshotTest(unittest.TestCase):
 
             ApptainerEnvironment._prepare_slurm_python(wrapper, workspace, image)
 
-            self.assertNotIn("export AF3_JAX_CACHE_DIR=", wrapper.read_text())
+            self.assertIn("export AF3_JAX_CACHE_DIR=", wrapper.read_text())
 
     def test_worker_site_environment_rejects_unapproved_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -699,7 +701,7 @@ def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
     import subprocess
     import sys
 
-    from environments.apptainer import SCIENTIFIC_ENV_DEFAULTS
+    from site_config import get_site
     from scripts.slurm_gpu_guard import validate_request
     from scripts.snapshot_harness import build
 
@@ -708,7 +710,7 @@ def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
     assert not list(snapshot.glob(".env*"))
     env = {
         **os.environ,
-        **SCIENTIFIC_ENV_DEFAULTS,
+        **get_site()["environment"],
         "PYTHONPATH": str(snapshot / "src"),
     }
     code = """

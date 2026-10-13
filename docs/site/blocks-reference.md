@@ -1,15 +1,16 @@
 # Block Reference
 
 Auto-generated parameter reference for all pipeline blocks.
-Parameters marked with **★** are *primary* — they directly affect output count, quality, or runtime.
+Highlighted parameters are *primary* — they directly affect output count, quality, or runtime.
+Computed defaults resolve from settings or model logic at runtime; no documentation builder's site configuration is embedded here.
 
-Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see *Slurm Site Configuration* in the syntax guide.
+Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see [Slurm Site Configuration](syntax.md#slurm-site-configuration).
 
 ---
 
 **Network Blocks**
 
-Folding oracles are listed newest first. **When in doubt, use the latest model — [esmfold2](#esmfold2).** The older oracles remain available for reproducing published protocols or when a specific model is required.
+Choose a predictor whose supported molecules, inputs, and validation evidence fit the task. Listing a block here does not establish scientific equivalence or a successful fresh-cluster installation. See [Core Examples](core-examples.md) for benchmark scope and [Validation](validation.md) for prediction comparisons.
 
 - [esmfold2](#esmfold2) — ESMFold2 structure prediction with optional MSA conditioning
 - [openfold3](#openfold3) — OpenFold 3 structure prediction
@@ -32,7 +33,7 @@ Folding oracles are listed newest first. **When in doubt, use the latest model �
 - [mpnn](#mpnn) — Classic MPNN block for inverse folding [[paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1)]
 - [protein_hunter](#protein_hunter) — De novo binder design via Boltz structure hallucination [[paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1)]
 - [rfd1](#rfd1) — RFdiffusion v1 backbone-level protein design
-- [rfd2](#rfd2) — RFdiffusion2 (rf_diffusion) block for atomic-level protein design [[paper](https://www.science.org/doi/10.1126/science.adl2528)]
+- [rfd2](#rfd2) — RFdiffusion2 (rf_diffusion) block for atomic-level protein design
 - [rfd3](#rfd3) — RFdiffusion3 block [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
 - [rfd3_partial](#rfd3_partial) — RFdiffusion3 partial diffusion
 - [rfd3na](#rfd3na) — RFdiffusion3NA block (all-atom protein/DNA/RNA design) [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
@@ -106,7 +107,9 @@ Folding oracles are listed newest first. **When in doubt, use the latest model �
 
 *ESMFold2 structure prediction with optional MSA conditioning.*
 
-Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`48GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/Biohub/esm) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/esmfold2.py)
+
+Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`48GB`, time=`5:00:00` · Container: `esmfold2`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -120,10 +123,10 @@ Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `seed` | `Optional[int]` | `0` | Random seed for input prep + diffusion sampling. |
@@ -139,7 +142,9 @@ Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class
 
 *OpenFold 3 biomolecular structure prediction.*
 
-Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`64GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/aqlaboratory/openfold-3) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/openfold3.py)
+
+Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`64GB`, time=`5:00:00` · Container: `openfold3`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -154,15 +159,15 @@ Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `use_templates` | `bool` | `False` | Use ColabFold MSA server for template alignments. |
 | `template_json` | `Optional[str]` | `None` | Path to template JSON file for OpenFold3 input. If provided, sequences from upstream designs are filled into this tem... |
-| `cache_dir` | `str` | `'/projects/ml/pipelines/weights/openfold3'` | Directory containing OpenFold3 model weights. |
+| `cache_dir` | `str` | `<computed at runtime>` | Directory containing OpenFold3 model weights. |
 | `runner_yaml` | `Optional[str]` | `None` | Path to a runner YAML for advanced model/dataset configuration. |
 
 ---
@@ -172,9 +177,9 @@ Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 *Boltz-2 biomolecular structure prediction.*
 
 > Passaro, Corso, Wohlwend et al. (2025) — Boltz-2: Towards Accurate and Efficient Binding Affinity Prediction
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.06.14.659707v1) · [Code](https://github.com/jwohlwend/boltz)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.06.14.659707v1) · [Upstream code / documentation](https://github.com/jwohlwend/boltz) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/boltz2.py)
 
-Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `boltz2`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -189,10 +194,10 @@ Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `max_parallel_samples` | `int` | `1` | Max samples to predict in parallel. |
@@ -201,7 +206,7 @@ Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`
 | `msa_server_url` | `Optional[str]` | `None` | MSA server URL (default: ColabFold). |
 | `use_potentials` | `bool` | `False` | Use inference-time potentials for better physical plausibility. |
 | `predict_affinity` | `bool` | `False` | Enable affinity prediction for protein-ligand complexes. |
-| `cache_dir` | `str` | `'/projects/ml/pipelines/weights/boltz2'` | Directory containing Boltz model weights and CCD data. |
+| `cache_dir` | `str` | `<computed at runtime>` | Directory containing Boltz model weights and CCD data. |
 | `template_yaml` | `Optional[str]` | `None` | Path to a template YAML file. If provided, sequences from upstream designs are filled into this template. |
 | `no_kernels` | `bool` | `False` | Disable cuEquivariance kernels (for older GPUs). |
 
@@ -210,6 +215,8 @@ Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`
 ### boltz2_steered
 
 *Boltz-2 prediction with helix-steering from Protein Hunter.*
+
+> [Upstream code / documentation](https://github.com/jwohlwend/boltz) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/hallucination/boltz2_steered.py)
 
 Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
 
@@ -229,10 +236,10 @@ Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `max_parallel_samples` | `int` | `1` | Max samples to predict in parallel. |
@@ -241,7 +248,7 @@ Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_
 | `msa_server_url` | `Optional[str]` | `None` | MSA server URL (default: ColabFold). |
 | `use_potentials` | `bool` | `False` | Use inference-time potentials for better physical plausibility. |
 | `predict_affinity` | `bool` | `False` | Enable affinity prediction for protein-ligand complexes. |
-| `cache_dir` | `str` | `'/projects/ml/pipelines/weights/boltz2'` | Directory containing Boltz model weights and CCD data. |
+| `cache_dir` | `str` | `<computed at runtime>` | Directory containing Boltz model weights and CCD data. |
 | `template_yaml` | `Optional[str]` | `None` | Path to a template YAML file. If provided, sequences from upstream designs are filled into this template. |
 | `no_kernels` | `bool` | `False` | Disable cuEquivariance kernels (for older GPUs). |
 
@@ -252,9 +259,9 @@ Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_
 *Vanilla RosettaFold3 block for structure prediction (container-based).*
 
 > Krishna et al. (2025) — Accelerating Biomolecular Modeling with AtomWorks and RF3
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.08.14.670328v1) · [Code](https://github.com/RosettaCommons/foundry)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.08.14.670328v1) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/rosettafold3.py)
 
-Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -264,13 +271,13 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_c
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `n_recycles` | `Optional[int]` | `10` | — |
 | `num_diffusion_steps` | `int` | `50` | — |
-| `ckpt_path` | `Optional[str]` | `/projects/ml/pipelines/weights/foundry/checkpoints/rf3_fo...` | — |
+| `ckpt_path` | `Optional[str]` | `<computed at runtime>` | Checkpoint path or Foundry registry name (default: rf3). |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `early_stopping_plddt_threshold` | `float` | `0.5` | Stop diffusion early if pLDDT falls below this threshold after the initial recycle. Set to 0.5 for 10-20x throughput ... |
@@ -292,7 +299,9 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_c
 
 *RF3 via local foundry-dev installation with CFG and auto-templating.*
 
-Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/rosettafold3.py)
+
+Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -302,13 +311,13 @@ Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `n_recycles` | `Optional[int]` | `10` | — |
 | `num_diffusion_steps` | `int` | `50` | — |
-| `ckpt_path` | `Optional[str]` | `/projects/ml/pipelines/weights/foundry/checkpoints/rf3_fo...` | — |
+| `ckpt_path` | `Optional[str]` | `<computed at runtime>` | Checkpoint path or Foundry registry name (default: rf3). |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `early_stopping_plddt_threshold` | `float` | `0.5` | Stop diffusion early if pLDDT falls below this threshold after the initial recycle. Set to 0.5 for 10-20x throughput ... |
@@ -339,7 +348,9 @@ Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`
 
 *Protenix biomolecular structure prediction (v2).*
 
-Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/bytedance/Protenix) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/protenix.py)
+
+Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `protenix`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -354,10 +365,10 @@ Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `dtype` | `str` | `'bf16'` | Precision: 'bf16' (faster, default) or 'fp32' (more precise). |
@@ -370,7 +381,7 @@ Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class
 | `enable_tf32` | `bool` | `True` | Enable TF32 for FP32 matrix multiplications (faster on Ampere+). |
 | `trimul_kernel` | `str` | `'cuequivariance'` | Triangle multiplication kernel: 'cuequivariance' or 'torch'. |
 | `triatt_kernel` | `str` | `'cuequivariance'` | Triangle attention kernel: 'cuequivariance', 'deepspeed', 'triattention', or 'torch'. |
-| `cache_dir` | `str` | `'/projects/ml/pipelines/cache/protenix'` | Directory for Protenix model weights (auto-downloaded on first run). |
+| `cache_dir` | `str` | `<computed at runtime>` | Directory for Protenix model weights (auto-downloaded on first run). |
 | `template_json` | `Optional[str]` | `None` | Path to a template Protenix JSON file. If provided, protein sequences from upstream designs are filled into this temp... |
 
 ---
@@ -379,7 +390,9 @@ Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class
 
 *Chai-1 biomolecular structure prediction.*
 
-Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/chaidiscovery/chai-lab) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/chai1.py)
+
+Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `chai1`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -392,10 +405,10 @@ Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`s
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `seed` | `Optional[int]` | `None` | Random seed for reproducibility. None = random. |
@@ -403,7 +416,7 @@ Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`s
 | `use_msa_server` | `bool` | `False` | Auto-generate MSAs via ColabFold mmseqs2 server. |
 | `msa_server_url` | `Optional[str]` | `None` | MSA server URL (default: ColabFold). |
 | `low_memory` | `bool` | `True` | Use memory-efficient inference mode. |
-| `cache_dir` | `Optional[str]` | `'/projects/ml/pipelines/weights/chai'` | Directory for Chai-1 model weights. Defaults to CHAI_DOWNLOADS_DIR setting. |
+| `cache_dir` | `Optional[str]` | `<computed at runtime>` | Directory for Chai-1 model weights. Defaults to CHAI_DOWNLOADS_DIR setting. |
 
 ---
 
@@ -412,9 +425,9 @@ Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`s
 *AlphaFold3 structure prediction.*
 
 > Abramson et al. (2024) — Accurate structure prediction of biomolecular interactions with AlphaFold 3
-> [Paper](https://doi.org/10.1038/s41586-024-07487-w) · [Code](https://github.com/google-deepmind/alphafold3)
+> [Paper](https://doi.org/10.1038/s41586-024-07487-w) · [Upstream code / documentation](https://github.com/google-deepmind/alphafold3) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/alphafold3.py)
 
-Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `alphafold3`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -427,10 +440,10 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `input_mode` | `Literal` | `'mmcif'` | AF3 input preparation mode. The default 'mmcif' serializes the complete AtomArray and uses AF3's native Input.from_mm... |
@@ -439,7 +452,7 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `max_msa_sequences` | `Optional[int]` | `10000` | Truncate injected MSAs to this depth. |
 | `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no on-disk MSA, instead of silently falling back to single-s... |
 | `template_json` | `Optional[str]` | `None` | Path to template JSON file for AF3 input. If not provided, create input from scratch. |
-| `add_ptm_at_mapped_residues` | `Optional[dict]` | `None` | Map of {ptmType: original_residue_key} for covalent modifications. The residue key (e.g. 'A86') is looked up in the R... |
+| `add_ptm_at_mapped_residues` | `Optional[dict]` | `None` | Map of {ptmType: original_residue_key} for covalent modifications. The residue key (e.g. 'A10') is looked up in the R... |
 | `add_ptm_at_residues` | `Optional[list[dict]]` | `None` | Direct list of AF3 modification dicts to add to the protein sequence. Each entry should have 'ptmType' and 'ptmPositi... |
 | `consolidate_intermediates` | `bool` | `True` | After compiling, pack each design's redundant per-sample subdirs (outputs/<design>/seed-*_sample-*/) into a single un... |
 | `buckets` | `Optional[list[int]]` | `None` | Token-count buckets for JIT compilation. None uses the inner script's smart default (fine-grained at small token coun... |
@@ -448,7 +461,7 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `mean_pae_contact_distance` | `float` | `5.0` | Contact cutoff (Å) for the `interface_mean_pae` metric: only protein residues with any atom within this distance of t... |
 | `mean_pae_core_atoms` | `Optional[list[str]]` | `None` | Ligand atom names defining the buried/core substructure for the `interface_mean_pae` and `full_mean_pae` metrics. Whe... |
 | `mean_pae_sidechain_angle` | `Optional[float]` | `90.0` | Max angle (degrees) between a pocket residue's CA→sidechain-centroid vector and its CA→nearest-ligand-atom vector for... |
-| `model_seeds` | `list[int]` | `[1]` | Independent AF3 model seeds written into each input JSON. Multiple seeds rerun trunk and diffusion inference and are ... |
+| `model_seeds` | `list[int]` | `<computed at runtime>` | Independent AF3 model seeds written into each input JSON. Multiple seeds rerun trunk and diffusion inference and are ... |
 
 ---
 
@@ -456,7 +469,9 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 
 *AF3 with the design's target chain attached as a structural template.*
 
-Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/google-deepmind/alphafold3) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/af3_with_target_template.py)
+
+Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `alphafold3`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -469,10 +484,10 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `input_mode` | `Literal` | `'json'` | — |
@@ -481,7 +496,7 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 | `max_msa_sequences` | `Optional[int]` | `10000` | Truncate injected MSAs to this depth. |
 | `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no on-disk MSA, instead of silently falling back to single-s... |
 | `template_json` | `Optional[str]` | `None` | Path to template JSON file for AF3 input. If not provided, create input from scratch. |
-| `add_ptm_at_mapped_residues` | `Optional[dict]` | `None` | Map of {ptmType: original_residue_key} for covalent modifications. The residue key (e.g. 'A86') is looked up in the R... |
+| `add_ptm_at_mapped_residues` | `Optional[dict]` | `None` | Map of {ptmType: original_residue_key} for covalent modifications. The residue key (e.g. 'A10') is looked up in the R... |
 | `add_ptm_at_residues` | `Optional[list[dict]]` | `None` | Direct list of AF3 modification dicts to add to the protein sequence. Each entry should have 'ptmType' and 'ptmPositi... |
 | `consolidate_intermediates` | `bool` | `True` | After compiling, pack each design's redundant per-sample subdirs (outputs/<design>/seed-*_sample-*/) into a single un... |
 | `buckets` | `Optional[list[int]]` | `None` | Token-count buckets for JIT compilation. None uses the inner script's smart default (fine-grained at small token coun... |
@@ -490,7 +505,7 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 | `mean_pae_contact_distance` | `float` | `5.0` | Contact cutoff (Å) for the `interface_mean_pae` metric: only protein residues with any atom within this distance of t... |
 | `mean_pae_core_atoms` | `Optional[list[str]]` | `None` | Ligand atom names defining the buried/core substructure for the `interface_mean_pae` and `full_mean_pae` metrics. Whe... |
 | `mean_pae_sidechain_angle` | `Optional[float]` | `90.0` | Max angle (degrees) between a pocket residue's CA→sidechain-centroid vector and its CA→nearest-ligand-atom vector for... |
-| `model_seeds` | `list[int]` | `[1]` | Independent AF3 model seeds written into each input JSON. Multiple seeds rerun trunk and diffusion inference and are ... |
+| `model_seeds` | `list[int]` | `<computed at runtime>` | Independent AF3 model seeds written into each input JSON. Multiple seeds rerun trunk and diffusion inference and are ... |
 | `target_chain` | `str` | `'B'` | Chain ID of the receptor / target whose structure should be templated. |
 | `template_kalign_matches` | `Optional[int]` | `None` | If set, override AF3's `templates[].kalign_matches`. Default lets AF3 decide. |
 | `full_receptor_pdb` | `Optional[str]` | `None` | Optional path to a PDB/CIF containing the full target chain. When set, AF3's chain `target_chain` is replaced with th... |
@@ -501,7 +516,9 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 
 *ColabFold (AlphaFold2) monomer and multimer structure prediction.*
 
-Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/sokrypton/ColabFold) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/colabfold.py)
+
+Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `colabfold_portable`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -514,10 +531,10 @@ Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `num_models` | `int` | `5` | Number of AF2 models (1-5). |
@@ -533,7 +550,7 @@ Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 | `use_templates` | `bool` | `False` | Query PDB templates from the MSA server (needs internet). |
 | `amber_relax` | `bool` | `False` | Run AMBER relaxation (CPU only; --use-gpu-relax is never emitted). |
 | `rank` | `str` | `'auto'` | Model ranking metric (auto, plddt, ptm, iptm, multimer). |
-| `data_dir` | `Optional[str]` | `None` | Writable dir for AF2 params (--data). ~3-4GB downloaded on first run. Bound into the container automatically when the... |
+| `data_dir` | `Optional[str]` | `<computed at runtime>` | Writable dir for AF2 params (--data). ~3-4GB downloaded on first run. Bound into the container automatically when the... |
 
 ---
 
@@ -542,9 +559,9 @@ Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 *Design protein binders against each input target structure.*
 
 > Pacesa et al. (2024) — BindCraft: one-shot design of functional protein binders
-> [Paper](https://www.biorxiv.org/content/10.1101/2024.09.30.615802) · [Code](https://github.com/martinpacesa/BindCraft)
+> [Paper](https://www.biorxiv.org/content/10.1101/2024.09.30.615802) · [Upstream code / documentation](https://github.com/martinpacesa/BindCraft) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft.py)
 
-Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`48GB`, time=`24:00:00`
+Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`48GB`, time=`24:00:00` · Container: `bindcraft`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -560,8 +577,8 @@ Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 | `advanced_preset` | `str` | `'default_4stage_multimer'` | Bundled BindCraft advanced-settings preset basename. |
 | `filters_path` | `Optional[str]` | `None` | Optional custom filters JSON; overrides filter_preset. |
 | `advanced_path` | `Optional[str]` | `None` | Optional custom advanced JSON; overrides advanced_preset. |
-| `filter_overrides` | `dict` | `{}` | Shallow overrides applied to the selected filter JSON. |
-| `advanced_overrides` | `dict` | `{}` | Shallow overrides applied to the selected advanced JSON. |
+| `filter_overrides` | `dict` | `<computed at runtime>` | Shallow overrides applied to the selected filter JSON. |
+| `advanced_overrides` | `dict` | `<computed at runtime>` | Shallow overrides applied to the selected advanced JSON. |
 
 ---
 
@@ -570,9 +587,9 @@ Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 *BoltzGen block for protein design.*
 
 > Stark et al. (2025) — BoltzGen: Toward Universal Binder Design
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.11.20.689494v1) · [Code](https://github.com/HannesStark/boltzgen)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.11.20.689494v1) · [Upstream code / documentation](https://github.com/baker-laboratory/BoltzGen) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/boltzgen.py)
 
-Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `boltzgen`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -599,7 +616,9 @@ Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gpu_clas
 
 *DISCO: Diffusion for Sequence-Structure Co-design.*
 
-Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/DISCO-design/DISCO) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/disco/disco.py)
+
+Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `disco`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -623,13 +642,13 @@ Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`
 *E1 block for masked language modeling on protein sequences.*
 
 > Jain et al. (2025) — E1: Retrieval-Augmented Protein Encoder Models
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.11.12.688125v1) · [Code](https://github.com/Profluent-AI/E1)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.11.12.688125v1) · [Upstream code / documentation](https://github.com/Profluent-AI/E1) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/plm/e1.py)
 
-Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
+Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `e1`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_name`</span> | `Literal | str` | `'150m'` | Model size (150m, 300m, 600m) or full HuggingFace path |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_name`</span> | `Literal \| str` | `'150m'` | Model size (150m, 300m, 600m) or full HuggingFace path |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`max_batch_tokens`</span> | `int` | `65536` | Maximum number of tokens to batch in a single forward pass |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
@@ -644,13 +663,13 @@ Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`smal
 *ESM-2 block for protein sequence embeddings.*
 
 > Lin et al. (2023) — Evolutionary-scale prediction of atomic-level protein structure with a language model
-> [Paper](https://doi.org/10.1126/science.ade2574) · [Code](https://github.com/facebookresearch/esm)
+> [Paper](https://doi.org/10.1126/science.ade2574) · [Upstream code / documentation](https://github.com/facebookresearch/esm) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/plm/esm2.py)
 
-Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
+Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `esm2`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_name`</span> | `Literal | str` | `'650m'` | Model size (8m, 35m, 150m, 650m, 3b) or full HuggingFace path |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_name`</span> | `Literal \| str` | `'650m'` | Model size (8m, 35m, 150m, 650m, 3b) or full HuggingFace path |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`max_batch_tokens`</span> | `int` | `4096` | Maximum number of tokens to batch in a single forward pass |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
@@ -662,10 +681,12 @@ Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`sm
 
 *Foundry Protein/LigandMPNN for inverse folding.*
 
-> Dauparas et al. (2023) — LigandMPNN (Foundry variant)
-> [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Code](https://github.com/RosettaCommons/foundry)
+> Foundry Protein/LigandMPNN implementation; paper describes the underlying LigandMPNN method
+> [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/mpnn.py)
 
-Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
+**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the legacy MPNN backend. The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.
+
+Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -689,13 +710,15 @@ Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 
 *Materialize the parquet's PDB assemblies and carry its scoring schema.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/validation/manifest.py)
+
 Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `parquet_path` | `str` | **required** | Entry-level validation table (.parquet or .csv). |
-| `pdb_mirror` | `str` | `'/projects/ml/frozen_pdb_copies/2026_01_06_pdb'` | Local PDB mirror root, sharded by the middle two PDB-ID characters. |
+| `pdb_mirror` | `str` | `<computed at runtime>` | Local PDB mirror root, sharded by the middle two PDB-ID characters. |
 | `bucket` | `str` | `'all'` | Validation composition bucket to select. 'all' keeps every row; individual buckets are: protein, protein-protein, pro... |
 
 ---
@@ -705,9 +728,11 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 *Classic MPNN block for inverse folding.*
 
 > Dauparas et al. (2023) — Atomic context-conditioned protein sequence design using LigandMPNN
-> [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Code](https://github.com/dauparas/LigandMPNN)
+> [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/dauparas/LigandMPNN) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/mpnn.py)
 
-Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `modelhub`
+**Installation access:** This wrapper uses the private `baker-laboratory/fused_mpnn` repository and requires upstream access to rebuild. `foundry_mpnn` is a separate public implementation; it is not silently substituted, and scientific equivalence has not been established here.
+
+Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `modelhub_portable`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -724,7 +749,7 @@ Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 | `hbond_fix` | `bool` | `False` | Fix residues involved in hydrogen bonds |
 | `aromatic_fix` | `bool` | `False` | Fix aromatic residues near ligand |
 | `component_remap` | `Optional[dict]` | `None` | Remap residue names in CIF files before MPNN. Maps old -> new (e.g., {'LIG_B': 'B;N'}). |
-| `args` | `MPNNArgs` | `MPNNArgs(temperature=0.1, seed=0, batch_size=1, number_of_batches=1, omit_AA='X', bias_AA='', bias_AA_per_residue='', fixed_residues='', redesigned_residues='', chains_to_design='', parse_these_chains_only='', symmetry_residues='', symmetry_weights='', homo_oligomer=0, ligand_mpnn_use_atom_context=1, ligand_mpnn_cutoff_for_score=8.0, ligand_mpnn_use_side_chain_context=1, pack_side_chains=1, checkpoint_path_sc='/databases/mpnn/packer_weights/s_300756.pt', number_of_packs_per_design=4, repack_everything=0, pack_with_ligand_context=1, sc_num_denoising_steps=3, sc_num_samples=16, packed_suffix='_', zero_indexed=1, force_hetatm=1, save_stats=0, file_ending='', verbose=1, transmembrane_buried='', transmembrane_interface='', global_transmembrane_label=0, parse_atoms_with_zero_occupancy=0)` | LigandMPNN/ProteinMPNN CLI arguments. Partial overrides keep defaults. |
+| `args` | `MPNNArgs` | `<computed at runtime>` | LigandMPNN/ProteinMPNN CLI arguments. Partial overrides keep defaults. |
 
 ---
 
@@ -733,7 +758,7 @@ Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 *Protein Hunter: de novo protein binder design via structure hallucination with Boltz.*
 
 > Cho et al. (2025) — Protein Hunter: exploiting structure hallucination within diffusion for protein design
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1) · [Code](https://github.com/yehlincho/Protein-Hunter)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1) · [Upstream code / documentation](https://github.com/yehlincho/Protein-Hunter) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/hallucination/protein_hunter.py)
 
 Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
 
@@ -769,8 +794,8 @@ Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gpu
 | `contact_residues` | `str` | `''` | Target chain residue positions for contact specification. Comma-separated, pipe-separated for multiple chains (e.g., ... |
 | `template_path` | `str` | `''` | PDB code or path(s) for template conditioning. |
 | `template_cif_chain_id` | `str` | `''` | Chain ID(s) for mmCIF templates. |
-| `ccd_path` | `str` | `'/projects/ml/pipelines/weights/boltz2/mols'` | Path to CCD molecule data directory (.pkl files) for Boltz. |
-| `boltz_model_path` | `str` | `'/projects/ml/pipelines/weights/boltz2/boltz2_conf.ckpt'` | Path to Boltz model checkpoint. |
+| `ccd_path` | `str` | `<computed at runtime>` | Path to CCD molecule data directory (.pkl files) for Boltz. |
+| `boltz_model_path` | `str` | `<computed at runtime>` | Path to Boltz model checkpoint. |
 | `gpu_id` | `int` | `0` | GPU device ID. |
 
 ---
@@ -779,7 +804,9 @@ Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gpu
 
 *RFdiffusion v1 block for backbone-level protein design.*
 
-Class: `RFD1Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/RosettaCommons/RFdiffusion) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfdiffusion1.py)
+
+Class: `RFD1Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `rfdiffusion1`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -810,16 +837,16 @@ Class: `RFD1Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 
 *RFdiffusion2 (rf_diffusion) block for atomic-level protein design.*
 
-> Krishna et al. (2024) — Generalized biomolecular modeling and design with RoseTTAFold All-Atom
-> [Paper](https://www.science.org/doi/10.1126/science.adl2528) · [Code](https://github.com/baker-laboratory/rf_diffusion_all_atom)
+> RFdiffusion2
+> [Upstream code / documentation](https://github.com/RosettaCommons/RFdiffusion2) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfdiffusion2.py)
 
-Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00` · Container: `rfdiffusion2`
+Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `rfdiffusion2_portable`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str | list[str]` | **required** | Hydra config name to use (references a yaml/json file in benchmark configs) |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str \| list[str]` | **required** | Hydra config name to use (references a yaml/json file in benchmark configs) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`num_designs`</span> | `int` | `1` | Number of designs to generate per benchmark case |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `str` | `'/net/databases/lab/aa-diffusion/models/RFD_140_ORI_tipatom.pt'` | Path to RFdiffusion2 checkpoint file. The portable image defaults to RFD_173.pt under the RFD2_WEIGHTS_DIR setting. |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `str` | `<computed at runtime>` | Path to RFdiffusion2 checkpoint file. The portable image defaults to RFD_173.pt under the RFD2_WEIGHTS_DIR setting. |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `raise_on_missing_trbs` | `bool` | `True` | Raise error if TRB file is missing for a design |
@@ -831,23 +858,23 @@ Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:sm
 *RFdiffusion3 block for backbone generation.*
 
 > Butcher, Krishna et al. (2025) — De novo Design of All-atom Biomolecular Interactions with RFdiffusion3
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Code](https://github.com/RosettaCommons/foundry)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfdiffusion3.py)
 
-Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
+Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str | dict | None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `/projects/ml/pipelines/weights/foundry/checkpoints/rfd3_l...` | Optional checkpoint path (foundry will manage checkpoints itself) |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str \| dict \| None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | Optional checkpoint path (foundry will manage checkpoints itself) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `json_keys_subset` | `list` | `[]` | Keys to fetch from json |
+| `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
-| `inference_sampler` | `dict` | `{'num_timesteps': 200, 'use_classifier_free_guidance': False, 'cfg_scale': 1.0, 'step_scale': 1.5}` | Sampler parameters to override (not configurable via CLI) |
+| `inference_sampler` | `dict` | `<computed at runtime>` | Sampler parameters to override (not configurable via CLI) |
 
 ---
 
@@ -855,21 +882,23 @@ Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 
 *RFdiffusion3 partial diffusion. Useful for diversifying structures.*
 
-Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfdiffusion3.py)
+
+Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str | dict | None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `/projects/ml/pipelines/weights/foundry/checkpoints/rfd3_l...` | Optional checkpoint path (foundry will manage checkpoints itself) |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str \| dict \| None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | Optional checkpoint path (foundry will manage checkpoints itself) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `json_keys_subset` | `list` | `[]` | Keys to fetch from json |
+| `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
-| `inference_sampler` | `dict` | `{'num_timesteps': 200, 'use_classifier_free_guidance': False, 'cfg_scale': 1.0, 'step_scale': 1.5}` | Sampler parameters to override (not configurable via CLI) |
+| `inference_sampler` | `dict` | `<computed at runtime>` | Sampler parameters to override (not configurable via CLI) |
 | `partial_t` | `int` | `5` | Timestep for partial diffusion (e.g., 5 = ~80% diffused). |
 | `partial_diffusion_mode` | `str` | `'indexed'` | Mode for partial diffusion |
 | `ligand_name` | `Optional[str]` | `None` | Ligand name for partial diffusion specs (e.g., 'LIG_B'). Overrides ligand from metadata when set. |
@@ -881,23 +910,23 @@ Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cl
 *RFdiffusion3NA block for nucleic-acid and mixed-polymer design.*
 
 > Butcher, Krishna et al. (2025) — RFdiffusion3NA multipolymer design
-> [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Code](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na)
+> [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfd3na.py)
 
-Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`6:00:00`
+Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`6:00:00` · Container: `foundry_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str | dict | None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na...` | RFD3NA checkpoint path. Set to 'rfd3na' or None to use Foundry's checkpoint registry/search path. |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str \| dict \| None` | `None` | Path to input json/yaml file, or dict of design specifications. JSON inputs take the following nested top-level struc... |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | RFD3NA checkpoint path. Set to 'rfd3na' or None to use Foundry's checkpoint registry/search path. |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `json_keys_subset` | `list` | `[]` | Keys to fetch from json |
+| `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
-| `inference_sampler` | `dict` | `{'num_timesteps': 200, 'use_classifier_free_guidance': False, 'cfg_scale': 1.5, 'step_scale': 1.5}` | RFD3NA inference-sampler overrides. |
+| `inference_sampler` | `dict` | `<computed at runtime>` | RFD3NA inference-sampler overrides. |
 | `read_sequence_from_sequence_head` | `bool` | `False` | Upstream README recommends False as the global setting for RFD3NA. |
 | `prevalidate_inputs` | `bool` | `True` | Validate every RFD3NA input specification before loading the model. |
 | `low_memory_mode` | `bool` | `False` | Use memory-efficient tokenization when GPU memory is constrained. |
@@ -910,12 +939,14 @@ Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=
 
 *Score the last (predicted) structure against the first (reference) one.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/validation/score.py)
+
 Class: `ScoreValStructuresBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `metrics` | `list[ValidationMetric]` | `[<ValidationMetric.RF3_ALLATOM_LDDT: 'rf3_allatom_lddt'>]` | Scoring backends to run: rf3_allatom_lddt and/or peppr. |
+| `metrics` | `list[ValidationMetric]` | `<computed at runtime>` | Scoring backends to run: rf3_allatom_lddt and/or peppr. |
 | `remap_outputs_to_input` | `bool` | `False` | Map a renumbered monomer prediction onto the single scored protein pn-unit before scoring. Disabled by default so dir... |
 | `min_atom_coverage` | `float` | `0.95` | Minimum fraction of resolved reference atoms that a remapped oracle output must represent. Used only when remap_outpu... |
 
@@ -925,7 +956,9 @@ Class: `ScoreValStructuresBlock` · Input: `True` · Resources: Not specified
 
 *Apple SimpleFold single-sequence, protein-monomer structure prediction.*
 
-Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`96GB`, time=`24:00:00`
+> [Upstream code / documentation](https://github.com/apple/ml-simplefold) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/simplefold.py)
+
+Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`96GB`, time=`24:00:00` · Container: `simplefold`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -939,10 +972,10 @@ Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `ckpt_path` | `Optional[str]` | `None` | Optional checkpoint path for model weights. |
 | `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
 | `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `{}` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `{}` | Map ligand name → CCD code. |
+| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
+| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
 | `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] | str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
+| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
 | `tau` | `float` | `0.01` | Diffusion coefficient scaling factor. |
@@ -950,7 +983,7 @@ Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `predict_plddt` | `bool` | `False` | Run the optional pLDDT head. This additionally loads a fixed 1.6B folding model and is substantially more memory inte... |
 | `raw_output_format` | `Literal` | `'pdb'` | SimpleFold's raw output format before compile-time conversion. |
 | `convert_outputs_to_cif` | `bool` | `True` | Parse raw predictions into AtomArrays and write canonical CIF outputs. |
-| `weights_dir` | `str` | `'/projects/ml/pipelines/weights/simplefold'` | Shared directory for folding, ESM2, and CCD downloads. |
+| `weights_dir` | `str` | `<computed at runtime>` | Shared directory for folding, ESM2, and CCD downloads. |
 
 ---
 
@@ -958,7 +991,9 @@ Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 
 *Protein<->ligand interface energetics (single-point, beta_nov2016).*
 
-Class: `TmolInterfaceBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/uw-ipd/tmol) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/tmol.py)
+
+Class: `TmolInterfaceBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00` · Container: `tmol`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -972,7 +1007,9 @@ Class: `TmolInterfaceBlock` · Input: `True` · Resources: partition=`cpu`, mem=
 
 *Cartesian energy minimisation (beta_nov2016_cart), all atoms free.*
 
-Class: `TmolMinimizeBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/uw-ipd/tmol) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/tmol.py)
+
+Class: `TmolMinimizeBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00` · Container: `tmol`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -991,6 +1028,10 @@ Class: `TmolMinimizeBlock` · Input: `True` · Resources: partition=`cpu`, mem=`
 
 *Count aromatic residues near ligand atoms.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/aromatic_neighbors.py)
+
+**Outputs and interpretation:** Counts aromatic residues near selected ligand atoms under the configured distance cutoff. This is a geometric neighborhood count, not a pi-stacking energy or proof of a favorable interaction.
+
 Class: `AromaticNeighborsBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1005,6 +1046,10 @@ Class: `AromaticNeighborsBlock` · Input: `True` · Resources: Not specified
 
 *Per-row chirality check vs a reference ligand.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/chirality.py)
+
+**Outputs and interpretation:** Compares assigned per-atom CIP stereochemical codes with a reference ligand. A matching code requires a resolvable atom correspondence; missing or unassigned centers should not be assumed correct.
+
 Class: `ChiralityCheckBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1018,6 +1063,10 @@ Class: `ChiralityCheckBlock` · Input: `True` · Resources: partition=`cpu`, mem
 ### clash
 
 *Count non-bonded backbone heavy-atom clashes in a structure.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/clash.py)
+
+**Outputs and interpretation:** Counts backbone-heavy-atom pairs (N/CA/C/O) closer than the cutoff in Å, excluding atoms in the same residue and consecutive residues of one chain. This is a geometric clash screen, not a full steric energy calculation.
 
 Class: `ClashMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1035,6 +1084,10 @@ Class: `ClashMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`
 
 *Compute contact molecular surface between binder and target chains.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/contact_ms.py)
+
+**Outputs and interpretation:** Distance-weighted contact molecular surface in Å²: the target surface buried by the selected binder chain under the py_contact_ms algorithm. It measures interface contact extent, not binding energy.
+
 Class: `ContactMSBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1051,13 +1104,17 @@ Class: `ContactMSBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB
 
 *DSSR pairing and native classification retention for a mapped motif.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/dssr_snap_metrics.py)
+
+**Outputs and interpretation:** Compares DSSR base-pair assignments and native pairing classifications for motif residues mapped by `diffused_index_map`. Per-residue pairing and aggregate retention diagnostics preserve the full native/predicted pair annotations; SNAP is not used.
+
 Class: `DSSRMotifBasePairingBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `x3dna_dssr_bin` | `Optional[str]` | `'/projects/ml/pipelines/software/x3dna-v2.3/bin/x3dna-dssr'` | Path to x3dna-dssr. Defaults to $X3DNA_BIN_DIR/x3dna-dssr. |
-| `x3dna_home` | `Optional[str]` | `'/projects/ml/pipelines/software/x3dna-v2.3/x3dna-v2.3'` | Value exported as $X3DNA while invoking x3dna-dssr. |
+| `x3dna_dssr_bin` | `Optional[str]` | `<computed at runtime>` | Path to x3dna-dssr. Defaults to $X3DNA_BIN_DIR/x3dna-dssr. |
+| `x3dna_home` | `Optional[str]` | `<computed at runtime>` | Value exported as $X3DNA while invoking x3dna-dssr. |
 | `reference` | `str` | **required** | Native RNA/DNA structure used to derive partner annotations. |
 | `residues` | `list[str]` | **required** | Reference motif residue ids to report, e.g. ['A10', 'B4']. |
 | `continue_on_error` | `bool` | `False` | Return per-row status/error diagnostics instead of aborting the metric block when predicted-structure DSSR processing... |
@@ -1069,14 +1126,18 @@ Class: `DSSRMotifBasePairingBlock` · Input: `True` · Resources: partition=`cpu
 
 *Run DSSR + SNAP on each row's last structure and attach 11 metrics.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/dssr_snap_metrics.py)
+
+**Outputs and interpretation:** Counts protein–DNA hydrogen bonds classified as major-groove, minor-groove, or backbone contacts, plus hydrogen-bond support and SNAP interaction categories. SNAP-derived fields are missing if SNAP fails; missing values are not zero interactions. See the implementation for all 11 keys.
+
 Class: `DSSRSnapMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `x3dna_dssr_bin` | `Optional[str]` | `'/projects/ml/pipelines/software/x3dna-v2.3/bin/x3dna-dssr'` | Path to the x3dna-dssr binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-dssr`` from the environment (set via .env.ipd on IP... |
-| `x3dna_snap_bin` | `Optional[str]` | `'/projects/ml/pipelines/software/x3dna-v2.3/bin/x3dna-snap'` | Path to the x3dna-snap binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-snap`` from the environment. |
-| `x3dna_home` | `Optional[str]` | `'/projects/ml/pipelines/software/x3dna-v2.3/x3dna-v2.3'` | Value to export as $X3DNA when invoking the binaries (the 3DNA install root containing config/, lib/, etc.). Defaults... |
+| `x3dna_dssr_bin` | `Optional[str]` | `<computed at runtime>` | Path to the x3dna-dssr binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-dssr`` from the environment (set via .env.ipd on IP... |
+| `x3dna_snap_bin` | `Optional[str]` | `<computed at runtime>` | Path to the x3dna-snap binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-snap`` from the environment. |
+| `x3dna_home` | `Optional[str]` | `<computed at runtime>` | Value to export as $X3DNA when invoking the binaries (the 3DNA install root containing config/, lib/, etc.). Defaults... |
 | `skip_snap` | `bool` | `False` | If True, skip SNAP entirely (fast path) — SNAP-derived metrics will be NaN. |
 
 ---
@@ -1086,14 +1147,16 @@ Class: `DSSRSnapMetricsBlock` · Input: `True` · Resources: partition=`cpu`, me
 *Cluster structures by structural similarity using Foldseek.*
 
 > van Kempen et al. (2024) — Fast and accurate protein structure search with Foldseek
-> [Paper](https://doi.org/10.1038/s41587-023-01773-0) · [Code](https://github.com/steineggerlab/foldseek)
+> [Paper](https://doi.org/10.1038/s41587-023-01773-0) · [Upstream code / documentation](https://github.com/steineggerlab/foldseek) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/foldseek.py)
+
+**Outputs and interpretation:** Groups structures by structural similarity at the requested Foldseek thresholds. Cluster counts describe diversity under that clustering protocol, rather than a per-design correctness or activity score.
 
 Class: `FoldseekBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `foldseek_exec` | `str` | `'/net/software/foldseek/bin/foldseek'` | Path to foldseek binary |
+| `foldseek_exec` | `str` | `<computed at runtime>` | Path to foldseek binary |
 | `tm_thresholds` | `list[float]` | `[0.5, 0.6, 0.7, 0.8]` | TM-score thresholds for clustering. Results are output as cluster_id.<threshold> and n_clusters.<threshold> for each. |
 | `alignment_type` | `int` | `1` | 1=structure only, 2=structure+sequence |
 | `min_seq_id` | `float` | `0.0` | Min sequence identity for clustering (alignment_type=2 only) |
@@ -1107,6 +1170,10 @@ Class: `FoldseekBlock` · Input: `True` · Resources: Not specified
 ### hbond_metrics
 
 *Compute hydrogen bond metrics between ligand and protein.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/hbond.py)
+
+**Outputs and interpretation:** HBPLUS identifies hydrogen bonds between ligand/motif and surrounding protein atoms. Outputs count the selected interactions, optionally by ligand atom group. Counts depend on the input protonation and HBPLUS geometry rules and are not hydrogen-bond energies.
 
 Class: `HBondBlock` · Input: `True` · Resources: Not specified
 
@@ -1123,6 +1190,10 @@ Class: `HBondBlock` · Input: `True` · Resources: Not specified
 
 *Compute ipSAE between a binder chain and one or more target chains.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ipsae.py)
+
+**Outputs and interpretation:** Interface predicted Score from Aligned Errors summarizes inter-chain confidence from a predictor's PAE matrix using the configured distance/PAE cutoffs. Higher confidence does not prove binding. Missing PAE cannot be treated as a passing score. See the [upstream implementation](https://github.com/flyark42/ipsae).
+
 Class: `IpSAEBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1137,6 +1208,10 @@ Class: `IpSAEBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, t
 ### ligand_clash
 
 *Reject severe protein-ligand heavy-atom penetrations cheaply.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_clash.py)
+
+**Outputs and interpretation:** `n_clashes` counts selected protein–ligand heavy-atom pairs separated by less than `cutoff` Å; `minimum_distance` and `closest_pair` identify the nearest contact. This simple distance test does not distinguish intentional covalent bonds.
 
 Class: `LigandClashMetricsBlock` · Input: `True` · Resources: Not specified
 
@@ -1153,15 +1228,19 @@ Class: `LigandClashMetricsBlock` · Input: `True` · Resources: Not specified
 *Compute Rosetta DDG (binding energy) for protein-ligand complexes.*
 
 > Rosetta DDG binding energy calculation
+> [Upstream code / documentation](https://docs.rosettacommons.org/docs/latest/scripting_documentation/RosettaScripts/Filters/filter_pages/DdgFilter) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_ddg.py)
+
+**Outputs and interpretation:** `ddg_norepack` is Rosetta's bound-minus-separated score across jump 1, in Rosetta energy units; more negative values favor the bound state under that score function. The bundled protocol uses `beta_nov16`, minimizes before scoring, and disables repacking in the Ddg filter (`repack=0`, one repeat). It is not an experimental binding free energy or kcal/mol estimate. Check that jump 1 separates the intended partners. See the [exact protocol](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/scripts/ddg_protocol.xml) and [flags](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/scripts/flags_rescore_genpot); overriding either changes the interpretation.
 
 Class: `LigandDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `rosetta_bin` | `str` | `'/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease'` | Path to rosetta_scripts binary |
+| `rosetta_bin` | `str` | `<computed at runtime>` | Path to rosetta_scripts binary |
 | `protocol` | `str` | `'<checkout>/src/blocks/scripts/ddg_protocol.xml'` | Path to Rosetta XML protocol file |
 | `flags` | `str` | `'<checkout>/src/blocks/scripts/flags_rescore_genpot'` | Path to Rosetta flags file |
+| `dalphaball_bin` | `Optional[str]` | `<computed at runtime>` | DAlphaBall executable required by the bundled Holes filter; also searches PATH. |
 | `override_param_file` | `Optional[str]` | `None` | Override path to ligand .params file for -extra_res. Bypasses auto-resolution from ligand name. |
 | `override_ligand_names` | `Optional[list[str]]` | `None` | Override ligand 3-letter codes (e.g. ['FAD', 'IAI']). Bypasses auto-detection from structure metadata. The first matc... |
 | `ligand_map` | `Optional[dict]` | `None` | Rename ligand residues in the atom array before detection and PDB writing. Maps old res_name to new res_name, e.g. {'... |
@@ -1171,6 +1250,10 @@ Class: `LigandDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB
 ### ligand_ddg_soft
 
 *Soft-repulsive ddG (pack hard, score soft, trimmed mean over replicates).*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_ddg_soft.py)
+
+**Outputs and interpretation:** `ddg_soft` is the mean bound-minus-separated Rosetta score after packing with the hard beta_nov16 function and scoring with beta_nov16_soft. With at least three replicates the best and worst are dropped; `ddg_soft_std` reports the retained replicate spread. Values are Rosetta energy units, not measured binding free energies; do not compare numerically with the hard-score `ligand_ddg` protocol.
 
 Class: `LigandDDGSoftBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1192,14 +1275,18 @@ Class: `LigandDDGSoftBlock` · Input: `True` · Resources: partition=`cpu`, mem=
 
 *Quantify ligand CMS, enclosure, shell depth, and contact distribution.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_pocket.py)
+
+**Outputs and interpretation:** Combines contact molecular surface, heavy-atom contact coverage, pocket shell/enclosure, and polar-atom neighborhood counts for the selected ligand. Surface uses Å² and distance cutoffs use Å; contact counts and coverage summarize geometry, not interaction energy.
+
 Class: `LigandPocketMetricsBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `ligand_resnames` | `list[str]` | **required** | Ligand residue names to measure, e.g. ['ADN']. |
-| `core_atom_names` | `list[str]` | `[]` | Ligand core atoms that must all receive protein contact. |
-| `tail_polar_atom_names` | `list[str]` | `[]` | Ligand tail atoms requiring explicit polar support. |
+| `core_atom_names` | `list[str]` | `<computed at runtime>` | Ligand core atoms that must all receive protein contact. |
+| `tail_polar_atom_names` | `list[str]` | `<computed at runtime>` | Ligand tail atoms requiring explicit polar support. |
 | `contact_distance` | `float` | `5.0` | Protein-heavy-atom distance defining coverage and shell. |
 | `polar_distance` | `float` | `3.6` | Maximum protein N/O/S distance defining polar support. |
 | `clash_distance` | `float` | `2.0` | Protein-ligand heavy-atom distance below which a severe clash is counted. |
@@ -1210,7 +1297,11 @@ Class: `LigandPocketMetricsBlock` · Input: `True` · Resources: Not specified
 
 *Score each row's structure for transition-metal binding sites.*
 
-Class: `Metal3DBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00`
+> [Upstream code / documentation](https://github.com/lcbc-epfl/metal-site-prediction) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/metal3d.py)
+
+**Outputs and interpretation:** A learned three-dimensional probability field for transition-metal binding sites. Predicted site confidence and position describe the model's output, not experimentally confirmed metal occupancy.
+
+Class: `Metal3DBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`, time=`5:00:00` · Container: `metal3d`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -1229,6 +1320,10 @@ Class: `Metal3DBlock` · Input: `True` · Resources: partition=`cpu`, mem=`16GB`
 
 *Motif vs scaffold pLDDT and PAE of an oracle refold.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/motif_confidence.py)
+
+**Outputs and interpretation:** Summarizes predictor pLDDT and PAE separately for the mapped motif and scaffold. Higher pLDDT and lower PAE indicate model confidence, not experimentally validated accuracy; the upstream confidence scale and residue mapping must be preserved.
+
 Class: `MotifConfidenceBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1244,6 +1339,10 @@ Class: `MotifConfidenceBlock` · Input: `True` · Resources: partition=`cpu`, me
 
 *Named distances and angles between motif atoms, addressed by reference id.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/motif_reference.py)
+
+**Outputs and interpretation:** Reports named distances in Å and angles between selected motif atoms addressed using reference residue identifiers. Compare each quantity against the intended geometry rather than treating all distances as smaller-is-better.
+
 Class: `MotifGeometryBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1258,6 +1357,10 @@ Class: `MotifGeometryBlock` · Input: `True` · Resources: partition=`cpu`, mem=
 
 *Attach MPNN per-sequence confidence (from FASTA) as metrics to each row.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/mpnn_score.py)
+
+**Outputs and interpretation:** Copies per-sequence `overall_confidence`, `seq_rec`, and optional `ligand_confidence` from MPNN outputs. Confidence is an upstream model ranking signal and sequence recovery measures agreement with the input sequence; neither establishes folding or binding success. Backend definitions can differ.
+
 Class: `MpnnScoreBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1271,7 +1374,9 @@ Class: `MpnnScoreBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB
 *Compute structural evaluation metrics using peppr.*
 
 > PePPr — Package for Evaluation of Predicted Poses
-> [Code](https://github.com/aivant/peppr)
+> [Upstream code / documentation](https://github.com/aivant/peppr) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/peppr.py)
+
+**Outputs and interpretation:** PEPPR computes the requested structure and interface comparison metrics against a reference; there is no single universal PEPPR score. Interpret each returned metric using its upstream definition and retain the atom/chain mapping and reference used for the calculation.
 
 Class: `PepprBlock` · Input: `True` · Resources: Not specified
 
@@ -1288,6 +1393,10 @@ Class: `PepprBlock` · Input: `True` · Resources: Not specified
 
 *Profile protein-ligand interactions using PLIP.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/plip.py)
+
+**Outputs and interpretation:** PLIP classifies protein–ligand contacts into interaction types such as hydrogen bonds, hydrophobic contacts, and salt bridges. Returned counts and optional details depend on PLIP's geometric and chemical rules; they are not binding energies. See [PLIP](https://github.com/pharmai/plip).
+
 Class: `PLIPBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1303,6 +1412,10 @@ Class: `PLIPBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, ti
 ### pocket_coulomb
 
 *Electrostatic complementarity between charged ligand atoms and pocket residues.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/pocket_coulomb.py)
+
+**Outputs and interpretation:** An approximate charge-based pocket interaction score using the configured charge and distance treatment. Its scale depends on those settings and is not an experimental affinity.
 
 Class: `PocketCoulombBlock` · Input: `True` · Resources: Not specified
 
@@ -1322,6 +1435,10 @@ Class: `PocketCoulombBlock` · Input: `True` · Resources: Not specified
 
 *Protein-protein binding energy via FastRelax + ddG.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ppi_ddg.py)
+
+**Outputs and interpretation:** Protein–protein binding score computed with FastRelax and a bound-versus-separated ddG calculation. These are Rosetta energy units, not experimental affinities. Partner selections, relaxation, and score-function settings must match for comparisons; consult the implementation for the returned energy terms.
+
 Class: `PPIDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1340,6 +1457,10 @@ Class: `PPIDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, 
 
 *Compute solvent accessible surface area (SASA/RASA) for ligand atoms.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rasa.py)
+
+**Outputs and interpretation:** Per-atom relative solvent accessibility is computed as solvent-accessible area divided by an element-specific reference area. `ligand_rasa` is the **sum** of these fractions, not a fraction bounded by one; `mean_ligand_atom_rasa` is their mean. Smaller values indicate burial. Keep probe radius, atom groups, and backbone-only settings fixed when comparing designs.
+
 Class: `RASABlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1355,6 +1476,10 @@ Class: `RASABlock` · Input: `True` · Resources: Not specified
 
 *RMSD of the designed motif against the structure it was taken from.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/motif_reference.py)
+
+**Outputs and interpretation:** Motif atom RMSD in Å against the original input reference, with correspondence resolved through `diffused_index_map`. Smaller values indicate closer motif geometry; mapping coverage and atom selection matter.
+
 Class: `ReferenceMotifRMSDBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1363,7 +1488,7 @@ Class: `ReferenceMotifRMSDBlock` · Input: `True` · Resources: partition=`cpu`,
 | `reference` | `str` | **required** | Path to the canonical structure the motif was taken from. |
 | `which` | `list[int]` | `[0, -1]` | Two indices into each row's structures list: the structure carrying diffused_index_map, and the structure to score. D... |
 | `residues` | `Optional[list[str]]` | `None` | Reference residue ids to score, e.g. ['A10-12', 'B4']. Defaults to every entry in diffused_index_map. |
-| `ligands` | `list[str]` | `[]` | Ligand/ion residue names to include, e.g. ['MN']. RFD3NA leaves non-polymer components out of diffused_index_map, so ... |
+| `ligands` | `list[str]` | `<computed at runtime>` | Ligand/ion residue names to include, e.g. ['MN']. RFD3NA leaves non-polymer components out of diffused_index_map, so ... |
 
 ---
 
@@ -1372,6 +1497,9 @@ Class: `ReferenceMotifRMSDBlock` · Input: `True` · Resources: partition=`cpu`,
 *Compute alignment and RMSD metrics between two designs in the lineage.*
 
 > Root-mean-square deviation between aligned structures
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rmsd.py)
+
+**Outputs and interpretation:** RMSD is the root mean square atom displacement in Å after fitting the selected alignment atoms. Output names such as `bkbn_align.motif_allatom_rmsd` identify the fit selection and the measured selection. Lower means closer geometry; compare only matched atoms and selections.
 
 Class: `RMSDBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1392,6 +1520,10 @@ Class: `RMSDBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, ti
 
 *Real O3'-P backbone connectivity of a designed nucleic-acid chain.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rna_connectivity.py)
+
+**Outputs and interpretation:** Detects nucleic-acid backbone breaks from the O3′ of residue i to the P atom of residue i+1 using the configured distance criterion. Missing atoms and residue mapping affect which links can be evaluated.
+
 Class: `RNAConnectivityBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1399,13 +1531,17 @@ Class: `RNAConnectivityBlock` · Input: `True` · Resources: partition=`cpu`, me
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `chain` | `Optional[str]` | `None` | Chain to walk. Defaults to every chain carrying C3' atoms. |
 | `max_bond_distance` | `float` | `2.0` | O3'(i)-P(i+1) distance above which the junction is a break. The bond is ~1.6 A. |
-| `which` | `str | list[int]` | `'last'` | Which structure(s) of each row to measure. Measure the diffusion output, not a refold: an oracle rebuilds a continuou... |
+| `which` | `str \| list[int]` | `'last'` | Which structure(s) of each row to measure. Measure the diffusion output, not a refold: an oracle rebuilds a continuou... |
 
 ---
 
 ### rna_ss_f1_mcc
 
 *Motif-restricted secondary-structure F1 / MCC against reference pairs.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rna_ss_f1_mcc.py)
+
+**Outputs and interpretation:** F1 and Matthews correlation coefficient compare predicted/reference RNA secondary-structure pair assignments. The assigned base pairs and matching scheme define positives and negatives; inspect unresolved residues before comparing results.
 
 Class: `RNASecondaryStructureF1Block` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
@@ -1414,8 +1550,8 @@ Class: `RNASecondaryStructureF1Block` · Input: `True` · Resources: partition=`
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `predictions_csv` | `str` | **required** | RNet2 runner output CSV. Must carry 'predicted_dbn' and the key column named by 'join_on'. |
 | `join_on` | `str` | `'design_path'` | Column shared with the handler used to match a prediction to its design. Row position is NOT used - the runner preser... |
-| `reference_pairs` | `list[list[str]]` | `[]` | Canonical (WC + G.U) reference pairs as reference residue ids, e.g. [["A5", "A10"], ["A12", "A25"]]. Resolved through... |
-| `pseudoknot_pairs` | `list[list[str]]` | `[]` | Reference pairs excluded from R because they are pseudoknotted. |
+| `reference_pairs` | `list[list[str]]` | `<computed at runtime>` | Canonical (WC + G.U) reference pairs as reference residue ids, e.g. [["A5", "A10"], ["A12", "A25"]]. Resolved through... |
+| `pseudoknot_pairs` | `list[list[str]]` | `<computed at runtime>` | Reference pairs excluded from R because they are pseudoknotted. |
 | `compare_to_vienna` | `bool` | `True` | Also report whole-sequence F1 between RNet and ViennaRNA's MFE on the same design. Cross-method 2D disagreement is a ... |
 
 ---
@@ -1424,13 +1560,17 @@ Class: `RNASecondaryStructureF1Block` · Input: `True` · Resources: partition=`
 
 *ViennaRNA Boltzmann scoring of a required base-pair set.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rna_thermo.py)
+
+**Outputs and interpretation:** ViennaRNA estimates `p_motif = exp(-(G_constrained - G_unconstrained) / RT)`, the ensemble probability of the required motif base pairs under its thermodynamic model. Pseudoknots are excluded and reported with partial status; the model lacks an Mg²⁺ term. Use it to compare designs within a target, not as an absolute measure of full-complex folding.
+
 Class: `RNAThermoBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `required_pairs` | `list[list[str]]` | `[]` | Base pairs the motif requires, as reference residue ids resolved through diffused_index_map, e.g. [["A10", "A24"], ["... |
-| `pseudoknot_pairs` | `list[list[str]]` | `[]` | Pairs that form pseudoknots. Excluded from the constraint because ViennaRNA's model cannot represent them; reported a... |
+| `required_pairs` | `list[list[str]]` | `<computed at runtime>` | Base pairs the motif requires, as reference residue ids resolved through diffused_index_map, e.g. [["A10", "A24"], ["... |
+| `pseudoknot_pairs` | `list[list[str]]` | `<computed at runtime>` | Pairs that form pseudoknots. Excluded from the constraint because ViennaRNA's model cannot represent them; reported a... |
 | `chain` | `Optional[str]` | `None` | Restrict to one chain id. None uses every RNA residue. |
 
 ---
@@ -1438,6 +1578,10 @@ Class: `RNAThermoBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB
 ### rotamer_metrics
 
 *Compute rotamer quality metrics for protein structures.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/rotamer.py)
+
+**Outputs and interpretation:** Reports sidechain rotamer quality against the selected library/model. Percentile and probability fields are different quantities; compare using the same backend and residue selection.
 
 Class: `RotamerMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1456,6 +1600,10 @@ Class: `RotamerMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem
 
 *Per-fold SS composition + loop/pLDDT disorder, globally and around the ligand.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/secondary_structure.py)
+
+**Outputs and interpretation:** Reports secondary-structure composition and loop/confidence disorder summaries globally or around a ligand pocket. Confidence interpretation requires the input B-factor field to carry the intended pLDDT values.
+
 Class: `SecondaryStructureBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1472,6 +1620,10 @@ Class: `SecondaryStructureBlock` · Input: `True` · Resources: Not specified
 ### sequence_identity_gate
 
 *Hard novelty gate on scaffold-region global sequence identity.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/sequence_identity_gate.py)
+
+**Outputs and interpretation:** Checks identity against a reference sequence collection and reports the nearest match/gate verdict. Identity thresholds describe sequence similarity, not structural or functional novelty by themselves.
 
 Class: `SequenceIdentityGateBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
@@ -1490,6 +1642,10 @@ Class: `SequenceIdentityGateBlock` · Input: `True` · Resources: partition=`cpu
 
 *Measure how closely an assembly obeys its declared cyclic point group.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/symmetry.py)
+
+**Outputs and interpretation:** Measures deviation of a homo-oligomeric assembly from cyclic point-group symmetry. Atom selection and subunit correspondence define the geometric comparison; symmetry alone does not establish stability.
+
 Class: `SymmetryMetricsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1506,6 +1662,10 @@ Class: `SymmetryMetricsBlock` · Input: `True` · Resources: partition=`cpu`, me
 
 *TM-score against an external reference structure.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/tm_score.py)
+
+**Outputs and interpretation:** TM-score compares a structure with an external reference fold using a length-normalized structural similarity score. Higher values indicate greater similarity; reference choice, aligned chains, and normalization determine comparability.
+
 Class: `TMScoreBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1520,6 +1680,10 @@ Class: `TMScoreBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`,
 ### tm_score_rna
 
 *TM-score_RNA against a reference fold, computed by US-align.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/tm_score_rna.py)
+
+**Outputs and interpretation:** RNA structural similarity against a reference, using the block's selected nucleotide anchor atoms and alignment/normalization settings. Higher TM-score means closer overall fold; it does not certify base-pair or catalytic geometry.
 
 Class: `TMScoreRNABlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
@@ -1545,6 +1709,8 @@ Class: `TMScoreRNABlock` · Input: `True` · Resources: partition=`cpu`, mem=`4G
 
 *Annotate molecular structures with interface, hbond, and ligand info.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/annotate.py)
+
 Class: `AnnotateBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1552,13 +1718,15 @@ Class: `AnnotateBlock` · Input: `True` · Resources: Not specified
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `annotations` | `list[str]` | `['interface', 'hbond', 'aromatics_near_ligand', 'ligand']` | — |
 | `overwrite` | `bool` | `True` | Whether to overwrite existing annotations |
-| `interface_config` | `InterfaceConfig` | `InterfaceConfig(min_contact_radius=2.0, contact_radius=3.5, query=InterfaceQuery(chain=None, residue=None))` | Configuration for interface residue annotation |
+| `interface_config` | `InterfaceConfig` | `<computed at runtime>` | Configuration for interface residue annotation |
 
 ---
 
 ### filter
 
 *Filter pipeline rows by metric range filters or a predicate function.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/filter.py)
 
 Class: `FilterBlock` · Input: `True` · Resources: Not specified
 
@@ -1578,12 +1746,14 @@ Class: `FilterBlock` · Input: `True` · Resources: Not specified
 
 *Ingest data from various sources (dir, csv, dataframe, sequences, or compile).*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/ingest.py)
+
 Class: `IngestBlock` · Input: `False` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `source` | `str | PipelineDataHandler` | **required** | Data source to ingest. When compile_as is provided, this should be a comma-separated list of directory paths. Otherwi... |
+| `source` | `str \| PipelineDataHandler` | **required** | Data source to ingest. When compile_as is provided, this should be a comma-separated list of directory paths. Otherwi... |
 | `compile_as` | `Optional[str]` | `None` | If provided, treat source as comma-separated directories and compile using the specified block (e.g., 'rfd3', 'mpnn') |
 
 ---
@@ -1591,6 +1761,8 @@ Class: `IngestBlock` · Input: `False` · Resources: Not specified
 ### materialize
 
 *Write stored structures to disk.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/materialize.py)
 
 Class: `MaterializeBlock` · Input: `True` · Resources: Not specified
 
@@ -1606,6 +1778,8 @@ Class: `MaterializeBlock` · Input: `True` · Resources: Not specified
 
 *Expand each input structure into named residue-mutation variants.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/mutate_residues.py)
+
 Class: `MutateResiduesBlock` · Input: `True` · Resources: partition=`cpu`, mem=`4GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1619,12 +1793,14 @@ Class: `MutateResiduesBlock` · Input: `True` · Resources: partition=`cpu`, mem
 
 *Extract sequences, check ordered status, and collect prediction metrics.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/order_collection.py)
+
 Class: `OrderCollectionBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `ordered_sequences` | `list[str]` | `[]` | Ordered sequence fingerprints (from final filter) |
+| `ordered_sequences` | `list[str]` | `<computed at runtime>` | Ordered sequence fingerprints (from final filter) |
 | `prediction_step` | `str` | `''` | Prediction step name to extract metrics from |
 
 ---
@@ -1632,6 +1808,8 @@ Class: `OrderCollectionBlock` · Input: `True` · Resources: Not specified
 ### package_submission
 
 *Write a validated ``designs.csv`` (and optional ``run_meta.json``).*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/package_submission.py)
 
 Class: `PackageSubmissionBlock` · Input: `True` · Resources: Not specified
 
@@ -1650,6 +1828,8 @@ Class: `PackageSubmissionBlock` · Input: `True` · Resources: Not specified
 ### remap_ligand
 
 *Rename predicted ligand atom/residue names to match a reference CIF.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/remap_ligand.py)
 
 Class: `RemapLigandBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1672,6 +1852,8 @@ Class: `RemapLigandBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 
 *Restore explicitly selected side-chain conformers from an earlier step.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/restore_sidechains.py)
+
 Class: `RestoreSidechainsBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
@@ -1686,6 +1868,8 @@ Class: `RestoreSidechainsBlock` · Input: `True` · Resources: partition=`cpu`, 
 ### rotamer_sweep
 
 *Mutate named residues and enumerate explicit chi-angle combinations.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/rotamer_sweep.py)
 
 Class: `SidechainRotamerSweepBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
@@ -1702,6 +1886,8 @@ Class: `SidechainRotamerSweepBlock` · Input: `True` · Resources: partition=`cp
 
 *Keep a subset of rows no two of which exceed the similarity cutoffs.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/select_diverse.py)
+
 Class: `SelectDiverseBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1713,13 +1899,15 @@ Class: `SelectDiverseBlock` · Input: `True` · Resources: Not specified
 | `rank_ascending` | `bool` | `True` | True when a lower rank_by value is better (e.g. PAE) |
 | `sequence_key` | `str` | `'sequence'` | Column holding the amino-acid sequence. The default resolves standard sequence_<CHAIN> columns and structure-backed p... |
 | `require_target` | `bool` | `False` | Raise if target_count cannot be met, rather than warning |
-| `required_structure_steps` | `list[str]` | `[]` | Only select rows containing outputs from every named structure step (for example ['rf3']); use this to prevent unscre... |
+| `required_structure_steps` | `list[str]` | `<computed at runtime>` | Only select rows containing outputs from every named structure step (for example ['rf3']); use this to prevent unscre... |
 
 ---
 
 ### select_motif
 
 *Apply a user-defined function across structures to update motif annotations.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/select_motif.py)
 
 Class: `SelectMotifBlock` · Input: `True` · Resources: Not specified
 
@@ -1736,12 +1924,14 @@ Class: `SelectMotifBlock` · Input: `True` · Resources: Not specified
 
 *Resolve local protein clashes without moving the backbone or ligand.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/repack_sidechains.py)
+
 Class: `SelectiveSidechainRepackBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `positions` | `list[str]` | `[]` | Protein residue IDs to repack, such as ['A42', 'A:73']. |
+| `positions` | `list[str]` | `<computed at runtime>` | Protein residue IDs to repack, such as ['A42', 'A:73']. |
 | `clash_distance` | `Optional[float]` | `None` | When set, also detect and repack each structure's residues in nonbonded protein-heavy-atom contacts below this distance. |
 | `sequence_separation` | `int` | `1` | Same-chain residue separation excluded from clash detection. |
 | `scorefxn_name` | `str` | `'beta_nov16'` | Rosetta score function used to select fixed-identity rotamers. |
@@ -1752,6 +1942,8 @@ Class: `SelectiveSidechainRepackBlock` · Input: `True` · Resources: partition=
 ### to_cif
 
 *Parse input structures and re-save as clean CIF files.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/parse.py)
 
 Class: `ParseToCifBlock` · Input: `True` · Resources: Not specified
 
@@ -1765,6 +1957,8 @@ Class: `ParseToCifBlock` · Input: `True` · Resources: Not specified
 
 *Parse input structures and re-save as clean PDB files.*
 
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/parse.py)
+
 Class: `ParseToPdbBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
@@ -1776,6 +1970,8 @@ Class: `ParseToPdbBlock` · Input: `True` · Resources: Not specified
 ### transform
 
 *Apply an atomworks Transform to each row of the pipeline.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/transform.py)
 
 Class: `TransformBlock` · Input: `True` · Resources: Not specified
 
