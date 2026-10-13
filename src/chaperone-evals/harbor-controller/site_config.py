@@ -33,6 +33,7 @@ ENV_NAMES = {
     "CHAPERONE_GPU_PARTITION",
     "CHAPERONE_GRES_MAP",
     "CHAPERONE_CONTAINER_DIRS",
+    "CHAPERONE_MPNN_CONTAINER",
     "HF_HUB_CACHE",
     "BOLTZ_CACHE_DIR",
     "AF3_JAX_CACHE_DIR",
@@ -176,6 +177,10 @@ def get_site() -> dict:
             **supplied,
             **overrides.get("environment", {}),
         }
+    if site["environment"].get("CHAPERONE_MPNN_CONTAINER", "auto") not in {
+        "auto", "portable", "legacy"
+    }:
+        raise ValueError("CHAPERONE_MPNN_CONTAINER must be auto, portable or legacy")
     site["gpu_partition"] = site["gpu_partition"] or site["cpu_partition"]
     # The scheduler mapping and broker must agree even when the snapshot has no dotenv files.
     gres = "gpu:" + (site["gpu_type"] + ":" if site["gpu_type"] else "") + "1"

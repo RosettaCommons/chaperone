@@ -34,7 +34,7 @@ blocks = [
     ),
     # Refold with AF3 — DISCO labels the ligand as 'l01' in its PDB output,
     # so we map it to heme B's CCD code for AF3 to recognise it.
-    AF3(specified_ccd={"l01": "HEM"}),
+    AF3(input_mode="json", specified_ccd={"l01": "HEM"}),
     RMSD(
         alignment_methods=[SELECTIONS.BKBN],
         rmsd_targets=[SELECTIONS.BKBN, SELECTIONS.CA],

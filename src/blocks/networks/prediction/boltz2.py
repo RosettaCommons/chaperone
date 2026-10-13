@@ -4,6 +4,7 @@ import glob
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 import yaml
@@ -52,10 +53,14 @@ BOLTZ2_CONTAINER = (
     )
     .run(
         ". /opt/boltz2-env/bin/activate && "
-        "pip install torch --index-url https://download.pytorch.org/whl/cu126",
+        "pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
     )
     .run(
-        ". /opt/boltz2-env/bin/activate && pip install 'boltz[cuda]'",
+        ". /opt/boltz2-env/bin/activate && pip install 'boltz[cuda]==2.2.1' 'numpy==1.26.4' 'torch==2.11.0'",
+    )
+    .run(
+        '. /opt/boltz2-env/bin/activate && pip check',
+        '/opt/boltz2-env/bin/python -c \'import torch; import boltz.main; import boltz.model.models.boltz2; assert torch.version.cuda == "12.8"\'',
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -64,7 +69,7 @@ BOLTZ2_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/boltz2-env",
     )
-    .label(Version="v2.2.1", CUDA="12.6")
+    .label(Version="v2.2.1", CUDA="12.8", PyTorch="2.11.0")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -170,7 +175,24 @@ class Boltz2Block(AF3LikePredictionBlock):
         )
         return self
 
+    def get_command_template(self) -> list[str]:
+        self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
+        return self._script_spec.image.build_command(
+            *self._script_spec.command,
+            env={
+                **self._jit_safe_env(),
+                "BOLTZ_CACHE_DIR": self.cache_dir,
+                "CUEQ_TRITON_CACHE_DIR": "/tmp/cuequivariance-triton",
+                "TRITON_CACHE_DIR": "/tmp/triton",
+            },
+            binds=[(self.cache_dir, self.cache_dir)],
+        )
+
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
+        try:
+            Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise OSError(f"Cannot prepare BOLTZ_CACHE_DIR cache directory: {self.cache_dir}") from error
         sandbox_dir = os.path.abspath(sandbox_dir)
         inputdir = os.path.join(sandbox_dir, "inputs")
         os.makedirs(inputdir, exist_ok=True)

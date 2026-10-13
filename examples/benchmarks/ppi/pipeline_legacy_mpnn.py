@@ -15,7 +15,7 @@ Cloud runs:
     FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
     MPNN_WEIGHTS_DIR=/abs/path/to/fused_mpnn_weights \
     ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py \
-        --config=tests/test_overrides.yaml
+        --test
 
 The legacy mpnn block auto-selects the on-prem SIF when it exists on
 disk, otherwise falls back to the cloud-buildable ``modelhub_cloud``

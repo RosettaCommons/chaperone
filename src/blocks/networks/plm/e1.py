@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs, get_setting_field
 from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 from chaperone.containers import Image
 from blocks.constants import cuda_python_base
@@ -13,19 +13,30 @@ from blocks.constants import cuda_python_base
 logger = logging.getLogger(__name__)
 
 SCRIPT_PATH = Path(__file__).parent.parent.parent / "scripts" / "run_e1.py"
+_E1_REVISION = "219c7c7a3a803b8552ae6a44ce6dd24f133fefbd"
 
 E1_CONTAINER = (
     cuda_python_base(Image("e1"), "e1")
+    .packages("ninja-build", "python3.12-dev")
     .run(
         "cd /opt && git clone https://github.com/Profluent-AI/E1.git",
-        ". /opt/e1-env/bin/activate && cd /opt/E1 && pip install . && pip install accelerate",
+        f"git -C /opt/E1 checkout --detach {_E1_REVISION}",
+        ". /opt/e1-env/bin/activate && pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128",
+        ". /opt/e1-env/bin/activate && cd /opt/E1 && "
+        "pip install . 'torch==2.8.0' 'transformers==4.56.2' 'numpy==2.4.1' 'accelerate==1.12.0' packaging wheel",
     )
     .run(
         ". /opt/e1-env/bin/activate && "
-        "TMPDIR=/tmp pip cache purge && pip install flash-attn --no-build-isolation --no-cache-dir"
+        "CUDA_HOME=/usr/local/cuda MAX_JOBS=4 TMPDIR=/tmp "
+        "pip install flash-attn==2.8.3 --no-build-isolation --no-cache-dir",
+        ". /opt/e1-env/bin/activate && pip check",
+        "/opt/e1-env/bin/python -c 'import torch; import flash_attn; "
+        "from E1.modeling import E1ForMaskedLM; from E1.predictor import E1Predictor; "
+        'assert torch.version.cuda == "12.8"' + "'",
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .runscript('"$@"')
+    .label(SourceRevision=_E1_REVISION, PyTorch="2.8.0", CUDA="12.8")
 )
 
 
@@ -76,6 +87,21 @@ class E1Block(CompiledBlockFunction):
         default=None,
         description="Optional path to context FASTA for retrieval-augmented prediction",
     )
+    cache_dir: str = Field(
+        default_factory=lambda: str(
+            get_setting_field("HF_HUB_CACHE", None)
+            or Path.home() / ".cache" / "huggingface" / "hub"
+        ),
+        description="Hugging Face model cache, mounted directly into the container",
+    )
+
+    def get_command_template(self) -> list[str]:
+        self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
+        return E1_CONTAINER.build_command(
+            *self._script_spec.command,
+            binds=[(self.cache_dir, self.cache_dir)],
+            env={"HF_HUB_CACHE": self.cache_dir},
+        )
 
     def _resolve_model_name(self) -> str:
         """Resolve the configured model name to a full HuggingFace repository path.
@@ -95,6 +121,10 @@ class E1Block(CompiledBlockFunction):
         sandbox_dir: Path,
         chunk_id: int,
     ) -> list[str]:
+        try:
+            Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise OSError(f"Cannot prepare HF_HUB_CACHE directory: {self.cache_dir}") from error
         sandbox_dir = Path(sandbox_dir)
         sandbox_dir.mkdir(parents=True, exist_ok=True)
         input_file = sandbox_dir / "inputs.fasta"

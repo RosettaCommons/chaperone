@@ -19,8 +19,11 @@ Example:
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import cache
+import json
 import logging
 import os
 from pathlib import Path
@@ -41,6 +44,9 @@ _UNSAFE_RUNDIR_BINDS = frozenset(
         "/",
         "/home",
         "/mnt",
+        "/mnt/net",
+        "/mnt/net/scratch",
+        "/mnt/projects",
         "/net",
         "/net/scratch",
         "/projects",
@@ -82,44 +88,117 @@ def _supports_private_mount_namespace() -> bool:
     return result.returncode == 0
 
 
+def _checked_runtime_path(value: str | Path, *, label: str) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        raise ValueError(f"{label} must be absolute")
+    path = path.absolute()
+    if path in _UNSAFE_RUNDIR_BINDS or path.resolve() in _UNSAFE_RUNDIR_BINDS:
+        raise ValueError(f"Refusing broad nested-container {label} bind: {path}")
+    return path
+
+
+_RUNTIME_BIND_SETTINGS: ContextVar[dict | None] = ContextVar("container_runtime_bind_settings", default=None)
+
+
+def _runtime_setting(settings: object, name: str, default=None):
+    context = _RUNTIME_BIND_SETTINGS.get()
+    if context is not None and name in context:
+        return context[name]
+    return getattr(settings, name, default)
+
+
+@contextmanager
+def container_runtime_bind_settings(context: dict | None):
+    """Restore submission paths while staging a block in a fresh Slurm worker."""
+    token = _RUNTIME_BIND_SETTINGS.set(context)
+    try:
+        yield
+    finally:
+        _RUNTIME_BIND_SETTINGS.reset(token)
+
+
+def capture_container_runtime_bind_settings(rundir: Path) -> dict:
+    """Snapshot exact engine paths, independent of a worker's cwd or settings."""
+    from chaperone import get_settings
+
+    settings = get_settings()
+    workspace = _runtime_workspace_bind(settings)
+    return {
+        "RUNDIR": rundir,
+        "CHAPERONE_CONTAINER_BIND_RUNDIR": settings.CHAPERONE_CONTAINER_BIND_RUNDIR,
+        "CHAPERONE_CONTAINER_BIND_WORKSPACE": workspace is not None,
+        "CHAPERONE_CONTAINER_WORKSPACE": workspace[0] if workspace else None,
+        "_HARBOR_HOST_WORKSPACE": os.environ.get("HARBOR_HOST_WORKSPACE"),
+    }
+
+
 def _runtime_rundir_bind(settings: object) -> tuple[str, str] | None:
-    """Return the opt-in, exact run-directory bind for contained tools."""
-    if getattr(settings, "CHAPERONE_CONTAINER_BIND_RUNDIR", False) is not True:
+    """Expose the exact active run directory once the engine has selected it."""
+    if _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_RUNDIR", False) is not True:
         return None
-    configured = getattr(settings, "RUNDIR", None)
+    configured = _runtime_setting(settings, "RUNDIR", None)
     if configured is None:
-        raise ValueError(
-            "CHAPERONE_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
-        )
-    configured_path = Path(configured).expanduser()
-    if not configured_path.is_absolute():
-        raise ValueError(
-            "CHAPERONE_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
-        )
-    rundir = configured_path.absolute()
-    if rundir in _UNSAFE_RUNDIR_BINDS:
-        raise ValueError(f"Refusing broad nested-container RUNDIR bind: {rundir}")
-    spelling = str(rundir)
-    return spelling, spelling
+        # Block instances commonly precede ExecutionEngine construction. Their
+        # generated templates are refreshed when create_manifest is called.
+        return None
+    path = _checked_runtime_path(configured, label="RUNDIR")
+    return str(path), str(path)
 
 
 def _runtime_workspace_bind(settings: object) -> tuple[str, str] | None:
-    """Return the opt-in, exact workspace bind provided by the runtime."""
-    if getattr(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
+    """Use the trusted eval workspace, or an ordinary user's exact work folder."""
+    if _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
         return None
-    configured = os.environ.get("HARBOR_HOST_WORKSPACE")
-    if not configured:
-        raise ValueError(
-            "CHAPERONE_CONTAINER_BIND_WORKSPACE requires HARBOR_HOST_WORKSPACE"
-        )
-    workspace = Path(configured).expanduser()
-    if not workspace.is_absolute():
-        raise ValueError("HARBOR_HOST_WORKSPACE must be absolute")
-    workspace = workspace.absolute()
-    if workspace in _UNSAFE_RUNDIR_BINDS:
-        raise ValueError(f"Refusing broad nested-container workspace bind: {workspace}")
-    spelling = str(workspace)
-    return spelling, spelling
+    configured = (
+        os.environ.get("HARBOR_HOST_WORKSPACE")
+        or _runtime_setting(settings, "_HARBOR_HOST_WORKSPACE")
+        or _runtime_setting(settings, "CHAPERONE_CONTAINER_WORKSPACE")
+    )
+    if configured is None:
+        configured = Path.cwd()
+        if (
+            configured in _UNSAFE_RUNDIR_BINDS
+            or configured.resolve() in _UNSAFE_RUNDIR_BINDS
+            or configured.resolve() == Path.home().resolve()
+        ):
+            return None
+    path = _checked_runtime_path(configured, label="workspace")
+    return str(path), str(path)
+
+
+def _runtime_bind_aliases(bind: tuple[str, str]) -> list[tuple[str, str]]:
+    """Keep both /net and /mnt/net (and other resolved spellings) usable."""
+    source, destination = bind
+    resolved = str(Path(source).resolve())
+    return list(dict.fromkeys([bind, (resolved, resolved)]))
+
+
+def _runtime_script_binds(settings: object, args: tuple[str, ...]) -> list[tuple[str, str]]:
+    """Expose installed wrapper code without mounting its enclosing environment."""
+    if _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
+        return []
+    # Restricted workers receive only their assigned workspace and
+    # read-only assets. Never infer additional source mounts in that mode.
+    if os.environ.get("HARBOR_HOST_WORKSPACE") or _runtime_setting(settings, "_HARBOR_HOST_WORKSPACE"):
+        return []
+    covered = [
+        Path(bind[0]).resolve()
+        for bind in (_runtime_rundir_bind(settings), _runtime_workspace_bind(settings))
+        if bind is not None
+    ]
+    mounts = []
+    for argument in args:
+        script = Path(argument)
+        if script.is_absolute() and script.suffix in {".py", ".sh"} and script.is_file():
+            directory = _checked_runtime_path(script.parent, label="script directory")
+            if any(directory.resolve().is_relative_to(root) for root in covered):
+                # A read-only bind of the same directory would shadow the
+                # writable workspace or run bind already present.
+                continue
+            for source, destination in _runtime_bind_aliases((str(directory), str(directory))):
+                mounts.append((source, destination + ":ro"))
+    return list(dict.fromkeys(mounts))
 
 
 def get_container_dirs() -> list[Path]:
@@ -335,15 +414,14 @@ class Image:
             image_ref = f"${{CONTAINER:{self.name}}}"
 
         settings = get_settings()
-        runtime_bind = _runtime_rundir_bind(settings)
-        if runtime_bind is not None and runtime_bind not in all_binds:
-            # --containall deliberately hides ambient host mounts. Controllers
-            # opt in to exposing only their exact run directory, not the
-            # enclosing workspace or all of /net/scratch.
-            all_binds.append(runtime_bind)
-        workspace_bind = _runtime_workspace_bind(settings)
-        if workspace_bind is not None and workspace_bind not in all_binds:
-            all_binds.append(workspace_bind)
+        for runtime_bind in (_runtime_rundir_bind(settings), _runtime_workspace_bind(settings)):
+            if runtime_bind is not None:
+                for alias in _runtime_bind_aliases(runtime_bind):
+                    if alias not in all_binds:
+                        all_binds.append(alias)
+        for script_bind in _runtime_script_binds(settings, args):
+            if script_bind not in all_binds:
+                all_binds.append(script_bind)
 
         backend = settings.CHAPERONE_CONTAINER_BACKEND
 
@@ -460,7 +538,7 @@ class Image:
             f"Run 'chaperone install {self.name}' to build it."
         )
 
-    def _build_stage(self) -> hpccm.Stage:
+    def _build_stage(self, *, docker: bool = False) -> hpccm.Stage:
         """Build HPCCM Stage from this spec."""
         if not self._base_image:
             raise ValueError(
@@ -491,7 +569,13 @@ class Image:
             stage += environment(variables=self._env_vars)
 
         if self._labels:
-            stage += label(metadata=self._labels)
+            # HPCCM emits label values verbatim. Docker needs quoting for
+            # spaces/quotes and literal dollars; Apptainer keeps its text form.
+            metadata = {
+                key: json.dumps(str(value)).replace("$", r"\$") if docker else value
+                for key, value in self._labels.items()
+            }
+            stage += label(metadata=metadata)
 
         if self._runscript:
             stage += raw(
@@ -504,7 +588,7 @@ class Image:
         """Generate Dockerfile."""
         if self._existing_path:
             raise ValueError("Cannot generate Dockerfile for existing container")
-        stage = self._build_stage()
+        stage = self._build_stage(docker=True)
         hpccm.config.set_container_format("docker")
         return str(stage)
 

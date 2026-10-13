@@ -46,26 +46,26 @@ def _write_fasta(path: Path, target: str, sequence: str) -> None:
 
 SIMPLEFOLD_CONTAINER = (
     Image("simplefold")
-    .base_image("ubuntu:22.04")
+    .base_image("ubuntu:24.04")
     .packages(
         "build-essential",
         "ca-certificates",
         "curl",
         "git",
         "gnupg",
-        "python3.10",
-        "python3.10-dev",
-        "python3.10-venv",
+        "python3.12",
+        "python3.12-dev",
+        "python3.12-venv",
         "python3-pip",
     )
-    .run(*make_cuda_install("12-6", ubuntu="2204"))
+    .run(*make_cuda_install("12-8"))
     .run(
-        "python3.10 -m venv /opt/simplefold-env",
+        "python3.12 -m venv /opt/simplefold-env",
         ". /opt/simplefold-env/bin/activate && pip install --upgrade pip setuptools wheel",
     )
     .run(
         ". /opt/simplefold-env/bin/activate && "
-        "pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu126 && "
+        "pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128 && "
         "pip install fair-esm==2.0.0"
     )
     .git_clone(
@@ -73,7 +73,10 @@ SIMPLEFOLD_CONTAINER = (
     )
     .run(
         f"cd /opt/simplefold && git checkout {SIMPLEFOLD_COMMIT}",
-        ". /opt/simplefold-env/bin/activate && cd /opt/simplefold && pip install .",
+        ". /opt/simplefold-env/bin/activate && cd /opt/simplefold && pip install . && pip check",
+        "/opt/simplefold-env/bin/python -c 'import sys, simplefold; "
+        "from pathlib import Path; sys.path.append(str(Path(simplefold.__file__).parent)); "
+        "from simplefold import inference'",
     )
     .copy(str(SIMPLEFOLD_RUNNER_PATH), SIMPLEFOLD_RUNNER_DEST)
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
@@ -83,7 +86,7 @@ SIMPLEFOLD_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/simplefold-env",
     )
-    .label(Version=SIMPLEFOLD_COMMIT, CUDA="12.6", Source="apple/ml-simplefold")
+    .label(Version=SIMPLEFOLD_COMMIT, CUDA="12.8", Source="apple/ml-simplefold")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -215,14 +218,20 @@ class SimpleFoldBlock(AF3LikePredictionBlock):
         return Path(sandbox_dir) / f"{self.name}_manifest"
 
     def get_command_template(self) -> list[str]:
+        weights = Path(self.weights_dir).expanduser()
+        if not weights.is_absolute():
+            raise ValueError(f"weights_dir must be absolute: {self.weights_dir}")
+        self.weights_dir = str(weights.resolve())
         env = self._jit_safe_env()
         env["TORCH_HOME"] = os.path.join(self.weights_dir, "torch")
         env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env
+            *self._script_spec.command, env=env,
+            binds=[(self.weights_dir, self.weights_dir)],
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
+        Path(self.weights_dir).mkdir(parents=True, exist_ok=True)
         _, inputdir, outputdir = self._setup_io_dirs(sandbox_dir)
 
         for loaded in handler.get_data(which=self.which, load=True):

@@ -4,7 +4,7 @@ CompiledBlockFunction: Block execution split into prepare→execute→compile st
 
 from typing import ClassVar, List, Optional, TYPE_CHECKING
 from abc import abstractmethod
-from pydantic import model_validator
+from pydantic import PrivateAttr, model_validator
 import json
 import os
 import sys
@@ -85,12 +85,30 @@ class CompiledBlockFunction(BlockFunction):
     _script_spec: ClassVar[ScriptSpec | None] = None  # Script metadata
 
     command_template: Optional[List[str]] = None
+    _generated_command_template: Optional[List[str]] = PrivateAttr(default=None)
+    _container_bind_settings: Optional[dict] = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def _resolve_command_template(self):
         if self.command_template is None:
             self.command_template = self.get_command_template()
+            self._generated_command_template = list(self.command_template)
         return self
+
+    def _set_container_bind_settings(self, context: dict) -> None:
+        """Resolve engine paths before caching configuration or serializing."""
+        from chaperone.containers import container_runtime_bind_settings
+
+        self._container_bind_settings = dict(context)
+        with container_runtime_bind_settings(self._container_bind_settings):
+            self._refresh_generated_command_template()
+
+    def _refresh_generated_command_template(self) -> None:
+        # Preserve explicitly supplied templates and user edits.
+        generated = getattr(self, "_generated_command_template", None)
+        if generated is not None and self.command_template == generated:
+            self.command_template = self.get_command_template()
+            self._generated_command_template = list(self.command_template)
 
     def stage_file(
         self,
@@ -270,7 +288,15 @@ class CompiledBlockFunction(BlockFunction):
     def create_manifest(self, handler, sandbox_dir, chunk_id, write=True):
         """Create manifest for block execution."""
         sandbox_dir = Path(sandbox_dir)
-        command = self.create_command(handler, sandbox_dir, chunk_id)
+        from chaperone.containers import container_runtime_bind_settings
+
+        with container_runtime_bind_settings(getattr(self, "_container_bind_settings", None)):
+            # Engine-managed blocks already resolved their template before
+            # hashing/serialization. Preserve those submission-time settings in
+            # fresh workers; direct block calls still resolve paths lazily here.
+            if getattr(self, "_container_bind_settings", None) is None:
+                self._refresh_generated_command_template()
+            command = self.create_command(handler, sandbox_dir, chunk_id)
         command = self._resolve_command(command)
         manifest = Manifest(
             name=self.name,
@@ -312,7 +338,9 @@ class CompiledBlockFunction(BlockFunction):
                 chunk_id=chunk_id,
                 command=manifest.command_str or manifest.command,
             ):
-                Manifest.exec(sandbox_dir)
+                # A stale artifact must never turn a failed command into a
+                # successful compile or execution-accounting record.
+                Manifest.exec(sandbox_dir).check_returncode()
 
         # Compile results, optionally store, and backlink
         output: PipelineDataHandler = self.compile(str(sandbox_dir))

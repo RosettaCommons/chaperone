@@ -172,19 +172,21 @@ class ChaperoneSettings(BaseSettings):
         description="Colon-separated list of directories to search for container images.",
     )
     CHAPERONE_CONTAINER_BIND_RUNDIR: bool = Field(
-        default=False,
-        description=(
-            "Bind the active Chaperone RUNDIR read-write at the same path in "
-            "nested tool containers. Intended for contained controller jobs "
-            "whose run directory is otherwise hidden by --containall."
-        ),
+        default=True,
+        description="Bind the exact active RUNDIR into tool containers, once the engine selects it.",
     )
     CHAPERONE_CONTAINER_BIND_WORKSPACE: bool = Field(
-        default=False,
+        default=True,
         description=(
-            "Bind only HARBOR_HOST_WORKSPACE read-write at the same absolute "
-            "path in nested tool containers. This exposes workspace code without "
-            "restoring broad ambient host mounts under --containall."
+            "Bind the exact work folder into tool containers. Evaluations always use "
+            "their controller-provided HARBOR_HOST_WORKSPACE."
+        ),
+    )
+    CHAPERONE_CONTAINER_WORKSPACE: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Ordinary work folder containing source scripts and inputs; defaults to the "
+            "working directory. Ignored when HARBOR_HOST_WORKSPACE is supplied."
         ),
     )
 
@@ -339,6 +341,16 @@ class ChaperoneSettings(BaseSettings):
         description=(
             "Directory containing AlphaFold3 model weights (license-gated; "
             "request access from DeepMind)."
+        ),
+    )
+    CHAPERONE_MPNN_CONTAINER: Literal["auto", "portable", "legacy"] = Field(
+        default="auto",
+        description=(
+            "Legacy MPNN runtime selection. Auto prefers an installed "
+            "modelhub_portable.sif, then the existing IPD image; Docker uses "
+            "the portable recipe. Portable forces the rebuildable image; "
+            "legacy explicitly selects the existing IPD Apptainer image. "
+            "Set before importing blocks."
         ),
     )
     MPNN_WEIGHTS_DIR: Optional[str] = Field(

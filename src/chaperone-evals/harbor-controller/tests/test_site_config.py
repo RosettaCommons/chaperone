@@ -134,7 +134,10 @@ def test_wrapper_uses_external_python_assets_and_settings(monkeypatch, tmp_path)
         tmp_path,
         worker_python="/opt/custom/bin/python",
         runtime_binds=[str(asset)],
-        environment={"HBPLUS_COPY": str(asset / "hbplus")},
+        environment={
+            "HBPLUS_COPY": str(asset / "hbplus"),
+            "CHAPERONE_MPNN_CONTAINER": "portable",
+        },
     )
     workspace = tmp_path / "workspace"
     (workspace / "chaperone/src").mkdir(parents=True)
@@ -147,6 +150,7 @@ def test_wrapper_uses_external_python_assets_and_settings(monkeypatch, tmp_path)
     assert "exec /opt/custom/bin/python" in text
     assert str(asset) + ":" + str(asset) + ":ro" in text
     assert "export HBPLUS_COPY=" in text
+    assert "export CHAPERONE_MPNN_CONTAINER=portable" in text
     assert "/projects/ml/" not in text and "/opt/pipelines/" not in text
 
 
@@ -158,10 +162,50 @@ def test_supplied_env_file_is_allowlisted(monkeypatch, tmp_path):
     assert "OPENAI_API_KEY" not in site["environment"]
 
 
+@pytest.mark.parametrize("selector", ["auto", "portable", "legacy"])
+@pytest.mark.parametrize("source", ["json", "env_file"])
+def test_mpnn_selector_reaches_scientific_environment(
+    monkeypatch, tmp_path, selector, source
+):
+    from site_config import scoring_environment
+
+    environment = {"CHAPERONE_MPNN_CONTAINER": selector}
+    if source == "env_file":
+        env = tmp_path / ".env.ipd"
+        env.write_text(f"CHAPERONE_MPNN_CONTAINER={selector}\n")
+        site = configure(monkeypatch, tmp_path, env_file=str(env))
+    else:
+        site = configure(monkeypatch, tmp_path, environment=environment)
+    assert site["environment"]["CHAPERONE_MPNN_CONTAINER"] == selector
+    assert scoring_environment()["CHAPERONE_MPNN_CONTAINER"] == selector
+
+
+def test_mpnn_json_selector_overrides_supplied_env_file(monkeypatch, tmp_path):
+    env = tmp_path / ".env.ipd"
+    env.write_text("CHAPERONE_MPNN_CONTAINER=legacy\n")
+    site = configure(
+        monkeypatch, tmp_path, env_file=str(env),
+        environment={"CHAPERONE_MPNN_CONTAINER": "portable"},
+    )
+    assert site["environment"]["CHAPERONE_MPNN_CONTAINER"] == "portable"
+
+
+@pytest.mark.parametrize("source", ["json", "env_file"])
+def test_invalid_mpnn_selector_fails_before_submission(monkeypatch, tmp_path, source):
+    overrides = {"environment": {"CHAPERONE_MPNN_CONTAINER": "other"}}
+    if source == "env_file":
+        env = tmp_path / ".env.ipd"
+        env.write_text("CHAPERONE_MPNN_CONTAINER=other\n")
+        overrides = {"env_file": str(env)}
+    with pytest.raises(ValueError, match="CHAPERONE_MPNN_CONTAINER"):
+        configure(monkeypatch, tmp_path, **overrides)
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
         {"environment": {"OPENAI_API_KEY": "secret"}},
+        {"environment": {"CHAPERONE_CONTAINER_WORKSPACE": "/untrusted"}},
         {"runtime_binds": ["relative"]},
         {"max_total_gpus": 0},
         {"gpu_type": "a100;evil"},

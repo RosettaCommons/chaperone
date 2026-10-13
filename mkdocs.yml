@@ -54,5 +54,6 @@ nav:
   - Container Installation: containers.md
   - Syntax Reference: syntax.md
   - Validation: validation.md
+  - Release Validation: release-validation.md
   - Evaluations: evaluations.md
   - Agent Skills: skills.md

@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+import shlex
+from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, model_validator
@@ -32,6 +34,7 @@ PROTENIX_CONTAINER = (
     .base_image("ubuntu:24.04")
     .packages(
         "build-essential",
+        "ninja-build",
         "git",
         "wget",
         "curl",
@@ -48,8 +51,11 @@ PROTENIX_CONTAINER = (
     .run(
         "mkdir -p /opt/hmmer_build /usr/local/hmmer",
         "wget http://eddylab.org/software/hmmer/hmmer-3.4.tar.gz -P /opt/hmmer_build",
+        "cd /opt/hmmer_build && echo "
+        "'ca70d94fd0cf271bd7063423aabb116d42de533117343a9b27a65c17ff06fbf3 hmmer-3.4.tar.gz' "
+        "| sha256sum --check",
         "cd /opt/hmmer_build && tar zxf hmmer-3.4.tar.gz && rm hmmer-3.4.tar.gz",
-        "cd /opt/hmmer_build/hmmer-3.4 && ./configure --prefix /usr/local/hmmer && make -j16 && make install",
+        "cd /opt/hmmer_build/hmmer-3.4 && ./configure --prefix /usr/local/hmmer && make -j4 && make install",
         "cd /opt/hmmer_build/hmmer-3.4/easel && make install",
         "rm -rf /opt/hmmer_build",
     )
@@ -57,32 +63,30 @@ PROTENIX_CONTAINER = (
         "python3.12 -m venv /opt/protenix-env",
         ". /opt/protenix-env/bin/activate && pip install --upgrade pip setuptools wheel",
     )
+    # Keep Protenix's declared versions together, selecting CUDA 12.8 wheels
+    # explicitly. Blackwell inference still needs verification on that hardware.
     .run(
         ". /opt/protenix-env/bin/activate && "
-        "pip install torch --index-url https://download.pytorch.org/whl/cu128",
+        "pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 "
+        "--index-url https://download.pytorch.org/whl/cu128",
+        ". /opt/protenix-env/bin/activate && pip install protenix==2.0.0 && pip check",
     )
     .run(
-        ". /opt/protenix-env/bin/activate && pip install protenix",
-        # Protenix 2.0.0 pins torch==2.7.1 which (a) drags the default cu126
-        # wheel back in and (b) ships a bf16 copy kernel fatbin without sm_120
-        # — so even after re-pinning 2.7.1 to cu128 the b4000 forward-pass
-        # dies in `x.to(bfloat16)`. torch 2.11.0+cu128 has complete sm_120
-        # coverage for the affected kernels, and Protenix 2.0.0's forward
-        # runs cleanly against it despite the version-pin warning (verified
-        # A4000 + B4000 e2e). Force-install over protenix's pin.
-        ". /opt/protenix-env/bin/activate && "
-        "pip install --upgrade --force-reinstall "
-        "torch==2.11.0 torchvision torchaudio "
-        "--index-url https://download.pytorch.org/whl/cu128",
-        # torch 2.11+cu128 pulls numpy 2.4.3, but protenix pins numpy==2.4.1.
-        # Restore protenix's pin; 2.4.1 vs 2.4.3 is ABI-compatible with torch.
-        '. /opt/protenix-env/bin/activate && pip install "numpy==2.4.1"',
-        # Protenix 2.0.0's torch_ext_compile.py hardcodes `_wanted` archs at
-        # [70, 80, 86, 89, 90, 100]; the JIT-compiled fast_layer_norm_cuda_v2
-        # extension skips sm_120 even when nvcc 12.8 supports it. Patch the
-        # list so the first-use JIT build on a b4000 node emits sm_120 code.
-        'sed -i \'s|("100", "100"),|("100", "100"),\\n        ("120", "120"),|\' '
-        "/opt/protenix-env/lib/python3.12/site-packages/protenix/model/layer_norm/torch_ext_compile.py",
+        # Upstream 2.0.0 omits sm_120 from its explicit JIT architecture list.
+        # Fail if this exact pinned-source patch no longer matches.
+        "/opt/protenix-env/bin/python -c " + shlex.quote(
+            "from pathlib import Path; "
+            "p = Path('/opt/protenix-env/lib/python3.12/site-packages/protenix/model/layer_norm/torch_ext_compile.py'); "
+            "s = p.read_text(); old = '(\"100\", \"100\"),'; "
+            "assert s.count(old) == 1, 'Protenix CUDA architecture patch no longer matches'; "
+            "p.write_text(s.replace(old, old + '\\n        (\"120\", \"120\"),'))"
+        ),
+        # Import the real runner. This also compiles and bakes its CUDA layer
+        # norm extension, with bounded CPU parallelism and no GPU inference.
+        "CUDA_HOME=/usr/local/cuda MAX_JOBS=2 "
+        "/opt/protenix-env/bin/python -c "
+        "'import torch; import runner.batch_inference; "
+        "assert torch.__version__ == \"2.7.1+cu128\"; assert torch.version.cuda == \"12.8\"'",
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -91,7 +95,7 @@ PROTENIX_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/protenix-env",
     )
-    .label(Version="2.0.0", CUDA="12.8")
+    .label(Version="2.0.0", CUDA="12.8", PyTorch="2.7.1")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -261,14 +265,25 @@ class ProtenixBlock(AF3LikePredictionBlock):
         return self
 
     def get_command_template(self) -> list[str]:
+        self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
         env = self._jit_safe_env()
-        if self.cache_dir:
-            env["PROTENIX_ROOT_DIR"] = self.cache_dir
+        env.update(
+            PROTENIX_ROOT_DIR=self.cache_dir,
+            CUEQ_TRITON_CACHE_DIR="/tmp/cuequivariance-triton",
+            TRITON_CACHE_DIR="/tmp/triton",
+            TORCHINDUCTOR_CACHE_DIR="/tmp/torchinductor",
+            MAX_JOBS="2",
+        )
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env or None
+            *self._script_spec.command, env=env,
+            binds=[(self.cache_dir, self.cache_dir)],
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
+        try:
+            Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise OSError(f"Cannot prepare PROTENIX_ROOT_DIR cache directory: {self.cache_dir}") from error
         sandbox_dir, inputdir, outputdir = self._setup_io_dirs(sandbox_dir)
 
         # Write JSON inputs for each design in the chunk

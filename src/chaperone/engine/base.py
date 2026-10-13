@@ -166,6 +166,9 @@ class ExecutionEngine:
         from chaperone import _internally_set_settings
 
         _internally_set_settings({"RUNDIR": self.rundir})
+        from chaperone.containers import capture_container_runtime_bind_settings
+
+        self._container_bind_settings = capture_container_runtime_bind_settings(self.rundir)
 
         if reinit:
             self.manifest = PipelineManifest(self.rundir)
@@ -296,6 +299,7 @@ class ExecutionEngine:
         run_args, job_args = self._apply_defaults(run_args, job_args)
         blocks: List[BlockFunction] = _resolve_block(block, kwargs, self._namespace)
         self._apply_auto_store(blocks)
+        self._configure_container_binds(blocks)
         block = blocks[0]
         run_args: RuntimeArgs = _resolve_run_args(run_args, block_name=block._name)
         effective_job_args = (
@@ -579,6 +583,13 @@ class ExecutionEngine:
 
         return results
 
+    def _configure_container_binds(self, blocks: List[BlockFunction]) -> None:
+        from chaperone.block_config.compiled import CompiledBlockFunction
+
+        for block in blocks:
+            if isinstance(block, CompiledBlockFunction):
+                block._set_container_bind_settings(self._container_bind_settings)
+
     def _run(
         self,
         blocks: List[BlockFunction],
@@ -586,6 +597,7 @@ class ExecutionEngine:
         run_args: RuntimeArgs,
     ) -> PipelineDataHandler:
         """Run block(s) — direct call for single non-chunked, otherwise chunked dispatch."""
+        self._configure_container_binds(blocks)
         block = blocks[0]
         if block._chunked or len(blocks) > 1:
             label = (

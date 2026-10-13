@@ -16,37 +16,45 @@ Spec JSON schema (written by ``ESMFold2Block.create_command``)::
 
 Folds via the Biohub ESMFold2 Python API:
 ``ESMFold2InputBuilder().fold(model, StructurePredictionInput(...), ...)``.
-Requires a GPU. Inside the block container the weights live under
-``HF_HUB_CACHE=/projects/ml/esm-weights``.
+Requires a GPU. The block supplies the configured weights cache through
+``HF_HUB_CACHE``; writable kernel caches live beside this chunk's outputs.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import glob
 import json
 import os
 import sys
 import time
 from pathlib import Path
 
-# Weights + CCD cache. The container sets HF_HUB_CACHE; keep a fallback so the
-# script also runs against a local install. ESMCFOLD_CCD_PATH points the input
-# builder at the component dictionary shipped alongside the ESMFold2 snapshot.
-os.environ.setdefault("HF_HUB_CACHE", "/projects/ml/esm-weights")
-if "ESMCFOLD_CCD_PATH" not in os.environ:
-    _ccd = glob.glob(
-        os.path.join(
-            os.environ["HF_HUB_CACHE"],
-            "models--biohub--ESMFold2",
-            "snapshots",
-            "*",
-            "ccd.pkl",
+def _configure_runtime_caches(outdir: Path, model: str) -> None:
+    """Keep compiled kernels writable even when the host home is unavailable.
+
+    cuEquivariance initializes its cache at import time, so this must precede
+    importing torch or ESM. Explicit user cache locations remain supported.
+    """
+    root = outdir.absolute().parent / ".cache"
+    for variable, path in {
+        "XDG_CACHE_HOME": root,
+        "CUEQ_TRITON_CACHE_DIR": root / "cuequivariance-triton",
+        "TRITON_CACHE_DIR": root / "triton",
+        "TORCHINDUCTOR_CACHE_DIR": root / "torchinductor",
+    }.items():
+        os.environ.setdefault(variable, str(path))
+        Path(os.environ[variable]).mkdir(parents=True, exist_ok=True)
+
+    if "ESMCFOLD_CCD_PATH" not in os.environ:
+        local_ccd = Path(model) / "ccd.pkl"
+        hf_home = os.environ.get("HF_HOME", str(Path(os.environ["XDG_CACHE_HOME"]) / "huggingface"))
+        cache = Path(os.environ.get("HF_HUB_CACHE", str(Path(hf_home) / "hub")))
+        candidates = [local_ccd] if local_ccd.is_file() else sorted(
+            cache.glob("models--biohub--ESMFold2/snapshots/*/ccd.pkl")
         )
-    )
-    if _ccd:
-        os.environ["ESMCFOLD_CCD_PATH"] = _ccd[0]
+        if candidates:
+            os.environ["ESMCFOLD_CCD_PATH"] = str(candidates[0])
 
 
 def _build_input(spec, builder_types):
@@ -54,8 +62,12 @@ def _build_input(spec, builder_types):
     StructurePredictionInput, ProteinInput, LigandInput = builder_types
     sequences = []
     for chain in spec.get("chains", []):
+        msa = None
+        if chain.get("msa_path"):
+            from esm.utils.msa import MSA
+            msa = MSA.from_a3m(Path(chain["msa_path"]), remove_insertions=True)
         sequences.append(
-            ProteinInput(id=str(chain["id"]), sequence=chain["sequence"], msa=None)
+            ProteinInput(id=str(chain["id"]), sequence=chain["sequence"], msa=msa)
         )
     for lig in spec.get("ligands", []):
         sequences.append(LigandInput(id=str(lig["id"]), smiles=lig["smiles"]))
@@ -91,6 +103,7 @@ def main() -> int:
         help="write every diffusion sample (default: best by pLDDT only)",
     )
     args = ap.parse_args()
+    _configure_runtime_caches(args.outdir, args.model)
 
     import torch
 

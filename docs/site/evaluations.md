@@ -88,6 +88,11 @@ mounts would defeat evaluation isolation.
 
 An optional JSON `env_file` reads allowlisted scientific settings from a supplied
 `.env.ipd` or another dotenv file. JSON `environment` overrides those settings.
+Both sources accept `CHAPERONE_MPNN_CONTAINER=auto`, `portable`, or `legacy` to
+select the classic MPNN runtime consistently in agent workers and scoring.
+Use `portable` for a rebuilt image on GPUs unsupported by the older site image.
+This selects an existing runtime; it does not install the private MPNN source
+or supply its weights. Workspace-control settings remain excluded.
 Scheduler fields in the JSON remain authoritative so workers and the submission
 guard agree. Core Chaperone also accepts an untracked `.env.ipd` in the checkout
 root, independently of the eval policy.
@@ -129,9 +134,16 @@ following its [official installation guide](https://apptainer.org/docs/admin/1.4
 The compute nodes must permit unprivileged user namespaces and FUSE. Native Linux
 Codex must be installed on the host; the controller mounts its executable.
 Build scientific block containers separately with `chaperone install`; the runtime
-image does not include model containers or weights. The recipes are supplied for
-external builds; a complete container build and GPU evaluation must be validated
-on the target Linux cluster before using it for benchmark results.
+image does not include model containers or weights. Both supplied recipes were
+built on Linux during the [release validation](release-validation.md), and the
+fresh scientific image passed clean framework imports, block discovery and the
+CPU functional smoke covering cache, metrics, selection and CatCIF roundtrips.
+Nested Apptainer execution also passed with `/dev/fuse` bound, matching the
+controller's default runtime binds. Preserve `/dev/fuse` when supplying a custom
+`runtime_binds` list.
+These checks do not constitute a full LLM agent trial or a scientific benchmark.
+Validate nested GPU execution and the complete evaluation on your target cluster
+before using it for benchmark results.
 
 A trial whose agent already wrote `submission/designs.csv` is scored even if Harbor's
 result record is failed or missing, because the agent's work is finished at that point.

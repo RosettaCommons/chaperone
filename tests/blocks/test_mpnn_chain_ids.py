@@ -14,6 +14,12 @@ from chaperone.data import make_row
 from chaperone.io import ensure_bonds, parse_to_atom_array
 
 
+@pytest.fixture(autouse=True)
+def use_legacy_runtime(monkeypatch):
+    import blocks.networks.mpnn as module
+    monkeypatch.setattr(module, "MODELHUB_CONTAINER", module._MODELHUB_SIF_CONTAINER)
+
+
 def _atoms(chains):
     atoms = []
     for chain, res_ids in chains.items():
@@ -213,3 +219,89 @@ def test_sequence_mode_leaves_chain_ids_alone(tmp_path):
     ((path, positions),) = staged.items()
     assert path.endswith("design.cif") and "chain_ids_renamed" not in path
     assert positions == ["X15"]
+
+
+def test_portable_cif_staging_and_sequence_backlinks(tmp_path, monkeypatch):
+    import blocks.networks.mpnn as module
+    from chaperone.data.schema import get_sequences_from_row
+
+    monkeypatch.setattr(module, "MODELHUB_CONTAINER", module.MODELHUB_PORTABLE_CONTAINER)
+    source = _write(tmp_path / "design.cif", {"Z": [1, 2], "X1": [5]})
+    row = make_row("rfd3", str(source), design_id="parent", metadata={"motif": ["X15"]})
+    sandbox = tmp_path / "chunk_0"
+    block = ClassicMPNNBlock(num_seq_per_pdb=1)
+    block.create_command(PipelineDataHandler([row]), sandbox, chunk_id=0)
+    ((path, positions),) = json.loads(
+        (sandbox / "inputs/pdb_position_fixed_chunk0.json").read_text()
+    ).items()
+    assert path.endswith("portable_pdb/design.pdb")
+    assert positions == ["A5"]
+    assert _chain_ids(path) == {"Z", "A"}
+    assert _chain_ids(source) == {"Z", "X1"}
+    # The native runner sorts A before Z, even though the input begins with Z.
+    seqs = sandbox / "seqs"
+    seqs.mkdir()
+    (seqs / "design.fa").write_text(
+        ">design, T=0.1\nG/GG\n>design, id=1, overall_confidence=0.8\nW/AA\n"
+    )
+    compiled = block.compile(sandbox)._df.to_dicts()
+    assert len(compiled) == 1
+    assert compiled[0]["parent_design_id"] == "parent"
+    assert get_sequences_from_row(compiled[0]) == {"X1": "W", "Z": "AA"}
+
+
+def test_portable_packed_pdb_restores_multichar_chains(tmp_path, monkeypatch):
+    import blocks.networks.mpnn as module
+    monkeypatch.setattr(module, "MODELHUB_CONTAINER", module.MODELHUB_PORTABLE_CONTAINER)
+    source = _write(tmp_path / "design.cif", {"A": [1, 2], "X1": [5]})
+    row = make_row("rfd3", str(source), metadata={"motif": ["X15"]})
+    sandbox = tmp_path / "chunk_0"
+    block = _structure_block()
+    block.create_command(PipelineDataHandler([row]), sandbox, chunk_id=0)
+    packed = sandbox / "packed"
+    packed.mkdir()
+    shutil.copy(sandbox / "inputs/portable_pdb/design.pdb", packed / "design_packed_1_1.pdb")
+    for _ in range(2):  # recompilation must not double-count the restored CIF.
+        handler = block.compile(sandbox)
+        assert len(handler) == 1
+        path = handler._df["structures"].to_list()[0][0]["path"]
+        assert path.endswith(".cif")
+        assert _chain_ids(path) == {"A", "X1"}
+
+
+@pytest.mark.parametrize(
+    "preference,backend,portable_exists,legacy_exists,expected",
+    [
+        ("auto", "apptainer", False, True, "legacy"),
+        ("auto", "apptainer", True, True, "portable"),
+        ("auto", "apptainer", False, False, "portable"),
+        ("auto", "docker", False, True, "portable"),
+        ("portable", "apptainer", False, True, "portable"),
+        ("legacy", "apptainer", True, True, "legacy"),
+        ("legacy", "docker", True, True, "error"),
+    ],
+)
+def test_container_selection_preference(
+    tmp_path, monkeypatch, preference, backend, portable_exists, legacy_exists, expected
+):
+    import blocks.networks.mpnn as module
+    from chaperone import get_settings
+
+    monkeypatch.setattr(get_settings(), "CHAPERONE_MPNN_CONTAINER", preference)
+    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", backend)
+    monkeypatch.setattr(module, "get_container_dirs", lambda: [tmp_path])
+    legacy = tmp_path / "legacy.sif"
+    monkeypatch.setattr(module, "_ONPREM_MODELHUB_SIF", str(legacy))
+    if portable_exists:
+        (tmp_path / "modelhub_portable.sif").touch()
+    if legacy_exists:
+        legacy.touch()
+    if expected == "error":
+        with pytest.raises(ValueError, match="requires Apptainer"):
+            module._pick_modelhub_container()
+    else:
+        wanted = (
+            module.MODELHUB_PORTABLE_CONTAINER if expected == "portable"
+            else module._MODELHUB_SIF_CONTAINER
+        )
+        assert module._pick_modelhub_container() is wanted

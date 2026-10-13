@@ -36,8 +36,9 @@ and `foundry_public`. For a deliberate rebuild, name that variant and use
 
 The release checks render all **21** source recipes for Docker and Apptainer,
 check shell syntax and local copy inputs, and exercise installer staging and
-site selection. They do **not** build all images or run GPU inference. Validate
-one small real workload on your cluster before scaling up.
+site selection. That audit is static; the separate source builds and GPU runs
+are recorded in [release validation](release-validation.md). Not all images have
+been built or exercised. Validate one small workload on your cluster before scaling up.
 
 | Recipes | Installation notes |
 |---|---|
@@ -45,14 +46,46 @@ one small real workload on your cluster before scaling up.
 | `modelhub_portable` | Legacy `mpnn` depends on private `baker-laboratory/fused_mpnn`. Authorized repository access is required. The installer reports this restriction; it does not substitute a different model. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
+| `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. See the [validation record](release-validation.md) for actual inference status. |
 | `rfdiffusion1`, `rfdiffusion2_portable` | HTTPS source recipes; install the corresponding checkpoints and provide their configured weight paths. |
 | `colabfold_portable`, `simplefold` | Public source recipes with model downloads/caches configured separately. SimpleFold's CUDA apt repository matches its Ubuntu base. |
-| `bindcraft`, `boltz2`, `boltzgen`, `chai1`, `disco`, `e1`, `esm2`, `metal3d`, `openfold3`, `protein_hunter`, `protenix`, `tmol` | Source recipes available. Consult the tool links in the [block reference](blocks-reference.md) for checkpoints, databases, model licenses, hardware requirements, and task-specific settings. |
+| `bindcraft`, `boltz2`, `boltzgen`, `disco`, `e1`, `esm2`, `metal3d`, `openfold3`, `protein_hunter`, `protenix`, `tmol` | Source recipes available. Consult the tool links in the [block reference](blocks-reference.md) for checkpoints, databases, model licenses, hardware requirements, and task-specific settings. |
 
 Docker builds use an isolated build context containing the recipe's declared
 scripts and source checkouts. Apptainer builds use the same declared inputs.
 Missing institutional default mounts are omitted for portable recipes; explicit
 input mounts and mounts on supplied existing images remain required.
+
+Runs mount their active run directory and the working directory where the engine
+was created. Launch from the project root, or set
+`CHAPERONE_CONTAINER_WORKSPACE=/absolute/project/root` when source files and
+inputs live elsewhere. Place referenced inputs beneath that root or configure
+an explicit image bind for their location. Evaluation workers use their assigned
+workspace instead of inferring a host project directory.
+
+The portable legacy MPNN recipe pins its audited upstream revision and stages
+PDB inputs for that runner. It keeps the original CIF and parent links, remaps
+fixed residues with chain names, and restores original chain identifiers in
+compiled sequences or structures. Inputs must fit PDB's residue and component
+identifier limits; coordinates use PDB precision. Existing IPD images retain
+their CIF-aware runtime.
+
+MPNN selects an installed `modelhub_portable.sif` from its container search
+directories before an existing IPD image. Set
+`CHAPERONE_MPNN_CONTAINER=portable` before starting Python to require the portable
+image, or `legacy` to retain the IPD Apptainer runtime explicitly. The default
+`auto` preserves the old IPD image when no portable image is installed; Docker
+uses the portable recipe. Set `MPNN_WEIGHTS_DIR` to your host checkpoint directory
+(`/net/databases/mpnn` on digs, as configured by the shipped profile).
+`/databases/mpnn` is the older image's internal alias, not the digs host path.
+For compatibility, an older `.env.ipd` value of `/databases/mpnn` resolves to
+`/net/databases/mpnn` when only the latter exists on the host. If the configured
+directory itself exists, it takes precedence; other paths are never substituted.
+Both runtimes mount an explicitly configured host directory and use it for model
+and packer checkpoints; a missing configured directory fails before launching.
+Older IPD modelhub images lack Blackwell GPU kernels and can fail with
+`no kernel image is available`; rebuild the portable image or supply a compatible
+runtime before running on those GPUs. This selection does not switch to CPU.
 
 Some CPU blocks use host tools rather than a container. For example,
 `ligand_ddg` needs Rosetta and, for its bundled Holes metric, DAlphaBall: set

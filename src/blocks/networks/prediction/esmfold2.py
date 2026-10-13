@@ -263,8 +263,14 @@ class ESMFold2Block(AF3LikePredictionBlock):
         # through a chunk on smaller GPUs.
         env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
         weights_dir = get_setting_field("ESM_WEIGHTS_DIR", "")
+        binds = []
         if weights_dir:
+            weights_dir = str(Path(weights_dir).expanduser().resolve())
             env["HF_HUB_CACHE"] = weights_dir
+            binds.append((weights_dir, weights_dir))
+        if Path(self.model).expanduser().is_dir():
+            self.model = str(Path(self.model).expanduser().resolve())
+            binds.append((self.model, self.model))
         # Weights are pre-staged in that cache by design, but huggingface_hub
         # still resolves the revision on load and writes a refs/ pointer back
         # into the cache directory. On a shared, full filesystem that 40-byte
@@ -276,7 +282,7 @@ class ESMFold2Block(AF3LikePredictionBlock):
         # says so instead of blaming the disk.
         env.setdefault("HF_HUB_OFFLINE", "1")
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env
+            *self._script_spec.command, env=env, binds=binds
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:

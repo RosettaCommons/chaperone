@@ -83,11 +83,12 @@ def test_target_template_cif_supplies_required_numeric_annotations(monkeypatch):
     array.coord = np.zeros((1, 3), dtype=float)
     captured = {}
 
-    def fake_to_cif_string(template, *, id):
+    def fake_to_cif_string(template, *, config):
         captured["template"] = template
-        return f"data_{id}\n"
+        assert config.include_entity_categories
+        return f"data_{config.id}\n"
 
-    monkeypatch.setattr("atomworks.io.utils.io_utils.to_cif_string", fake_to_cif_string)
+    monkeypatch.setattr("blocks.networks.prediction.helpers.to_cif_string", fake_to_cif_string)
 
     _to_cif_string(array, "template")
 

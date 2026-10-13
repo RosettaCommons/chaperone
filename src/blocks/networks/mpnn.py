@@ -17,7 +17,7 @@ from chaperone import (
     get_setting_field,
 )
 from chaperone.block_config import TIER_PRIMARY
-from chaperone.containers import Image
+from chaperone.containers import Image, get_container_dirs
 from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
@@ -31,6 +31,27 @@ from blocks.networks.mpnn_io import (
 from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
+
+# The public-facing recipe still needs authorized access to this private fork.
+# Its main runner accepts PDB inputs; CIF support on IPD is a separate revision.
+_PORTABLE_MPNN_REVISION = "fd01540ea1ed9868b95839bd7a8ac54a7570a95e"
+
+
+def _configured_mpnn_weights_dir() -> str | None:
+    value = get_setting_field("MPNN_WEIGHTS_DIR", default=None)
+    if not value:
+        return None
+    path = Path(value).expanduser().absolute()
+    # Older supplied .env.ipd files name the container alias. Resolve only this
+    # known mapping, and use the resolved path for mounts AND every checkpoint.
+    # A real host directory at the configured path always takes precedence.
+    if (
+        path == Path("/databases/mpnn")
+        and not path.is_dir()
+        and Path("/net/databases/mpnn").is_dir()
+    ):
+        path = Path("/net/databases/mpnn")
+    return str(path)
 
 
 @dataclass(frozen=True)
@@ -178,9 +199,9 @@ def _chain_ids_in_cif(path: Path) -> set[str]:
 #      python venv with torch, numpy, and prody. The run.py lives at
 #      /opt/fused_mpnn/run.py inside this image.
 #
-# We auto-select at import time: if the on-prem SIF exists on disk, prefer
-# it (so IPD runs stay byte-identical to the past); otherwise fall back to
-# the buildable variant for macOS and fresh clones.
+# Selection happens at import time. A configured or installed portable image
+# takes precedence; otherwise IPD keeps its legacy SIF. Docker always needs
+# the buildable recipe because it cannot execute a SIF.
 
 _ONPREM_MODELHUB_CANDIDATES = (
     "/projects/ml/modelhub/apptainer/frozen_modelhub_datahub_cifutils_2025-02-05.sif",
@@ -233,6 +254,7 @@ _MODELHUB_PORTABLE_CONTAINER = (
         "https://github.com/baker-laboratory/fused_mpnn",
         "/opt/fused_mpnn",
     )
+    .run(f"git -C /opt/fused_mpnn checkout {_PORTABLE_MPNN_REVISION}")
     # openfold is required by fused_mpnn's sc_utils.py for side-chain packing.
     # Only pure-Python modules are used (residue_constants, rigid_utils, feats,
     # data_transforms, loss), so we clone the repo and add it to PYTHONPATH
@@ -251,7 +273,7 @@ _MODELHUB_PORTABLE_CONTAINER = (
         PYTHONPATH="/opt/fused_mpnn:/opt/openfold",
     )
     .label(
-        Version="fused_mpnn-main", Platform="cpu-or-gpu",
+        Version=f"fused_mpnn-{_PORTABLE_MPNN_REVISION}", Platform="cpu-or-gpu",
         BuildAccess="Requires authorized access to private baker-laboratory/fused_mpnn; "
         "foundry_mpnn is a separate public implementation, not a validated drop-in replacement",
     )
@@ -266,7 +288,20 @@ _MODELHUB_PORTABLE_CONTAINER = (
 
 
 def _pick_modelhub_container() -> Image:
-    """On-prem: use the frozen SIF. Elsewhere: build from fused_mpnn."""
+    """Prefer a rebuilt runtime when supplied, preserving legacy IPD defaults."""
+    preference = get_setting_field("CHAPERONE_MPNN_CONTAINER", "auto")
+    backend = get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer")
+    if preference == "legacy":
+        if backend == "docker":
+            raise ValueError(
+                "CHAPERONE_MPNN_CONTAINER=legacy requires Apptainer; "
+                "use portable or auto with Docker."
+            )
+        return _MODELHUB_SIF_CONTAINER
+    if preference == "portable" or backend == "docker":
+        return _MODELHUB_PORTABLE_CONTAINER
+    if any((directory / "modelhub_portable.sif").is_file() for directory in get_container_dirs()):
+        return _MODELHUB_PORTABLE_CONTAINER
     if Path(_ONPREM_MODELHUB_SIF).is_file():
         return _MODELHUB_SIF_CONTAINER
     return _MODELHUB_PORTABLE_CONTAINER
@@ -377,7 +412,7 @@ class MPNNArgs(BaseModel):
     checkpoint_path_sc: str = Field(
         default_factory=lambda: (
             f"{wd.rstrip('/')}/packer_weights/s_300756.pt"
-            if (wd := get_setting_field("MPNN_WEIGHTS_DIR", ""))
+            if (wd := _configured_mpnn_weights_dir())
             else "/databases/mpnn/packer_weights/s_300756.pt"
         ),
         description=(
@@ -496,11 +531,17 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         and weight paths come from ``MPNN_WEIGHTS_DIR``.
         """
         is_portable_container = self._get_image() is _MODELHUB_PORTABLE_CONTAINER
-        weights_dir = None
+        configured_weights = _configured_mpnn_weights_dir()
+        if configured_weights and not Path(configured_weights).is_dir():
+            raise FileNotFoundError(
+                f"MPNN_WEIGHTS_DIR is not an existing host directory: {configured_weights}. "
+                "Set the host checkpoint path (on digs, /net/databases/mpnn); "
+                "/databases/mpnn is a legacy container alias."
+            )
+        weights_dir = configured_weights
         if is_portable_container:
             run_py = "/opt/fused_mpnn/run.py"
             binds: list[tuple[str, str]] = []
-            weights_dir = get_setting_field("MPNN_WEIGHTS_DIR", default=None)
             if not weights_dir:
                 weights_dir = "/weights/mpnn"
             # The image carries no checkpoints and --containall hides the host
@@ -521,10 +562,12 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 (host_databases, "/databases"),
                 ("/net/software", "/net/software"),
             ]
+            if configured_weights:
+                binds.append((configured_weights, configured_weights))
 
         cmd = self._get_image().build_command("python", "-u", run_py, binds=binds)
 
-        if not is_portable_container:
+        if not is_portable_container and not configured_weights:
             return cmd
 
         # Spell out the common checkpoint paths. run.py looks up a
@@ -698,7 +741,28 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         return str(out_path)
 
     @staticmethod
-    def _restore_chain_ids(paths, sandbox_dir) -> None:
+    def _write_portable_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
+        """Stage a PDB for upstream main, preserving the original CIF as parent."""
+        from biotite.structure.io.pdb import PDBFile
+
+        stem = Path(input_path).name
+        for suffix in (".gz", ".cif", ".pdb"):
+            stem = stem.removesuffix(suffix)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{stem}.pdb"
+        pdb = PDBFile()
+        try:
+            pdb.set_structure(rename.rename(atoms))
+        except Exception as error:
+            raise ValueError(
+                f"Portable fused_mpnn requires PDB-representable inputs: {input_path}. "
+                "Check chain/residue identifiers and ligand component names."
+            ) from error
+        pdb.write(str(out_path))
+        return str(out_path)
+
+    @staticmethod
+    def _restore_chain_ids(paths, sandbox_dir) -> list[Path]:
         """Give outputs the chain ids of the inputs they came from.
 
         ``create_command`` renames multi-character chains for MPNN and records each
@@ -710,8 +774,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             (Path(sandbox_dir) / "inputs").glob("chain_renames_chunk*.json")
         ):
             renames.update(json.loads(sidecar.read_text()))
-        if not renames:
-            return
+        restored_paths = []
         for path in map(Path, paths):
             owners = [
                 stem
@@ -719,16 +782,24 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 if re.match(re.escape(stem) + r"(?:_|\.|$)", path.name)
             ]
             if not owners:
+                restored_paths.append(path)
                 continue
             rename = ChainRename(renames[max(owners, key=len)])
             if path.suffix == ".pdb":
-                logger.warning(
-                    "Cannot restore chain ids %s in %s: PDB files hold one-letter ids",
-                    list(rename.mapping),
-                    path,
-                )
+                from atomworks.io.utils.io_utils import to_cif_file
+                from chaperone.io import ensure_bonds, parse_to_atom_array
+
+                atoms = parse_to_atom_array(str(path))
+                if rename.restorable_in(atoms.chain_id):
+                    original_chains = atoms.chain_id.copy()
+                    for original, stand_in in rename.mapping.items():
+                        atoms.chain_id[original_chains == stand_in] = original
+                    path = path.with_suffix(".cif")
+                    to_cif_file(ensure_bonds(atoms), str(path))
             elif rename.restorable_in(_chain_ids_in_cif(path)):
                 rename.restore_cif(path)
+            restored_paths.append(path)
+        return list(dict.fromkeys(restored_paths))
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
         if self.hbond_fix or self.aromatic_fix:
@@ -753,6 +824,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         needs_load = (
             self.hbond_fix or self.aromatic_fix or self.output_mode == "sequences"
         )
+        portable = self._get_image() is _MODELHUB_PORTABLE_CONTAINER
         manifest = {}
         renames: dict[str, dict[str, str]] = {}  # input stem -> chain rename
         for data in handler.get_data(which="last", load=needs_load):
@@ -767,7 +839,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                     if sequence
                 }
                 input_name = Path(input_path).stem
-                if input_name.endswith(".cif"):
+                if input_name.endswith((".cif", ".pdb")):
                     input_name = input_name[:-4]
                 manifest[input_name] = {
                     "input_name": input_name,
@@ -783,16 +855,33 @@ class ClassicMPNNBlock(CompiledBlockFunction):
 
             design_metadata = data.metadata
 
-            # Sequence mode reports per-chain sequences under the original chain
-            # ids, so only structure mode needs the single-letter stand-ins.
+            # The site's CIF-aware sequence runner accepts original identifiers.
+            # Portable main needs a PDB even in sequence mode; its manifest maps
+            # the resulting FASTA back to the original chain identifiers.
             rename = ChainRename()
-            if self.output_mode != "sequences":
+            if portable or self.output_mode != "sequences":
                 atoms = self._atoms_of(data)
                 rename = ChainRename.for_atoms(atoms)
-                if rename:
+                if portable:
+                    input_path = self._write_portable_pdb(
+                        input_path, atoms, rename, inputdir / "portable_pdb"
+                    )
+                    if self.output_mode == "sequences":
+                        # Upstream writes FASTA chains in sorted PDB-chain order.
+                        # Keep original identifiers in that same order for compile.
+                        chain_ids = sorted(
+                            chain_sequences,
+                            key=lambda chain: rename.mapping.get(chain, chain),
+                        )
+                        manifest[input_name]["chain_ids"] = chain_ids
+                        manifest[input_name]["chain_lengths"] = [
+                            len(chain_sequences[chain]) for chain in chain_ids
+                        ]
+                elif rename:
                     input_path = self._write_renamed(
                         input_path, atoms, rename, inputdir / "chain_ids_renamed"
                     )
+                if rename:
                     renames[Path(input_path).stem] = rename.mapping
 
             # Build fixed positions list from design_metadata
@@ -943,7 +1032,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 path = new_path
             cleaned_paths.append(path)
 
-        self._restore_chain_ids(cleaned_paths, sandbox_dir)
+        cleaned_paths = self._restore_chain_ids(cleaned_paths, sandbox_dir)
 
         # Single path per row - parent metadata inherited during compile_chunk_job
         rows = []

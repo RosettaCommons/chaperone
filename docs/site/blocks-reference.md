@@ -446,6 +446,7 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_cla
 | `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
+| `jax_cache_dir` | `Optional[str]` | `<computed at runtime>` | Writable compilation cache mounted directly into the container |
 | `input_mode` | `Literal` | `'mmcif'` | AF3 input preparation mode. The default 'mmcif' serializes the complete AtomArray and uses AF3's native Input.from_mm... |
 | `use_local_msas` | `bool` | `False` | Inject each protein chain's precomputed a3m from the on-disk MSA stores into the AF3 input. Works with both native mm... |
 | `msa_dirs` | `Optional[list]` | `None` | Sharded MSA roots searched in order, as paths or as {"dir", "extension", "directory_depth"} dicts. None uses PROTEIN_... |
@@ -490,6 +491,7 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 | `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
 | `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
 | `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
+| `jax_cache_dir` | `Optional[str]` | `<computed at runtime>` | Writable compilation cache mounted directly into the container |
 | `input_mode` | `Literal` | `'json'` | — |
 | `use_local_msas` | `bool` | `False` | Inject each protein chain's precomputed a3m from the on-disk MSA stores into the AF3 input. Works with both native mm... |
 | `msa_dirs` | `Optional[list]` | `None` | Sharded MSA roots searched in order, as paths or as {"dir", "extension", "directory_depth"} dicts. None uses PROTEIN_... |
@@ -634,6 +636,7 @@ Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`
 | `n_cycles` | `Optional[int]` | `None` | Override number of recycling cycles (default: set by effort preset) |
 | `noisy_guidance` | `Optional[bool]` | `None` | Enable/disable noisy guidance (default: set by experiment preset) |
 | `ckpt_path` | `Optional[str]` | `None` | Path to custom model checkpoint (default: auto-download from HuggingFace) |
+| `cache_dir` | `str` | `<computed at runtime>` | Hugging Face model cache mounted into the container |
 
 ---
 
@@ -655,6 +658,7 @@ Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`smal
 | `save_masked_positions_only` | `bool` | `False` | Whether to save logits/embeddings for only the masked positions |
 | `fields_to_save` | `list[str]` | `['logits', 'token_embeddings', 'mean_token_embeddings']` | Fields to save in output safetensors |
 | `context_fasta` | `Optional[str]` | `None` | Optional path to context FASTA for retrieval-augmented prediction |
+| `cache_dir` | `str` | `<computed at runtime>` | Hugging Face model cache, mounted directly into the container |
 
 ---
 

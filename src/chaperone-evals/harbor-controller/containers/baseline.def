@@ -1,13 +1,16 @@
 Bootstrap: docker
-From: python:3.12-slim-bookworm
+From: ubuntu:24.04
 
 # No Chaperone, scientific dependencies, weights, skills or virtualenv.
 %post
     set -eu
     apt-get update
-    apt-get install -y --no-install-recommends python3 bash ca-certificates curl git procps \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3 python3-venv python3-pip bash ca-certificates curl git procps \
         build-essential libgomp1 libfuse3-3
-    pip install --no-cache-dir uv
+    # The baseline deliberately has no Chaperone virtualenv. This is a disposable
+    # image, so install the standalone uv binary into its system Python prefix.
+    python3 -m pip install --break-system-packages --no-cache-dir uv
     rm -rf /var/lib/apt/lists/*
 
 %test
