@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from pipelines.block_config.manifest import Manifest
-from pipelines.common import mkdir_p
+from chaperone.block_config.manifest import Manifest
+from chaperone.common import mkdir_p
 
 
 def _stale_mkdir(self, mode=0o777, parents=False, exist_ok=False):

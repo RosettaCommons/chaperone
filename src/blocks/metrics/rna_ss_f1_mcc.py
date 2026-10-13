@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from pydantic import Field
 
 from blocks.metrics.rna_thermo import _split_resid, rna_sequence_and_index
-from pipelines import InlineMetricBlock, JobArgs
+from chaperone import InlineMetricBlock, JobArgs
 
 logger = logging.getLogger(__name__)
 

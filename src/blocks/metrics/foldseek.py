@@ -10,8 +10,8 @@ import numpy as np
 from pydantic import Field
 
 from blocks.utils.geometry import get_chain_annotation
-from pipelines import BlockFunction, PipelineDataHandler
-from pipelines import get_setting_field
+from chaperone import BlockFunction, PipelineDataHandler
+from chaperone import get_setting_field
 
 logger = logging.getLogger(__name__)
 

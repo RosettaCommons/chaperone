@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for de novo glycosidase submissions.
 
 A submission is sequences plus a ``motif_index_map`` naming where each of the
@@ -35,7 +35,7 @@ import numpy as np
 from absl import flags
 
 from blocks import Blocks
-from pipelines import init_cli
+from chaperone import init_cli
 from scoring import (
     SequenceSubmissionSpec,
     define_score_flags,
@@ -44,7 +44,7 @@ from scoring import (
     motif_rmsd,
     run_sequence_scorer,
 )
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 define_score_flags()
 FLAGS = flags.FLAGS

@@ -159,7 +159,7 @@ Helper scripts live in `harbor-controller/scripts/`:
 ## What the agent can see
 
 The harness arm's workspace is built fresh for each launch from an allowlist. It holds
-`src/blocks`, `src/pipelines` and `src/pipelines_cli`, the agent skills, the block
+`src/blocks`, `src/chaperone` and `src/chaperone_cli`, the agent skills, the block
 reference and a few root files. It contains no Git history, tests, examples, campaigns,
 earlier outputs, and nothing under `src/chaperone-evals/`. The bundle is validated
 again after it is built, and rejected if any file matches a pattern from

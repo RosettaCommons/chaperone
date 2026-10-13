@@ -28,8 +28,8 @@ from pathlib import Path
 
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 init_cli()
 

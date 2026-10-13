@@ -29,7 +29,7 @@ def ethanol():
 def test_missing_script_names_the_setting_and_the_fix(
     ethanol, tmp_path, setting, message
 ):
-    with patch("pipelines.get_setting_field", return_value=setting):
+    with patch("chaperone.get_setting_field", return_value=setting):
         with pytest.raises(FileNotFoundError, match=message) as error:
             generate_params(ethanol, tmp_path)
 

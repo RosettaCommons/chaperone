@@ -53,7 +53,7 @@ FORBIDDEN_PARTS = frozenset(
 # Only these packages under src/ are bundled. Everything else there, notably
 # src/chaperone-evals (this controller, the held-out scoring toolkit and the
 # public task material), is never copied and is not even walked.
-BUNDLED_SRC_PACKAGES = frozenset({"blocks", "pipelines", "pipelines_cli"})
+BUNDLED_SRC_PACKAGES = frozenset({"blocks", "chaperone", "chaperone_cli"})
 FORBIDDEN_ARTIFACT_NAMES = frozenset(
     {
         "score.json",
@@ -68,9 +68,9 @@ REQUIRED_FILES = frozenset(
         "SKILL.md",
         "pyproject.toml",
         "src/blocks/__init__.py",
-        "src/pipelines/__init__.py",
-        "src/pipelines_cli/job_wait.py",
-        "src/pipelines_cli/main.py",
+        "src/chaperone/__init__.py",
+        "src/chaperone_cli/job_wait.py",
+        "src/chaperone_cli/main.py",
     }
 )
 _PACKAGING_SKILLS = frozenset({"order-collection", "order-designs", "order-ssm"})
@@ -198,7 +198,7 @@ def _is_allowed(relative: PurePosixPath) -> bool:
         # Generic evaluation/reporting helpers are not required to compose or
         # execute scientific Pipelines blocks and do not belong in an agent
         # evaluation workspace.
-        if relative.as_posix() == "src/pipelines/evals.py":
+        if relative.as_posix() == "src/chaperone/evals.py":
             return False
         return relative.suffix in SOURCE_SUFFIXES or relative.name in SOURCE_BASENAMES
     if relative.parts[:2] in {

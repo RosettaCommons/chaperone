@@ -36,7 +36,7 @@ from blocks.util_blocks.annotate import (  # noqa: E402
     InterfaceQuery,
     _get_closest_residues_by_sidechain_dist,
 )
-from pipelines.io import parse_to_atom_array  # noqa: E402
+from chaperone.io import parse_to_atom_array  # noqa: E402
 
 logger = logging.getLogger("prep_target")
 

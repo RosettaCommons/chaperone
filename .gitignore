@@ -55,7 +55,7 @@ test_logs/** */
 */wandb/
 *.err
 *.log
-src/pipelines/PIPELINE_HEAD
+src/chaperone/PIPELINE_HEAD
 *pixi.*
 .delta/
 DUMMY/*

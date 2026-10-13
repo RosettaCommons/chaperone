@@ -38,7 +38,7 @@ Set these in `.env` (the IPD values are in `.env.ipd`):
 ## Run one predictor
 
 ```python
-from pipelines import ExecutionEngine, JobArgs
+from chaperone import ExecutionEngine, JobArgs
 
 engine = ExecutionEngine(
     rundir="runs/val-af3",

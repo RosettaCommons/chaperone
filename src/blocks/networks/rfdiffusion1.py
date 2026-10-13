@@ -61,12 +61,12 @@ from typing import List, Optional
 
 from pydantic import Field
 
-from pipelines import CompiledBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.block_config import TIER_PRIMARY
-from pipelines.block_config.compiled import ScriptSpec
-from pipelines.common import glob_designs_in_dir, tail_block_log
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.block_config import TIER_PRIMARY
+from chaperone.block_config.compiled import ScriptSpec
+from chaperone.common import glob_designs_in_dir, tail_block_log
+from chaperone.containers import Image
+from chaperone.data import make_row
 from blocks.constants import CUDA_INSTALL
 
 logger = logging.getLogger(__name__)
@@ -191,7 +191,7 @@ _RFD1_MODELS_DIR = "/opt/RFdiffusion/models"
 
 def _get_rfd1_weights_dir() -> str:
     """Get the RFdiffusion weights directory path."""
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     return get_setting_field("RFDIFFUSION_WEIGHTS_DIR", default="")
 
@@ -352,7 +352,7 @@ class RFD1Block(CompiledBlockFunction):
         )
         # Insert --writable-tmpfs before the image reference for apptainer
         # so RFdiffusion can write noise schedules
-        from pipelines import get_settings
+        from chaperone import get_settings
 
         if get_settings().PIPELINES_CONTAINER_BACKEND != "docker":
             # Find image ref position and insert before it
@@ -363,7 +363,7 @@ class RFD1Block(CompiledBlockFunction):
         return cmd
 
     def init_handler(self):
-        from pipelines.data.schema import Column
+        from chaperone.data.schema import Column
 
         return PipelineDataHandler(
             [

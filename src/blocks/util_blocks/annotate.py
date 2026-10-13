@@ -1,6 +1,6 @@
 import os
 
-from pipelines import BlockFunction, PipelineDataHandler
+from chaperone import BlockFunction, PipelineDataHandler
 import numpy as np
 from pydantic import Field
 from typing import List, Optional
@@ -99,7 +99,7 @@ def find_hbonds_in_pdb(atom_array):
 
     fix_hbonds_residues = set()
     ligand_names = atom_array[atom_array.is_ligand].res_name
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     if len(ligand_names) == 0 or not os.path.exists(get_setting_field("HBPLUS_COPY")):
         return list(fix_hbonds_residues)

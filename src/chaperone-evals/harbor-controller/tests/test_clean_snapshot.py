@@ -369,7 +369,7 @@ class CleanSnapshotTest(unittest.TestCase):
             with self.subTest(hint=hint), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                leak = source / "src" / "pipelines" / "target_hint.py"
+                leak = source / "src" / "chaperone" / "target_hint.py"
                 leak.write_text(f'TARGET_HINT = "{hint}"\n')
 
                 with self.assertRaisesRegex(
@@ -387,14 +387,14 @@ class CleanSnapshotTest(unittest.TestCase):
             with self.subTest(variant=name), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                (source / "src" / "pipelines" / name).write_bytes(payload)
+                (source / "src" / "chaperone" / name).write_bytes(payload)
                 with self.assertRaisesRegex(RuntimeError, "evaluation-specific hints"):
                     build(source, root / f"bundles-{index}")
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = self._minimal_source(root)
-            (source / "src" / "pipelines" / "secret-target-notes.py").write_text(
+            (source / "src" / "chaperone" / "secret-target-notes.py").write_text(
                 "X = 1\n"
             )
             with self.assertRaisesRegex(RuntimeError, "in the file name"):
@@ -408,7 +408,7 @@ class CleanSnapshotTest(unittest.TestCase):
             ):
                 root = Path(temporary)
                 source = self._minimal_source(root)
-                folder = source / "src" / "pipelines" / directory
+                folder = source / "src" / "chaperone" / directory
                 folder.mkdir(parents=True)
                 (folder / "run.py").write_text("X = 1\n")
                 with self.assertRaisesRegex(
@@ -428,7 +428,7 @@ class CleanSnapshotTest(unittest.TestCase):
     def test_snapshot_hint_audit_accepts_generic_rna_apis(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             source = self._minimal_source(Path(temporary))
-            generic = source / "src" / "pipelines" / "rna_api.py"
+            generic = source / "src" / "chaperone" / "rna_api.py"
             generic.write_text(
                 'DESCRIPTION = "RNA motif base pairing and sequence identity"\n'
             )
@@ -439,21 +439,21 @@ class CleanSnapshotTest(unittest.TestCase):
     def _minimal_source(root: Path) -> Path:
         source = root / "source"
         (source / "src" / "blocks").mkdir(parents=True)
-        (source / "src" / "pipelines").mkdir(parents=True)
-        (source / "src" / "pipelines_cli").mkdir(parents=True)
+        (source / "src" / "chaperone").mkdir(parents=True)
+        (source / "src" / "chaperone_cli").mkdir(parents=True)
         (source / ".agents" / "skills" / "design").mkdir(parents=True)
         for name in ("AGENTS.md", "README.md", "SKILL.md"):
             (source / name).write_text(f"{name}\n")
         (source / "pyproject.toml").write_text("[project]\nname='pipelines'\n")
         (source / "src" / "blocks" / "__init__.py").write_text("BLOCKS = True\n")
-        (source / "src" / "pipelines" / "__init__.py").write_text("PIPELINES = True\n")
-        (source / "src" / "pipelines_cli" / "job_wait.py").write_text(
+        (source / "src" / "chaperone" / "__init__.py").write_text("PIPELINES = True\n")
+        (source / "src" / "chaperone_cli" / "job_wait.py").write_text(
             "def wait_for_completion(): pass\n"
             "def launch_and_wait(): pass\n"
             "def serve_mcp(): pass\n"
         )
-        (source / "src" / "pipelines_cli" / "main.py").write_text(
-            "from pipelines_cli.job_wait import serve_mcp\n"
+        (source / "src" / "chaperone_cli" / "main.py").write_text(
+            "from chaperone_cli.job_wait import serve_mcp\n"
         )
         (source / ".agents" / "skills" / "design" / "SKILL.md").write_text("# Design\n")
         return source
@@ -480,15 +480,15 @@ class CleanSnapshotTest(unittest.TestCase):
             (source / "campaigns" / "old" / "selection.py").write_text(
                 "SECRET = True\n"
             )
-            (source / "src" / "pipelines" / "fresh.py").write_text("FRESH = True\n")
-            (source / "src" / "pipelines" / "evals.py").write_text(
+            (source / "src" / "chaperone" / "fresh.py").write_text("FRESH = True\n")
+            (source / "src" / "chaperone" / "evals.py").write_text(
                 "EVALUATION_HELPER = True\n"
             )
 
             seed = build(source, root / "bundles")
             validate_snapshot(seed)
 
-            self.assertTrue((seed / "src" / "pipelines" / "fresh.py").is_file())
+            self.assertTrue((seed / "src" / "chaperone" / "fresh.py").is_file())
             self.assertTrue(
                 (seed / ".agents" / "skills" / "design" / "SKILL.md").is_file()
             )
@@ -496,7 +496,7 @@ class CleanSnapshotTest(unittest.TestCase):
             self.assertTrue((seed / "docs" / "site" / "blocks-reference.md").is_file())
             self.assertFalse((seed / "docs" / "site" / "evals").exists())
             self.assertFalse((seed / "campaigns").exists())
-            self.assertFalse((seed / "src" / "pipelines" / "evals.py").exists())
+            self.assertFalse((seed / "src" / "chaperone" / "evals.py").exists())
             self.assertFalse((seed / "README.md").exists())
             self.assertFalse(any(seed.rglob("score_per_design.csv")))
             self.assertFalse(any(seed.rglob(".git")))
@@ -605,9 +605,9 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = self._minimal_source(root)
-            (source / "src" / "pipelines_cli" / "job_wait.py").unlink()
+            (source / "src" / "chaperone_cli" / "job_wait.py").unlink()
 
-            with self.assertRaisesRegex(RuntimeError, "pipelines_cli/job_wait.py"):
+            with self.assertRaisesRegex(RuntimeError, "chaperone_cli/job_wait.py"):
                 build(source, root / "bundles")
 
     def test_concurrent_bundle_publisher_reuses_valid_winner(self) -> None:
@@ -632,7 +632,7 @@ class CleanSnapshotTest(unittest.TestCase):
             source = self._minimal_source(root)
             outside = root / "outside.py"
             outside.write_text("SECRET = True\n")
-            (source / "src" / "pipelines" / "escape.py").symlink_to(outside)
+            (source / "src" / "chaperone" / "escape.py").symlink_to(outside)
             with self.assertRaisesRegex(RuntimeError, "Refusing symlink"):
                 build(source, root / "bundles")
 
@@ -640,7 +640,7 @@ class CleanSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             seed = build(self._minimal_source(root), root / "bundles")
-            (seed / "src" / "pipelines" / "__init__.py").write_text("TAMPERED = True\n")
+            (seed / "src" / "chaperone" / "__init__.py").write_text("TAMPERED = True\n")
             with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
                 validate_snapshot(seed, seed.name)
 

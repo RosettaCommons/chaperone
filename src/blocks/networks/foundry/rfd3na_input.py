@@ -46,7 +46,7 @@ def detect_hbond_atoms(structure, ligand: str, ref_smiles: str):
     """
     from rdkit import Chem
 
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
     from blocks.utils.ligand_mol import (
         ligand_heavy_atoms,
         map_ref_to_names,

@@ -14,12 +14,12 @@ from blocks.networks.prediction.helpers import (
     is_pdb_file,
     pdb_assign_ligand_bonds,
 )
-from pipelines import PipelineDataHandler, JobArgs, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, TIER_PRIMARY, ScriptSpec
-from pipelines.block_config.prediction import select_best_models
-from pipelines.common import glob_designs_in_dir
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone import PipelineDataHandler, JobArgs, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, TIER_PRIMARY, ScriptSpec
+from chaperone.block_config.prediction import select_best_models
+from chaperone.common import glob_designs_in_dir
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 logger = logging.getLogger(__name__)
 

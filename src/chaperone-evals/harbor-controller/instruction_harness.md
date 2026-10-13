@@ -38,7 +38,7 @@ not rebuild it or launch nested `apptainer exec`. Invoke it directly:
 /opt/pipelines/.venv/bin/python pipelines/path/to/campaign.py
 ```
 
-Campaign scripts created with `pipelines.init_cli()` support `-h`, `--help`,
+Campaign scripts created with `chaperone.init_cli()` support `-h`, `--help`,
 `--helpshort`, and `--helpfull` for read-only flag inspection.
 
 Use configured shared checkpoints/caches without downloading duplicates.

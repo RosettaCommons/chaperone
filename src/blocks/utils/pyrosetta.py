@@ -14,7 +14,7 @@ def _get_configured_pyrosetta_path() -> str | None:
         "PIPELINES_PYROSETTA_PATH"
     )
     try:
-        from pipelines import get_setting_field
+        from chaperone import get_setting_field
 
         configured = configured or get_setting_field("PYROSETTA_PATH", default=None)
     except Exception:

@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
+from chaperone import BlockFunction, PipelineDataHandler
 
 logger = logging.getLogger(__name__)
 

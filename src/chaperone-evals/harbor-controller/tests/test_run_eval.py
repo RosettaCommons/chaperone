@@ -50,7 +50,7 @@ class RunEvalTest(unittest.TestCase):
     def test_runtime_manifest_uses_pipelines_campaign_monitor_backend(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             seed = Path(temporary)
-            backend = seed / "src" / "pipelines_cli" / "job_wait.py"
+            backend = seed / "src" / "chaperone_cli" / "job_wait.py"
             backend.parent.mkdir(parents=True)
             backend.write_text(
                 "def wait_for_completion(): pass\n"
@@ -249,7 +249,7 @@ class RunEvalTest(unittest.TestCase):
                 task_toml,
             )
             self.assertIn(
-                'args = ["-m", "pipelines_cli.main", "monitor-mcp", '
+                'args = ["-m", "chaperone_cli.main", "monitor-mcp", '
                 '"--server-name", "campaign-monitor"]',
                 task_toml,
             )

@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Tuple
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs
+from chaperone import InlineMetricBlock, JobArgs
 
 logger = logging.getLogger(__name__)
 

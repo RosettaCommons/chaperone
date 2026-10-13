@@ -84,7 +84,7 @@ Extract protein sequences from the final filter's output to build the "ordered" 
 ```bash
 source {pipelines_repo}/.venv/bin/activate && python3 -c "
 import json, os, sys
-from pipelines.data.handler import PipelineDataHandler
+from chaperone.data.handler import PipelineDataHandler
 
 rundir = '{rundir}'
 parquet_path = os.path.join(rundir, '{final_filter_step_parquet}')
@@ -256,7 +256,7 @@ Report the archive size to the user.
 
 ### Step 4: Build reference CSV (Output 2)
 
-**Optimization**: Metrics come from the parquet JSON column (already computed by the folding oracle). Sequence extraction still requires loading structure files (unavoidable for sequence-based ordering), parallelized via `multiprocessing.Pool`. **Use processes, NOT threads.** Benchmarked on this codebase: threads=16 runs ~25× *slower* than sequential on 10K rows (GIL contention), processes=16 give ~7× speedup (43ms → 6ms per row). The docstring at `src/pipelines/data/handler.py:771-773` claims `parse_to_atom_array` releases the GIL — this is not borne out in practice; atomworks' Python-level work dominates and holds the GIL.
+**Optimization**: Metrics come from the parquet JSON column (already computed by the folding oracle). Sequence extraction still requires loading structure files (unavoidable for sequence-based ordering), parallelized via `multiprocessing.Pool`. **Use processes, NOT threads.** Benchmarked on this codebase: threads=16 runs ~25× *slower* than sequential on 10K rows (GIL contention), processes=16 give ~7× speedup (43ms → 6ms per row). The docstring at `src/chaperone/data/handler.py:771-773` claims `parse_to_atom_array` releases the GIL — this is not borne out in practice; atomworks' Python-level work dominates and holds the GIL.
 
 Main process reads parquets (metrics + paths in memory), then `Pool.map` dispatches sequence extraction to workers.
 
@@ -265,7 +265,7 @@ source {pipelines_repo}/.venv/bin/activate && python3 -c "
 import json, os, csv, yaml
 from multiprocessing import Pool
 import polars as pl
-from pipelines.io import parse_to_atom_array, get_sequences
+from chaperone.io import parse_to_atom_array, get_sequences
 
 def _extract_sequence(path):
     '''Worker: parse structure, return sequence fingerprint or error sentinel.'''
@@ -449,7 +449,7 @@ For campaigns with >200K prediction designs, threaded local iteration is bounded
 
 ```python
 from blocks import Blocks
-from pipelines import ExecutionEngine
+from chaperone import ExecutionEngine
 
 rundir = '{rundir}'
 engine = ExecutionEngine(rundir=rundir, reinit=False)
@@ -515,7 +515,7 @@ Check if `{rundir}/.pipeline/conf.yaml` exists. If not, generate it:
 
 ```bash
 source {pipelines_repo}/.venv/bin/activate && python3 -c "
-from pipelines import ExecutionEngine
+from chaperone import ExecutionEngine
 e = ExecutionEngine(rundir='{rundir}', reinit=False)
 e.to_yaml()
 print('Generated conf.yaml')
@@ -657,7 +657,7 @@ rm -f {rundir}/order_collection/_ordered_seqs.json {rundir}/order_collection/_fi
 
 ## Caveats
 
-1. **Metrics come from parquet, sequences require loading structures**: Metrics (min_pae, plddt, etc.) are read directly from the parquet JSON column — no file I/O needed. Sequence extraction still requires loading each structure file, but `multiprocessing.Pool(16)` parallelizes the parse. Measured: 10,221 rows in 64s (5.5ms/row, 9.4× faster than sequential baseline). Do NOT use threads — benchmarked 5× slower than sequential due to GIL contention in `atomworks.parse`; the docstring in `src/pipelines/data/handler.py:771-773` is inaccurate for this workload.
+1. **Metrics come from parquet, sequences require loading structures**: Metrics (min_pae, plddt, etc.) are read directly from the parquet JSON column — no file I/O needed. Sequence extraction still requires loading each structure file, but `multiprocessing.Pool(16)` parallelizes the parse. Measured: 10,221 rows in 64s (5.5ms/row, 9.4× faster than sequential baseline). Do NOT use threads — benchmarked 5× slower than sequential due to GIL contention in `atomworks.parse`; the docstring in `src/chaperone/data/handler.py:771-773` is inaccurate for this workload.
 
 2. **Filter config collision**: Multiple filter steps share `.pipeline/conf.filter.yaml` — only the last-written survives. The summary supplements this by reading the pipeline script when available.
 

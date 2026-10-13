@@ -49,8 +49,8 @@ the audit patterns are still required for the harness arm.
 The two arms receive different environments.
 
 - `harness` receives the task inputs plus a freshly built, history-free bundle of
-  this checkout. The bundle holds only `src/blocks`, `src/pipelines` and
-  `src/pipelines_cli`, the agent skills, the block reference and a few root files.
+  this checkout. The bundle holds only `src/blocks`, `src/chaperone` and
+  `src/chaperone_cli`, the agent skills, the block reference and a few root files.
   Git metadata, tests, examples, campaigns, prior outputs and **everything else
   under `src/`, including this directory**, are never copied or even walked.
 - `baseline` receives the task inputs in a clean workspace without Chaperone.

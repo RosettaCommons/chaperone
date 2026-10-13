@@ -23,7 +23,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[2]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from pipelines.io import parse_to_atom_array  # noqa: E402
+from chaperone.io import parse_to_atom_array  # noqa: E402
 
 # Sidechain-driven hydrophobics (canonical aliphatic + aromatic + Met).
 # Excludes Tyr (often polar via OH), Cys (S can H-bond), Gly/Pro (no clear side chain).

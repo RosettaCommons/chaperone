@@ -16,7 +16,7 @@ def _load_scorer():
     assert spec.loader is not None
     # Scorers initialize the shared absl CLI at import time. Avoid parsing
     # pytest's own flags; the tests only inspect the scorer configuration.
-    with patch("pipelines.init_cli"):
+    with patch("chaperone.init_cli"):
         spec.loader.exec_module(module)
     return module
 

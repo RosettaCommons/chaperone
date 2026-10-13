@@ -39,9 +39,9 @@ from blocks.networks.prediction.helpers import (
     build_remap_reference,
     discover_ligand_remap,
 )
-from pipelines import InlineBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.data.structure import _resolve_path
-from pipelines.io import parse_to_atom_array
+from chaperone import InlineBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.data.structure import _resolve_path
+from chaperone.io import parse_to_atom_array
 
 logger = logging.getLogger(__name__)
 

@@ -10,15 +10,15 @@ from typing import Literal
 from atomworks.io.utils.chain import create_chain_id_generator
 from pydantic import BaseModel, Field, model_validator
 
-from pipelines import (
+from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
     get_setting_field,
 )
-from pipelines.block_config import TIER_PRIMARY
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone.block_config import TIER_PRIMARY
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
     load_manifest,
@@ -28,7 +28,7 @@ from blocks.networks.mpnn_io import (
     write_manifest,
 )
 
-from pipelines.common import glob_designs_in_dir
+from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
@@ -626,7 +626,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         from concurrent.futures import ThreadPoolExecutor
         from atomworks.io.utils.io_utils import to_cif_file
 
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
         from tqdm import tqdm
 
         remap_dir = Path(sandbox_dir) / "remapped_inputs"
@@ -682,7 +682,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         """Write ``atoms`` with the renamed chains as a new file; the input is untouched."""
         from atomworks.io.utils.io_utils import to_cif_file
 
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
 
         stem = Path(input_path).name
         for suffix in (".gz", ".cif", ".pdb"):

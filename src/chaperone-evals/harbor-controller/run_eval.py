@@ -190,7 +190,7 @@ def _runtime_capability_manifest(
         for label, alternatives in sorted(_HARNESS_RUNTIME_CAPABILITIES.items())
     ]
     monitor_backend = (
-        workspace_seed / "src" / "pipelines_cli" / "job_wait.py"
+        workspace_seed / "src" / "chaperone_cli" / "job_wait.py"
         if workspace_seed is not None
         else None
     )
@@ -499,7 +499,7 @@ PIPELINES_CONTAINER_BIND_WORKSPACE = "true"
 name = "campaign-monitor"
 transport = "stdio"
 command = "/opt/pipelines/.venv/bin/python"
-args = ["-m", "pipelines_cli.main", "monitor-mcp", "--server-name", "campaign-monitor"]
+args = ["-m", "chaperone_cli.main", "monitor-mcp", "--server-name", "campaign-monitor"]
 """
     else:
         # Harbor and Codex keep their control files outside the workspace. The
@@ -1314,9 +1314,9 @@ def _host_scoring_python(pipelines_repo: Path) -> Path:
             "import atomworks",
             "import submitit",
             "from blocks import Blocks",
-            "from pipelines import ExecutionEngine",
+            "from chaperone import ExecutionEngine",
             "import scoring",
-            "from pipelines_cli.registry import register_flags",
+            "from chaperone_cli.registry import register_flags",
             "register_flags()",
         )
     )

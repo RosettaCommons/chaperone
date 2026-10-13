@@ -27,8 +27,8 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from pipelines import InlineMetricBlock, JobArgs, PipelineDataHandler
-from pipelines.data.schema import Column, dump_metrics, get_deserialized
+from chaperone import InlineMetricBlock, JobArgs, PipelineDataHandler
+from chaperone.data.schema import Column, dump_metrics, get_deserialized
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Generate 96 RNA-hairpin binder sequences with RFD3, LigandMPNN, and AF3.
 
 The RNA target (`../inputs/target.pdb`, chain B) is held fixed while RFD3
@@ -25,7 +25,7 @@ from absl import flags
 
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 
 flags.DEFINE_integer(
     "required_n",

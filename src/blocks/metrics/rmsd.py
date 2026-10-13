@@ -13,9 +13,9 @@ from blocks.metrics.utils import (
     weighted_rigid_align,
 )
 from blocks.utils.geometry import match_atoms_by_identifier
-from pipelines import InlineMetricBlock, JobArgs
-from pipelines.data.components import set_component_remap
-from pipelines.data.schema import SELECTIONS
+from chaperone import InlineMetricBlock, JobArgs
+from chaperone.data.components import set_component_remap
+from chaperone.data.schema import SELECTIONS
 
 logger = logging.getLogger(__name__)
 

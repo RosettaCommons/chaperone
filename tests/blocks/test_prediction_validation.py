@@ -18,8 +18,8 @@ from blocks.networks.prediction.validation.score import (
     ScoreValStructuresBlock,
     ValidationMetric,
 )
-from pipelines import InlineMetricBlock
-from pipelines.io import (
+from chaperone import InlineMetricBlock
+from chaperone.io import (
     clean_atom_array,
     disambiguate_assembly_chain_ids,
     parse_pdb_assembly,
@@ -287,7 +287,7 @@ def test_validation_blocks_expose_the_renamed_registry_surface(tmp_path):
 
 def test_rf3_file_mode_stages_emitted_cif_without_rewriting(tmp_path):
     from blocks.networks.prediction.rosettafold3 import RosettaFold3Block
-    from pipelines import PipelineDataHandler
+    from chaperone import PipelineDataHandler
 
     emitted_cif = tmp_path / "emitted.cif"
     emitted_cif.write_text("data_emitted\n")

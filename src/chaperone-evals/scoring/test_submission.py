@@ -22,8 +22,8 @@ from scoring import (
     sequence_submission_to_handler,
     write_score_outputs,
 )
-from pipelines.data.handler import PipelineDataHandler
-from pipelines.data.schema import make_row
+from chaperone.data.handler import PipelineDataHandler
+from chaperone.data.schema import make_row
 
 
 def _write(path: Path, sequences: list[str], column: str = "sequence") -> Path:
@@ -150,8 +150,8 @@ def test_rna_motif_map_rejects_a_mutated_motif_base(tmp_path: Path) -> None:
 
 def test_valid_rna_submission_materializes_as_an_rna_chain(tmp_path: Path) -> None:
     from atomworks.enums import ChainType
-    from pipelines.data.schema import Column
-    from pipelines.io import parse_to_atom_array
+    from chaperone.data.schema import Column
+    from chaperone.io import parse_to_atom_array
 
     sequence = "GAG" + "A" * 7 + "G" + "A" * 9 + "CC" + "A" * 28
     submission = load_sequence_submission(
@@ -202,7 +202,7 @@ def test_ca_radius_of_gyration_uses_requested_chain_ca_atoms(monkeypatch) -> Non
             [300.0, 0.0, 0.0],
         ]
     )
-    monkeypatch.setattr("pipelines.io.parse_to_atom_array", lambda _: atoms)
+    monkeypatch.setattr("chaperone.io.parse_to_atom_array", lambda _: atoms)
 
     assert ca_radius_of_gyration("prediction.cif", chain_id="A") == pytest.approx(1.0)
 
@@ -212,7 +212,7 @@ def test_ca_radius_of_gyration_requires_two_ca_atoms(monkeypatch) -> None:
     atoms.chain_id = np.array(["A"])
     atoms.atom_name = np.array(["CA"])
     atoms.coord = np.array([[0.0, 0.0, 0.0]])
-    monkeypatch.setattr("pipelines.io.parse_to_atom_array", lambda _: atoms)
+    monkeypatch.setattr("chaperone.io.parse_to_atom_array", lambda _: atoms)
 
     with pytest.raises(ValueError, match="fewer than two C-alpha atoms"):
         ca_radius_of_gyration("prediction.cif", chain_id="A")

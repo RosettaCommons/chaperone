@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pipelines import BlockFunction
-    from pipelines.containers import Image
+    from chaperone import BlockFunction
+    from chaperone.containers import Image
 
 
 class LazyBlockRegistry:
@@ -71,7 +71,7 @@ class LazyBlockRegistry:
         block_cls = getattr(module, class_name)
 
         # Validate that the loaded object is a BlockFunction subclass before registering.
-        from pipelines import BlockFunction
+        from chaperone import BlockFunction
 
         if not isinstance(block_cls, type) or not issubclass(block_cls, BlockFunction):
             raise TypeError(

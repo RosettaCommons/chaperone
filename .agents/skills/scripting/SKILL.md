@@ -37,8 +37,8 @@ Every script should start with this shebang so it auto-activates the pipelines v
 from pathlib import Path
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 init_cli()  # MUST be called before any engine usage
 
@@ -90,7 +90,7 @@ print(df)
 
 `init_cli()` enables CLI flag overrides without the `pipelines run` entry point:
 ```python
-from pipelines import init_cli, ExecutionEngine
+from chaperone import init_cli, ExecutionEngine
 init_cli()  # registers all block flags + global flags, parses sys.argv, sets up logging
 engine = ExecutionEngine(rundir="my_run")
 engine.run("rfd3", n_batches=10)  # --rfd3.n_batches=50 overrides this

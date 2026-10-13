@@ -318,7 +318,7 @@ Both metrics are essential filters for running unindexed components, and their a
 Based on core examples, these are typical quality filters applied to RFD3 outputs:
 
 ```python
-from pipelines.data.handler import MetricFilter
+from chaperone.data.handler import MetricFilter
 
 # Universal filters (all design types)
 filters = {

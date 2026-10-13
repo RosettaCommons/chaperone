@@ -25,7 +25,7 @@ Do not proceed until `uv` is available.
 Then check if the venv exists and pipelines is importable:
 ```bash
 source .venv/bin/activate
-python -c "import pipelines; print('pipelines OK')"
+python -c "import chaperone; print('pipelines OK')"
 ```
 
 If the venv doesn't exist or the import fails, create and install:
@@ -58,7 +58,7 @@ Report which backends are available. If neither is found, warn the user that con
 Check auto-detection result:
 ```bash
 source .venv/bin/activate
-python -c "from pipelines import get_settings; print(f'Auto-detected backend: {get_settings().CONTAINER_BACKEND}')"
+python -c "from chaperone import get_settings; print(f'Auto-detected backend: {get_settings().CONTAINER_BACKEND}')"
 ```
 
 Use `AskUserQuestion` to ask the user which container backend they want to use (showing what was auto-detected as default). If they want to override, write it to the project `.env` file (see step 5 for the write pattern).
@@ -74,7 +74,7 @@ nvidia-smi 2>/dev/null && echo "Local GPU: available" || echo "Local GPU: not fo
 Check current setting:
 ```bash
 source .venv/bin/activate
-python -c "from pipelines import get_settings; print(f'Current compute backend: {get_settings().COMPUTE_BACKEND}')"
+python -c "from chaperone import get_settings; print(f'Current compute backend: {get_settings().COMPUTE_BACKEND}')"
 ```
 
 Use `AskUserQuestion` with `multiSelect: true` to ask the user which compute resources are available to them. Show what was auto-detected in the descriptions:
@@ -111,7 +111,7 @@ fi
 Verify the settings were persisted:
 ```bash
 source .venv/bin/activate
-python -c "from pipelines import get_settings; s = get_settings(); print(f'Compute: {s.COMPUTE_BACKEND}, Container: {s.CONTAINER_BACKEND}')"
+python -c "from chaperone import get_settings; s = get_settings(); print(f'Compute: {s.COMPUTE_BACKEND}, Container: {s.CONTAINER_BACKEND}')"
 ```
 
 ### 5b. Check External Dependencies & Data

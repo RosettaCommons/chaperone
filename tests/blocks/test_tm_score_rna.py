@@ -128,7 +128,7 @@ def test_stripping_keeps_nucleotides_and_drops_ions_and_water(tmp_path):
     import numpy as np
     from biotite.structure.io.pdb import PDBFile
 
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     array = parse_to_atom_array(TRNA_B)
     n_clean = write_clean_pdb(array, str(tmp_path / "clean.pdb"))
@@ -147,7 +147,7 @@ def test_stripping_keeps_nucleotides_and_drops_ions_and_water(tmp_path):
 def test_multi_character_chain_ids_are_remapped(tmp_path):
     """mmCIF chains like 'bb' cannot be written to PDB; -ter 0 makes the rename
     free, and without it a multi-chain reference aborts the whole run."""
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     array = parse_to_atom_array(TRNA_B)
     array.chain_id[:] = "bb"
@@ -155,7 +155,7 @@ def test_multi_character_chain_ids_are_remapped(tmp_path):
 
 
 def test_empty_selection_is_an_error(tmp_path):
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     array = parse_to_atom_array(TRNA_B)
     with pytest.raises(ValueError, match="no RNA residues"):
@@ -170,7 +170,7 @@ def test_short_reference_is_refused_rather_than_scored(tmp_path):
     """d0 collapses below L~18, so a motif-sized reference must raise instead of
     silently returning a number from US-align's clamped regime."""
     from blocks.metrics.tm_score_rna import TMScoreRNABlock
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     array = parse_to_atom_array(TRNA_B)
     short = array[array.res_id <= 10]

@@ -12,8 +12,8 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock
-from pipelines.orchestration.job_args import JobArgs
+from chaperone import InlineMetricBlock
+from chaperone.orchestration.job_args import JobArgs
 
 logger = logging.getLogger(__name__)
 

@@ -165,7 +165,7 @@ def calculate_hbonds(
 
     atom_array.set_annotation("is_motif_atom", get_ligand_mask(atom_array))
 
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     if hbplus_path is None:
         hbplus_path = get_setting_field("HBPLUS_COPY", check_bin=True)

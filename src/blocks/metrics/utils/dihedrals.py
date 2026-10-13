@@ -13,7 +13,7 @@ import pandas as pd
 from pathlib import Path
 from scipy.special import logsumexp
 
-from pipelines import get_setting_field
+from chaperone import get_setting_field
 
 logger = logging.getLogger(__name__)
 

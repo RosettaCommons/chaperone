@@ -52,8 +52,8 @@ from typing import Dict, List, Optional, Tuple
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs
-from pipelines.io import parse_to_atom_array
+from chaperone import InlineMetricBlock, JobArgs
+from chaperone.io import parse_to_atom_array
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ def resolve_usalign(binary: Optional[str] = None) -> str:
     order: the explicit argument, the ``USALIGN_BIN`` setting, then ``sys.prefix
     /bin`` (where ``src/blocks/scripts/install_usalign.sh`` puts it), then PATH.
     """
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     candidates = [binary, get_setting_field("USALIGN_BIN", "USalign")]
     for candidate in candidates:

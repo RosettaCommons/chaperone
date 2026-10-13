@@ -28,8 +28,8 @@ import numpy as np
 from biotite.structure import filter_amino_acids, get_residue_starts
 from biotite.structure.info.ccd import get_ccd
 
-from pipelines import get_setting_field
-from pipelines.io import RES_NAME_TO_ONE_LETTER
+from chaperone import get_setting_field
+from chaperone.io import RES_NAME_TO_ONE_LETTER
 
 logger = logging.getLogger(__name__)
 

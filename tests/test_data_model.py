@@ -5,27 +5,27 @@ from __future__ import annotations
 import sys
 from types import SimpleNamespace
 from typing import get_args
-from pipelines import BlockFunction, PipelineDataHandler
+from chaperone import BlockFunction, PipelineDataHandler
 import numpy as np
 from biotite.structure import AtomArray
 from blocks.utils.geometry import get_ligand_mask
-from pipelines.data import make_row
+from chaperone.data import make_row
 import os
 import subprocess
 from pathlib import Path
 import json
 import cloudpickle
 import polars as pl
-from pipelines.execution_tracking import ExecutionSummary
-from pipelines import (
+from chaperone.execution_tracking import ExecutionSummary
+from chaperone import (
     CompiledBlockFunction,
     InlineMetricBlock,
 )
-from pipelines.block_config import runner
-from pipelines.data import make_sequence_row
-from pipelines.data.handler import _csv_safe_value
-from pipelines.data.schema import Column, get_sequences_from_row
-from pipelines.manifest import PipelineManifest
+from chaperone.block_config import runner
+from chaperone.data import make_sequence_row
+from chaperone.data.handler import _csv_safe_value
+from chaperone.data.schema import Column, get_sequences_from_row
+from chaperone.manifest import PipelineManifest
 
 
 # test_catcif_storage.py
@@ -135,7 +135,7 @@ def test_selected_cli_blocks_do_not_scan_the_registry():
         """
 from blocks import Blocks
 from blocks.metrics.clash import ClashMetricsBlock
-from pipelines import init_cli
+from chaperone import init_cli
 assert not Blocks._scanned
 init_cli(['test-program'], blocks=[ClashMetricsBlock])
 assert not Blocks._scanned

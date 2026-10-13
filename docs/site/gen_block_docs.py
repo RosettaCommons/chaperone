@@ -22,8 +22,8 @@ if str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
 from blocks import Blocks  # noqa: E402
-from pipelines.block_config.base import get_tier, TIER_PRIMARY  # noqa: E402
-from pipelines.orchestration.job_args import JobArgs  # noqa: E402
+from chaperone.block_config.base import get_tier, TIER_PRIMARY  # noqa: E402
+from chaperone.orchestration.job_args import JobArgs  # noqa: E402
 
 
 # ---------------------------------------------------------------

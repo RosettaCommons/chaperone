@@ -27,12 +27,12 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
-from pipelines import CompiledBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.common import tail_block_log, try_float
-from pipelines.containers import Image
-from pipelines.data import make_row
-from pipelines.data.schema import DesignMetadata
+from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.common import tail_block_log, try_float
+from chaperone.containers import Image
+from chaperone.data import make_row
+from chaperone.data.schema import DesignMetadata
 
 logger = logging.getLogger(__name__)
 

@@ -17,8 +17,8 @@ Tip-atom RMSD (motif_allatom) after AF3 folding is the primary success metric.
 from pathlib import Path
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 init_cli()
 

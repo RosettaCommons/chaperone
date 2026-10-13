@@ -19,8 +19,8 @@ from blocks.networks.prediction.af3_with_target_template import (
 from pathlib import Path
 from blocks import Blocks, get_container
 from blocks.networks.design.bindcraft import BindCraftBlock
-from pipelines import PipelineDataHandler
-from pipelines.data import make_row
+from chaperone import PipelineDataHandler
+from chaperone.data import make_row
 from blocks.networks.design.boltzgen import BoltzGenBlock
 from blocks.networks.mpnn import ClassicMPNNBlock, MODELHUB_CONTAINER
 from blocks.networks.hallucination.protein_hunter import (

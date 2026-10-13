@@ -63,11 +63,11 @@ the environment, verify that both modules resolve inside the current checkout:
 python - <<'PY'
 from pathlib import Path
 
-import pipelines
-import pipelines_cli.main
+import chaperone
+import chaperone_cli.main
 
 root = Path.cwd().resolve()
-for module in (pipelines, pipelines_cli.main):
+for module in (pipelines, chaperone_cli.main):
     origin = Path(module.__file__).resolve()
     print(f"{module.__name__}: {origin}")
     if not origin.is_relative_to(root):

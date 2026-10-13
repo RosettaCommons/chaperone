@@ -26,9 +26,9 @@ from blocks.metrics.sequence_identity_gate import (
     read_fasta,
 )
 from blocks.metrics.tm_score import TMScoreBlock, polymer_anchors
-from pipelines import PipelineDataHandler
-from pipelines.data import make_row
-from pipelines.io import parse_to_atom_array
+from chaperone import PipelineDataHandler
+from chaperone.data import make_row
+from chaperone.io import parse_to_atom_array
 
 RNA_FIXTURE = "tests/test_data/rna_metrics/synthetic_six_nt.pdb"
 

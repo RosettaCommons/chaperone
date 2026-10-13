@@ -7,7 +7,7 @@ This document provides detailed syntax and usage patterns for the pipelines libr
 The `ExecutionEngine` is the main entry point for running pipelines.
 
 ```python
-from pipelines import ExecutionEngine
+from chaperone import ExecutionEngine
 
 engine = ExecutionEngine(rundir="output/")
 ```
@@ -33,7 +33,7 @@ ExecutionEngine(
 ### Running Blocks
 
 ```python
-from pipelines import ExecutionEngine, RuntimeArgs, JobArgs
+from chaperone import ExecutionEngine, RuntimeArgs, JobArgs
 
 engine = ExecutionEngine(rundir="output/")
 
@@ -147,7 +147,7 @@ Common pattern: `rfd3 → cycle(mpnn → af3)`. Each cycle creates a separate su
 SLURM job configuration for submitting to the cluster.
 
 ```python
-from pipelines import JobArgs
+from chaperone import JobArgs
 
 job_args = JobArgs(
     partition="gpu",      # SLURM partition
@@ -181,7 +181,7 @@ Final `JobArgs` are resolved by merging two layers: `block._resources` as the ba
 Runtime execution configuration.
 
 ```python
-from pipelines import RuntimeArgs
+from chaperone import RuntimeArgs
 
 run_args = RuntimeArgs(
     mode="local",            # Execution mode
@@ -304,7 +304,7 @@ Each structure entry contains `name` (step name), `path` (structure file), and `
 | `PipelineDataHandler(data)` | Constructor: accepts `list[dict]`, DataFrame, Path, or handler |
 
 ```python
-from pipelines import PipelineDataHandler
+from chaperone import PipelineDataHandler
 
 # From a directory of structures
 handler = PipelineDataHandler.from_dir("designs/", name="input")
@@ -319,7 +319,7 @@ handler = PipelineDataHandler.from_file("output/.pipeline/rfd3.parquet")
 handler = PipelineDataHandler.from_sequences("sequences.csv")
 
 # Build rows programmatically
-from pipelines.data.schema import make_row
+from chaperone.data.schema import make_row
 handler = PipelineDataHandler([
     make_row(name="input", path="design_1.pdb", metadata={"motif": ["A10"]}),
     make_row(name="input", path="design_2.pdb"),
@@ -393,8 +393,8 @@ Usage:
 """
 import sys
 from pathlib import Path
-from pipelines import ExecutionEngine, RuntimeArgs, JobArgs
-from pipelines.data import SELECTIONS
+from chaperone import ExecutionEngine, RuntimeArgs, JobArgs
+from chaperone.data import SELECTIONS
 from blocks import Blocks
 
 # ── Configuration ──────────────────────────────────────────────────────────
@@ -457,7 +457,7 @@ print(f"Saved {df.shape[0]} rows → {RUNDIR / 'pipeline.csv'}")
 
 ---
 
-## `pipelines.init_cli()` — CLI Flags for Standalone Scripts
+## `chaperone.init_cli()` — CLI Flags for Standalone Scripts
 
 Standalone pipeline scripts can opt into CLI flag parsing with a single `init_cli()` call.
 This registers all block flags and global runtime flags, then parses `sys.argv`.
@@ -465,7 +465,7 @@ This registers all block flags and global runtime flags, then parses `sys.argv`.
 ### Basic Usage
 
 ```python
-from pipelines import init_cli, ExecutionEngine
+from chaperone import init_cli, ExecutionEngine
 
 init_cli()  # registers flags, parses argv, sets up logging
 
@@ -504,7 +504,7 @@ Scripts can use this shebang to run without manually activating the venv:
 
 ```python
 #!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
-from pipelines import init_cli, ExecutionEngine
+from chaperone import init_cli, ExecutionEngine
 init_cli()
 ...
 ```

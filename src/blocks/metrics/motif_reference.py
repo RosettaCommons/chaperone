@@ -20,7 +20,7 @@ import numpy as np
 from pydantic import Field
 
 from blocks.metrics.utils import get_rmsd, weighted_rigid_align
-from pipelines import InlineBlockFunction, JobArgs, PipelineDataHandler
+from chaperone import InlineBlockFunction, JobArgs, PipelineDataHandler
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class ReferenceMotifRMSDBlock(InlineBlockFunction):
     )
 
     def execute(self, handler, sandbox_dir=None, chunk_id=None):
-        from pipelines.io import parse_to_atom_array
+        from chaperone.io import parse_to_atom_array
 
         ref_atoms = parse_to_atom_array(self.reference)
         wanted = _expand_residues(self.residues) if self.residues else None

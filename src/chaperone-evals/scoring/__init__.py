@@ -31,11 +31,11 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-from pipelines.data.handler import PipelineDataHandler
-from pipelines.data.schema import Column, make_row
+from chaperone.data.handler import PipelineDataHandler
+from chaperone.data.schema import Column, make_row
 
 if TYPE_CHECKING:
-    from pipelines.block_config.base import BlockFunction
+    from chaperone.block_config.base import BlockFunction
 
 CANONICAL_AA_PATTERN = re.compile(r"^[ACDEFGHIKLMNPQRSTVWY]+$")
 CANONICAL_RNA_PATTERN = re.compile(r"^[ACGU]+$")
@@ -927,7 +927,7 @@ def load_context_chains(
     them once here and attaching them to each design's input keeps the oracle a
     plain fold of the full assembly.
     """
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     atom_array = parse_to_atom_array(structure)
     if chains is not None:
@@ -951,7 +951,7 @@ def _sequences_to_cif(
     """
     from biotite.structure import AtomArray
 
-    from pipelines.data.handler import AA_ONE_TO_THREE
+    from chaperone.data.handler import AA_ONE_TO_THREE
 
     residues = [
         (chain, aa)
@@ -1127,7 +1127,7 @@ def motif_rmsd(
     """
     from biotite.structure import superimpose
 
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     design = parse_to_atom_array(design_structure)
     reference = parse_to_atom_array(reference_structure)
@@ -1200,7 +1200,7 @@ def require_finite_metrics(frame: pd.DataFrame, columns: list[str]) -> None:
 
 def structure_chain_ids(path: str | Path) -> set[str]:
     """Chain IDs present in a predicted structure; empty if it cannot be read."""
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     try:
         atom_array = parse_to_atom_array(str(path))
@@ -1617,7 +1617,7 @@ def ca_radius_of_gyration(structure: str | Path, *, chain_id: str) -> float:
     independent of how an oligomer is oriented or translated and avoids making
     the value depend on side-chain composition.
     """
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     atom_array = parse_to_atom_array(str(structure))
     mask = (atom_array.chain_id == chain_id) & (atom_array.atom_name == "CA")
@@ -1663,7 +1663,7 @@ def evaluate_gate_expressions(
     """
     from blocks.util_blocks.filter import compile_filter_expression
 
-    from pipelines.data.schema import Column
+    from chaperone.data.schema import Column
 
     packed = handler.to_pandas()
     metrics_column = str(Column.METRICS)
@@ -1833,7 +1833,7 @@ def run_sequence_scorer(
     submission data by identity. Returns the :class:`ScoreReport`, or ``None`` on
     contract failure.
     """
-    from pipelines import ExecutionEngine
+    from chaperone import ExecutionEngine
 
     designs_path = Path(designs).resolve()
     submission = load_submission_or_fail(

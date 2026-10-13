@@ -83,7 +83,7 @@ def viz(
     try:
         from atomworks.io.utils.visualize import view_pymol
 
-        from pipelines.io import parse_to_atom_array
+        from chaperone.io import parse_to_atom_array
 
         atom_array = parse_to_atom_array(str(path))
         import biotite.structure as struc

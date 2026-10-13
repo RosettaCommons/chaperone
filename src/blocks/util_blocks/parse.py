@@ -3,9 +3,9 @@ from pathlib import Path
 
 from atomworks.io.utils.io_utils import to_cif_file, to_pdb_string
 
-from pipelines import PipelineDataHandler
-from pipelines.block_config import BlockFunction
-from pipelines.io import ensure_bonds
+from chaperone import PipelineDataHandler
+from chaperone.block_config import BlockFunction
+from chaperone.io import ensure_bonds
 
 logger = logging.getLogger(__name__)
 

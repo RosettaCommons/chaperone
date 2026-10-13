@@ -8,10 +8,10 @@ from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
-from pipelines import CompiledBlockFunction, PipelineDataHandler, JobArgs
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.common import glob_designs_in_dir, is_apple_silicon
-from pipelines.data import make_row
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.common import glob_designs_in_dir, is_apple_silicon
+from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
     load_manifest,

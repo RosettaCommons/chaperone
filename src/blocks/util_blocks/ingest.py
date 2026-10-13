@@ -2,9 +2,9 @@ from pathlib import Path
 import tempfile
 import logging
 from glob import glob
-from pipelines import PipelineDataHandler
+from chaperone import PipelineDataHandler
 from typing import Union, Optional
-from pipelines.block_config import BlockFunction
+from chaperone.block_config import BlockFunction
 from pydantic import Field, field_validator, model_validator
 import polars as pl
 
@@ -183,7 +183,7 @@ class IngestBlock(BlockFunction):
         """Validate that compile_as refers to a valid CompiledBlockFunction."""
         if v is not None:
             from blocks import Blocks
-            from pipelines import CompiledBlockFunction
+            from chaperone import CompiledBlockFunction
 
             block_cls = Blocks.get(v)
             if block_cls is None:

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for sequence-only C3 homo-oligomer submissions.
 
 Each submitted protomer sequence is replicated into three identical chains
@@ -17,7 +17,7 @@ from pathlib import Path
 from absl import flags
 
 from blocks import Blocks
-from pipelines import init_cli
+from chaperone import init_cli
 from scoring import (
     SequenceSubmissionSpec,
     ca_radius_of_gyration,

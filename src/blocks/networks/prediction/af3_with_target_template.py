@@ -47,7 +47,7 @@ def _to_cif_string(chain_atom_array, name: str) -> str:
         to_cif_string,
     )  # local import; same util the helper uses
 
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     template = ensure_bonds(chain_atom_array).copy()
     categories = template.get_annotation_categories()
@@ -124,7 +124,7 @@ class AF3WithTargetTemplate(AlphaFold3Block):
 
     def _load_full_receptor(self):
         """Load the full receptor atom array, restricted to ``target_chain``."""
-        from pipelines.io import parse_to_atom_array
+        from chaperone.io import parse_to_atom_array
 
         aa = parse_to_atom_array(self.full_receptor_pdb, remove_hydrogens=True)
         sub = aa[aa.chain_id == self.target_chain]

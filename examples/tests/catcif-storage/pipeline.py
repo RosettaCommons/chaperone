@@ -18,8 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data import SELECTIONS
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FILES_DIR = SCRIPT_DIR / "files"

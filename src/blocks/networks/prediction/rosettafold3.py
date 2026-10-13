@@ -12,11 +12,11 @@ from typing import Literal, Optional
 from pydantic import Field, model_validator
 import numpy as np
 
-from pipelines import PipelineDataHandler, JobArgs, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, ScriptSpec
-from pipelines.block_config.prediction import MIN_PAE_INTERACTION_KEY
-from pipelines.common import glob_designs_in_dir, tail_block_log
-from pipelines.data import make_row
+from chaperone import PipelineDataHandler, JobArgs, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
+from chaperone.block_config.prediction import MIN_PAE_INTERACTION_KEY
+from chaperone.common import glob_designs_in_dir, tail_block_log
+from chaperone.data import make_row
 from blocks.networks.foundry.container import FOUNDRY_CONTAINER
 from blocks.networks.prediction.helpers import (
     create_rf3_json_from_design,
@@ -481,7 +481,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
         """
         from atomworks.io.utils.io_utils import to_cif_file
 
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
 
         for loaded, input_name in records:
             dst = os.path.join(inputdir, f"{input_name}.cif")
@@ -913,7 +913,7 @@ class RF3DevBlock(RosettaFold3Block):
 
     def get_command_template(self):
         """Build containerized foundry-dev command using the deps-only dev SIF."""
-        from pipelines.containers import Image
+        from chaperone.containers import Image
 
         foundry_dev = self._resolve_foundry_dev_path()
         pythonpath = ":".join(
@@ -973,7 +973,7 @@ class RF3DevBlock(RosettaFold3Block):
             if self._needs_bonds(loaded.path):
                 from atomworks.io.utils.io_utils import to_cif_file
 
-                from pipelines.io import ensure_bonds
+                from chaperone.io import ensure_bonds
 
                 atom_array = pdb_assign_ligand_bonds(atom_array, self.specified_smiles)
                 cif_path = os.path.join(inputdir, f"{loaded.basename}.cif")

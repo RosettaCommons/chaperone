@@ -13,15 +13,15 @@ from blocks.networks.prediction.helpers import (
     create_openfold3_json_from_design,
     fill_openfold3_json_from_template,
 )
-from pipelines import JobArgs, PipelineDataHandler, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, TIER_PRIMARY, ScriptSpec
-from pipelines.block_config.prediction import (
+from chaperone import JobArgs, PipelineDataHandler, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, TIER_PRIMARY, ScriptSpec
+from chaperone.block_config.prediction import (
     MIN_INTERFACE_IPTM_KEY,
     select_best_models,
 )
-from pipelines.common import glob_designs_in_dir
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone.common import glob_designs_in_dir
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 logger = logging.getLogger(__name__)
 

@@ -104,7 +104,7 @@ rna = [
 all = ["pipelines[cli,dev,docs,notebook,pyrosetta,rna]"]
 
 [project.scripts]
-pipelines = "pipelines_cli.main:main"
+pipelines = "chaperone_cli.main:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
@@ -112,7 +112,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["blocks*", "pipelines*", "pipelines_cli*"]
+include = ["blocks*", "pipelines*", "chaperone_cli*"]
 
 [tool.setuptools.package-data]
 pipelines = ["py.typed"]

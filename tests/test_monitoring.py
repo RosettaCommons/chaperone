@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 import polars as pl
 import pytest
-from pipelines_cli.campaign_inspect import InspectError, inspect_campaign
+from chaperone_cli.campaign_inspect import InspectError, inspect_campaign
 import os
 import subprocess
 import sys
 from unittest.mock import patch
-from pipelines_cli import job_wait
+from chaperone_cli import job_wait
 
 
 # test_campaign_inspect.py
@@ -186,7 +186,7 @@ def test_init_cli_supports_conventional_help_flags():
                 sys.executable,
                 "-c",
                 (
-                    "from pipelines import init_cli; "
+                    "from chaperone import init_cli; "
                     f"init_cli(['campaign.py', {help_flag!r}], blocks=[])"
                 ),
             ],
@@ -334,7 +334,7 @@ def test_mcp_exposes_wait_launch_and_inspect_from_pipelines(tmp_path: Path):
         [
             sys.executable,
             "-m",
-            "pipelines_cli.main",
+            "chaperone_cli.main",
             "monitor-mcp",
             "--server-name",
             "campaign-monitor",

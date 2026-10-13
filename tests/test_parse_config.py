@@ -8,7 +8,7 @@ from atomworks.io.config import ParseConfig
 from biotite.structure import AtomArray
 from biotite.structure.io.pdbx import CIFFile, set_structure
 
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 DEPRECATIONS = ("Passing processing kwargs", "load_any")
 

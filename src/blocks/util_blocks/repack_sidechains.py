@@ -9,8 +9,8 @@ import numpy as np
 from pydantic import Field, field_validator, model_validator
 from scipy.spatial import cKDTree
 
-from pipelines import InlineBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.data.schema import make_row
+from chaperone import InlineBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.data.schema import make_row
 
 
 _POSITION = re.compile(r"^(?P<chain>[^:\d]+):?(?P<resid>-?\d+)$")
@@ -181,7 +181,7 @@ class SelectiveSidechainRepackBlock(InlineBlockFunction):
         chunk_id: int = 0,
     ) -> PipelineDataHandler:
         from atomworks.io.utils.io_utils import to_cif_file
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
         from biotite.structure import concatenate
         from biotite.structure.io import load_structure
 
