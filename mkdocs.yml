@@ -56,6 +56,7 @@ nav:
   - Core Examples: core-examples.md
   - All Blocks: blocks-reference.md
   - Container Installation: containers.md
+  - Cloud Execution: cloud.md
   - Syntax Reference: syntax.md
   - Validation: validation.md
   - Release Validation: release-validation.md

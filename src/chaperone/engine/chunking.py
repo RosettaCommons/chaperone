@@ -122,6 +122,8 @@ def _should_use_exec_finisher(
     """
     import os
 
+    if getattr(block, "cloud", False):
+        return False
     if not is_last:
         return False
     if recompile or handler is None:
@@ -597,7 +599,7 @@ def execute_chunks(
         )
         # Recover only ordinary Slurm runs. Forced execution/recompilation may
         # still have an old parquet if the worker never started.
-        if not run_args.is_local and not (
+        if run_args.mode == "slurm" and not (
             run_args.force_exec or run_args.skip_chunk_cache or run_args.recompile
         ):
             recover_written_outputs(contexts_to_run, new_outputs)
@@ -609,7 +611,7 @@ def execute_chunks(
         # Query sacct for failed nodes and add to exclude list
         newly_excluded = (
             extract_failed_nodes(run_args.job_args.job_name) - excluded_nodes
-        )
+        ) if run_args.mode == "slurm" else set()
 
         if newly_excluded:
             excluded_nodes.update(newly_excluded)
@@ -766,7 +768,7 @@ def _dispatch_jobs(job_fn, contexts, runner, run_args, label, **extra_kwargs):
                 results.append(None)
         return results
     else:
-        console.print(f"[bold]Running {n} jobs for {label} (SLURM)[/bold]")
+        console.print(f"[bold]Running {n} jobs for {label} ({run_args.mode.upper()})[/bold]")
 
         return run_with_cancel(
             lambda: _run_mapped_jobs(

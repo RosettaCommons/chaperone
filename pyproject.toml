@@ -54,6 +54,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cloud = ["modal>=1.6.1,<2"]
 cli = [
     # No additional dependencies for CLI beyond core
 ]
@@ -150,6 +151,7 @@ test = "python -m pytest tests/"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 markers = [
+    "cloud: live Modal tests (explicitly opt in with CHAPERONE_RUN_MODAL_TESTS=1)",
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
     "gpu: marks tests as requiring GPU allocation (skipped by default)",
     "slow: marks tests as slow or requiring full pipeline execution (skipped by default)",
