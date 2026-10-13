@@ -96,6 +96,23 @@ def test_backend_switch_has_distinct_cache_identity_without_invalidating_site_ca
     assert len(set(fingerprints)) == 3
 
 
+@pytest.mark.parametrize("backend,env_flag", [("apptainer", "--env"), ("docker", "-e")])
+@pytest.mark.parametrize("image", [mpnn._MODELHUB_SIF_CONTAINER, mpnn.MODELHUB_PORTABLE_CONTAINER, mpnn.LIGANDMPNN_PUBLIC_CONTAINER])
+def test_cpu_device_is_masked_inside_each_container_runtime(monkeypatch, tmp_path, backend, env_flag, image):
+    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", image)
+    monkeypatch.setattr(get_settings(), "MPNN_WEIGHTS_DIR", None)
+    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", backend)
+    monkeypatch.setattr("chaperone.containers._supports_private_mount_namespace", lambda: False)
+    block = mpnn.ClassicMPNNBlock(device="cpu")
+    command = block.create_command(input_handler(tmp_path), tmp_path / "chunk", 0)
+    assert command[0] == backend
+    mask_index = command.index("CUDA_VISIBLE_DEVICES=")
+    assert command[mask_index - 1] == env_flag
+    assert mask_index < command.index("python")
+    assert command.count("CUDA_VISIBLE_DEVICES=") == 1
+    assert "CUDA_VISIBLE_DEVICES=" not in mpnn.ClassicMPNNBlock().command_template
+
+
 def test_public_sequence_contract_and_original_chain_lineage(tmp_path):
     block = mpnn.ClassicMPNNBlock(num_seq_per_pdb=1, args={"chains_to_design": "X1", "symmetry_residues": "X15,Z1"})
     sandbox = tmp_path / "chunk"

@@ -43,6 +43,7 @@ def test_core_smoke_keeps_bounded_cohort_and_normal_schedules(tmp_path, local):
     assert blocks["mpnn"]["output_mode"] == "sequences"
     assert blocks["rf3"]["n_recycles"] == 10
     assert blocks["rf3"]["num_diffusion_steps"] == 50
+    assert blocks["rf3"]["early_stopping_plddt_threshold"] == 0
     assert blocks["af3"]["n_recycles"] is None
     assert blocks["esmfold2"]["num_diffusion_steps"] == 200
     assert blocks["esmfold2"]["num_loops"] == 3

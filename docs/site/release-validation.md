@@ -12,7 +12,7 @@ run artifacts before treating it as the final release record.
 | Framework regression suite | **601 passed, 14 skipped**. Includes PR #356 regressions, smoke configuration, container selection/binds, site settings and Slurm resources. |
 | Eval controller suite | **259 passed, 2 skipped**, plus **27 passing subtests**. Includes snapshots, isolation, site profiles, scoring dispatch and guarded Slurm submission. |
 | Submission/scoring helpers | **13 passed**. |
-| Wheel and source distribution | Built successfully. Wheel: 183 members; source archive: 242. MIT metadata, the public MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
+| Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the public MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
 | Documentation | Block reference regenerated; strict MkDocs build passed. |
 | Container recipes | All 22 scientific-tool recipes rendered and checked statically. This does not mean all 22 were rebuilt or exercised. Eval image shell sections also passed syntax checks. |
 
@@ -54,7 +54,7 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Initial build failed; diagnosis in progress | Public source and six checksum-verified official checkpoints are included in the new recipe. Local adapter/CLI contract tests passed; a successful fresh build and GPU inference remain pending. No equivalence claim versus other MPNN backends. |
+| Public MPNN (`ligandmpnn_public`) | Repaired rebuild v3 in progress after a NumPy compatibility fix | Public source and six checksum-verified official checkpoints are included in the new recipe. Local adapter/CLI contract tests passed; a successful fresh build and GPU inference remain pending. No equivalence claim versus other MPNN backends. |
 | Legacy MPNN (`modelhub_portable`) | Passed with authorized private-source access | Complete PPI example executed: RFD3 → initial filter (1/1) → fresh MPNN → RF3 → RMSD → final filter (0/1). The final design failed both ipTM and RMSD gates. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
 | Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image is available; its core-block GPU batch checks remain pending. |
@@ -62,7 +62,7 @@ checks execution and output integration. Neither establishes prediction quality.
 | Boltz2 | Passed | Fresh-image GPU smoke passed for 48 residues, one sample and the normal 512-step default, returning finite coordinates. |
 | Chai1 | Passed, with explicit Torch compatibility override | Fresh built-image GPU smoke passed with one sample and the normal 200 diffusion steps; compiled artifact step naming is correct after its repair. |
 | Protenix | Full source build passed | Fresh-image GPU smoke passed on 48 residues with the normal 200 diffusion steps and ten cycles: finite coordinates, pLDDT 78.271866, no reported clash. |
-| E1 | Passed | Initial checkpoint download failed on DNS resolution. GPU inference remains unvalidated while the download issue is diagnosed. |
+| E1 | Passed | Fresh-image GPU inference passed after the DNS fix, including public Hugging Face checkpoint download and finite logits, token embeddings, and mean embeddings. |
 | Eval agent | Passed | Clean imports/block discovery and CPU functional smoke passed. Nested Apptainer execution passed with `/dev/fuse` bound, matching the controller runtime binds. Full LLM agent trial remains untested. |
 | Eval baseline | Passed | Image build checks passed; full baseline trial pending. |
 
@@ -97,6 +97,10 @@ model weights. The legacy MPNN validation required authorized private-source
 access; the new public LigandMPNN backend supplies a separate public installation
 path with official public weights. Third-party
 software and weights retain their own terms despite Chaperone's MIT license.
+The [third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md)
+identify the bundled AF3 runner (CC BY-NC-SA 4.0) and nine eval example structures
+with embedded AF3 output terms. Their original notices remain intact; MIT applies
+to Chaperone-authored code, not to relicensing these upstream materials.
 Held-out scorers/reference material in public repository history remain accessible
 to network-enabled agents; snapshot and wheel isolation cannot make that history
 private. Separate private material/history or describe these as public tasks.

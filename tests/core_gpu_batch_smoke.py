@@ -8,7 +8,9 @@ Two independent 40-residue RFD3 batches produce two backbones; classic MPNN
 produces two sequences each. RF3, AF3 and ESMFold2 independently predict that
 same four-sequence cohort with one sample and normal sampling schedules.
 This checks execution and data integrity, not scientific accuracy or production
-throughput. No quality thresholds are relaxed.
+throughput. RF3 early stopping is disabled here to require a completed prediction
+for every input; its normal recycle and diffusion schedules are unchanged. This
+execution diagnostic does not promote designs based on confidence.
 Select CHAPERONE_MPNN_CONTAINER=public for the public LigandMPNN image or
 portable for the authorized fused-MPNN image; select it explicitly for a build check.
 
@@ -64,6 +66,8 @@ def resolve_plan(argv):
     predictors = []
     for name in selected:
         kwargs = {"diffusion_batch_size": 1}
+        if name == "rf3":
+            kwargs["early_stopping_plddt_threshold"] = 0
         if name == "esmfold2":
             kwargs["use_local_msas"] = False
             if snapshot := os.environ.get("SMOKE_ESMFOLD2_SNAPSHOT"):
@@ -80,9 +84,11 @@ def resolve_plan(argv):
     for block in predictors:
         default = classes[block._name]()
         assert block.diffusion_batch_size == 1 and block.read_most_confident_model
-        for field in ("num_diffusion_steps", "n_recycles", "num_loops", "early_stopping_plddt_threshold"):
+        for field in ("num_diffusion_steps", "n_recycles", "num_loops"):
             if hasattr(block, field):
                 assert getattr(block, field) == getattr(default, field), f"Keep normal {block.name}.{field}"
+        if block._name == "rf3":
+            assert block.early_stopping_plddt_threshold == 0
         if hasattr(block, "model_seeds"):
             assert len(block.model_seeds or []) == 1
         assert not block.compile_as_metric

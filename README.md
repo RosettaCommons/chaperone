@@ -22,7 +22,7 @@ This repo ships with [agent skills](docs/site/skills.md) and project context (`A
 > Start with the [documentation home](docs/site/index.md), [simple example](docs/site/simple.md), and [core examples](docs/site/core-examples.md).
 
 > [!NOTE]
-> Chaperone is [MIT licensed](LICENSE). External collaborators are welcome. Third-party software and model weights retain their own licenses and access requirements.
+> Chaperone-authored code is [MIT licensed](LICENSE). External collaborators are welcome. Bundled third-party code and example outputs retain the terms listed in [Third-party notices](THIRD_PARTY_NOTICES.md); external tools and model weights retain their own licenses and access requirements.
 
 ## Installation (Agents)
 
@@ -246,7 +246,7 @@ We can very easily add more or adjust these as necessary!
 The example below is how one might add an MD-based tool to the repo:
 
 ```
-> Read through /projects/ml/pipelines/software/{your-repo-name} and create a block using the `/build-block` skill. You should add this to the end of the test-pipeline under ./examples/benchmarks/ame on the af3 outputs with the ligand.
+> Read through /absolute/path/to/your-tool-repository and create a block using the `/build-block` skill. You should add this to the end of the test-pipeline under ./examples/benchmarks/ame on the af3 outputs with the ligand.
 ```
 
 You can ask Claude out of the box to do this, but it'll be much faster if you either also tell claude "You have a local gpu" (after getting a GPU node, e.g. `qlogin --gres=gpu` at IPD or `salloc --gres=gpu:1` elsewhere) - that is, before opening `claude` on the terminal, or tell it to use `/slurm-interactive` - which will tell it to grab a gpu (or cpu) node via a qlogin tmux session (bit less clean but works!)
@@ -382,10 +382,11 @@ handler.materialize(rundir / "materialized", expand_catcif=True)
 
 ### Viewing catcifs in PyMOL
 
-Drop this in your `~/.pymolrc` to teach PyMOL to open `.catcif` archives directly — no materialization needed:
+Locate `utils/pymol_load_catcif.py` in your `catcif_tools` checkout, then add
+its absolute path to `~/.pymolrc`. For example (replace the placeholder path):
 
 ```
-run /net/software/lab/catcif_tools/utils/pymol_load_catcif.py
+run /absolute/path/to/catcif_tools/utils/pymol_load_catcif.py
 ```
 
 After that:

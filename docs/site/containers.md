@@ -1,6 +1,6 @@
 # Installing block containers
 
-Chaperone itself is MIT licensed. Each scientific tool, model weight, database,
+Chaperone-authored code is MIT licensed. See the [third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md) for bundled AF3 code and example outputs. Each scientific tool, model weight, database,
 and external executable retains its own license and access requirements.
 A container recipe being present is not proof that its weights are public or
 that the model has been scientifically validated on your data.

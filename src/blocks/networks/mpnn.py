@@ -611,6 +611,8 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         Portable: run.py is baked into the image at ``/opt/fused_mpnn/run.py``
         and weight paths come from ``MPNN_WEIGHTS_DIR``.
         """
+        # Host environment prefixes are discarded by --cleanenv / Docker.
+        runtime_env = {"CUDA_VISIBLE_DEVICES": ""} if self.device == "cpu" else None
         if self._get_image() is _PUBLIC_MPNN_CONTAINER:
             if self.lddt_enhanced:
                 raise ValueError("The public LigandMPNN backend does not support lddt_enhanced; select an authorized legacy runtime for that model.")
@@ -621,7 +623,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 if not path.is_file():
                     raise FileNotFoundError(f"Public MPNN custom packer checkpoint does not exist: {path}")
                 binds.append((str(path), f"{path}:ro"))
-            cmd = self._get_image().build_command("python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds)
+            cmd = self._get_image().build_command("python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds, env=runtime_env)
             for kind in _PUBLIC_MPNN_CHECKPOINTS:
                 if kind != "path_sc":
                     cmd += [f"--checkpoint_{kind}", _public_checkpoint(kind)]
@@ -661,7 +663,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             if configured_weights:
                 binds.append((configured_weights, configured_weights))
 
-        cmd = self._get_image().build_command("python", "-u", run_py, binds=binds)
+        cmd = self._get_image().build_command("python", "-u", run_py, binds=binds, env=runtime_env)
 
         if not is_portable_container and not configured_weights:
             return cmd
@@ -1098,8 +1100,6 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             self.num_seq_per_pdb,
         ]
         cmd += ["--enhance", "plddt_3_20240930-f9c9ea0f"] if self.lddt_enhanced else []
-        if self.device == "cpu":
-            cmd = ["env", "CUDA_VISIBLE_DEVICES="] + cmd
         cli_args = self.args.to_cli_dict()
         if public:
             cli_args.update(public_options)

@@ -48,6 +48,35 @@ if observed != expected:
     raise RuntimeError(f'ESM rotary buffer layout is incompatible with the DISCO checkpoint: {observed}')
 model.load_state_dict(model.state_dict(), strict=True)
 """
+_DISCO_CUDA_ARCH_ASSIGNMENT = (
+    'os.environ["TORCH_CUDA_ARCH_LIST"] = '
+    '(os.environ.get("TORCH_CUDA_ARCH_LIST") or '
+    '".".join(map(str, torch.cuda.get_device_capability(self.device)))).replace(",", ";")'
+)
+_DISCO_CUDA_ARCH_PATCH = f"""
+from pathlib import Path
+path = Path('/opt/disco/runner/inference.py')
+source = path.read_text()
+old = 'os.environ["TORCH_CUDA_ARCH_LIST"] = "8.0,8.9"'
+if source.count(old) != 1:
+    raise RuntimeError('DISCO CUDA architecture assignment changed; review the pinned source')
+path.write_text(source.replace(old, {_DISCO_CUDA_ARCH_ASSIGNMENT!r}))
+"""
+_DISCO_DEEPSPEED_ARCH_CHECK = """
+import os
+from deepspeed.ops.op_builder.builder import CUDAOpBuilder
+class ArchitectureCheck(CUDAOpBuilder):
+    def absolute_name(self):
+        return 'architecture_check'
+    def sources(self):
+        return []
+for arch, expected in [('8.6', '8.6+PTX'), ('12.0', '12.0+PTX'), ('8.0;8.9', '8.0;8.9+PTX')]:
+    builder = ArchitectureCheck('architecture_check')
+    builder.jit_mode = True
+    builder._jit_arch_list = arch
+    builder.compute_capability_args()
+    assert os.environ['TORCH_CUDA_ARCH_LIST'] == expected
+"""
 
 DISCO_CONTAINER = (
     cuda_python_base(
@@ -79,6 +108,7 @@ DISCO_CONTAINER = (
     )
     .run(
         "git -C /opt/disco checkout --detach 398098c57e3f1dd6dd6205c059f7792dcc9b9147",
+        "python3.12 -c " + shlex.quote(f"exec({_DISCO_CUDA_ARCH_PATCH!r})"),
         "python3.12 -c " + shlex.quote(
             "from pathlib import Path; p = Path('/opt/disco/pyproject.toml'); "
             f"p.write_text(p.read_text() + {_DISCO_UV_CONFIG!r})"
@@ -95,6 +125,7 @@ DISCO_CONTAINER = (
     )
     .run(
         "/opt/disco/.venv/bin/python -c " + shlex.quote(f"exec({_DISCO_ESM_COMPATIBILITY_CHECK!r})"),
+        "/opt/disco/.venv/bin/python -c " + shlex.quote(f"exec({_DISCO_DEEPSPEED_ARCH_CHECK!r})"),
         "cd /opt/disco && CUDA_HOME=/usr/local/cuda CUTLASS_PATH=/opt/cutlass "
         "/opt/disco/.venv/bin/python -c "
         "'import torch; import runner.inference; assert torch.version.cuda == \"12.8\"; print(torch.__version__)'",
