@@ -337,12 +337,12 @@ def _render_block(name: str, cls) -> list[str]:
     lines.extend(_reference_lines(name, cls))
     if name == "foundry_mpnn":
         lines.extend([
-            "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (public LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
+            "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
             "",
         ])
     if name == "mpnn":
         lines.extend([
-            "**Backend:** `mpnn` runs the public MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between public LigandMPNN and `foundry_mpnn`.",
+            "**Backend:** `mpnn` runs the MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between LigandMPNN and `foundry_mpnn`.",
             "",
         ])
     if name in METRIC_NOTES:

@@ -1,4 +1,4 @@
-# MPNN block for inverse folding, backed by public LigandMPNN
+# MPNN block for inverse folding, backed by LigandMPNN
 import json
 import logging
 import os
@@ -214,7 +214,7 @@ class ChainRename:
 
 # ── Container ───────────────────────────────────────────────────────────
 #
-# Public LigandMPNN (dauparas/LigandMPNN, MIT) built from source with every official
+# LigandMPNN (dauparas/LigandMPNN, MIT) built from source with every official
 # checkpoint baked in, so a model_type / noise_level choice never needs a weights
 # directory on the host. Install it with ``chaperone install ligandmpnn_public``.
 
@@ -438,7 +438,7 @@ class MPNNArgs(BaseModel):
 
 
 class ClassicMPNNBlock(CompiledBlockFunction):
-    """Inverse folding with public LigandMPNN.
+    """Inverse folding with LigandMPNN.
 
     ``model_type`` picks the model family and ``noise_level`` the checkpoint
     version within it (see ``_PUBLIC_MPNN_CHECKPOINTS``).
@@ -450,7 +450,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
 
     _name = "mpnn"
     _display_name = "ProteinMPNN"
-    _description = "Inverse folding with public LigandMPNN (protein, ligand, soluble and membrane models)"
+    _description = "Inverse folding with LigandMPNN (protein, ligand, soluble and membrane models)"
     _image = LIGANDMPNN_PUBLIC_CONTAINER
     _resources = JobArgs(
         partition="cpu",
@@ -666,7 +666,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             raise
         except Exception as error:
             raise ValueError(
-                f"Public MPNN requires PDB-representable inputs: {input_path}. "
+                f"MPNN requires PDB-representable inputs: {input_path}. "
                 "Check chain/residue identifiers and ligand component names."
             ) from error
         return str(out_path)

@@ -1,4 +1,4 @@
-"""Public LigandMPNN adapter contracts, independent of model installation."""
+"""LigandMPNN adapter contracts, independent of model installation."""
 
 import json
 import shutil

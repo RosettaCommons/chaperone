@@ -55,7 +55,7 @@ metrics; DISCO measures backbone and ligand pose recovery; AME measures catalyti
 motif recovery; the prediction cohort compares predicted structures with PDB
 references. These are computational benchmarks, not experimental activity assays.
 A script does not constitute benchmark results, and FoundryMPNN equivalence to
-the `mpnn` block (public LigandMPNN) has not been established here. Reuse identical
+the `mpnn` block (LigandMPNN) has not been established here. Reuse identical
 backbones and scoring settings for a controlled backend comparison.
 
 These campaigns are not executed in routine CI; no fresh-cluster validation of
@@ -93,7 +93,7 @@ for each run so a smoke test cannot reuse a production output directory.
 | `fgfr2-binder/pipeline.py --test` | One backbone, one sequence, one templated AF3 sample | Foundry, `ligandmpnn_public`, AF3; enough GPU memory for the full receptor |
 | `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, `ligandmpnn_public`, AF3; explicit flags re-enable the storage behavior under test |
 
-The `mpnn` block runs public LigandMPNN from the `ligandmpnn_public` image
+The `mpnn` block runs LigandMPNN from the `ligandmpnn_public` image
 (`chaperone install ligandmpnn_public`). The filename `pipeline_mpnn.py`
 distinguishes the `mpnn` block from `foundry_mpnn`. Earlier recorded GPU example
 runs used a different, now removed MPNN runtime; public-backend example validation

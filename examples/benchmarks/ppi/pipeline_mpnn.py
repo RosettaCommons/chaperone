@@ -1,8 +1,8 @@
 #!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
-"""PPI binder design using RFD3 + public LigandMPNN (``mpnn`` block) + RF3.
+"""PPI binder design using RFD3 + LigandMPNN (``mpnn`` block) + RF3.
 
 Sibling of ``pipeline_foundry.py`` in this directory that swaps
-Foundry MPNN for the ``mpnn`` block (public LigandMPNN). Same binder
+Foundry MPNN for the ``mpnn`` block (LigandMPNN). Same binder
 target (human insulin receptor, 4ZXB) and shared ``files/`` so metrics
 between the two inverse-folding backends are directly comparable on
 identical RFD3 scaffolds and RF3 validation.

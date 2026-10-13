@@ -11,7 +11,7 @@ is explicitly deferred; no additional cluster tests are running.
 | Framework regression suite | **631 passed, 14 skipped** after the targeted naming-check rerun following the main-branch docs merge. Includes PR #356 regressions, smoke configuration, container selection/binds, site settings and Slurm resources. |
 | Eval controller suite | **259 passed, 2 skipped**, plus **27 passing subtests**. Includes snapshots, isolation, site profiles, scoring dispatch and guarded Slurm submission. |
 | Submission/scoring helpers | **13 passed**. |
-| Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the public MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
+| Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
 | Documentation | Block reference regenerated; strict MkDocs build passed. |
 | Container recipes | All 22 scientific-tool recipes rendered and checked statically. This does not mean all 22 were rebuilt or exercised. Eval image shell sections also passed syntax checks. |
 
@@ -87,7 +87,7 @@ we did not introduce a CoreWeave preset or infer resource policy from GPU names.
 
 The login node rejected Apptainer `%post` with a mount-propagation permission
 error. Run container installation inside an approved compute allocation on this
-cluster, using the same shared image directory. The fresh public LigandMPNN
+cluster, using the same shared image directory. The fresh LigandMPNN
 build there completed with Torch 2.11.0/CUDA 12.8 and passed package
 compatibility, six checksum/load gates and imports.
 
@@ -127,9 +127,9 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
+| MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
-| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with public MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
+| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
 | DISCO | Transformers-repaired full build passed; final architecture repair not rebuilt | The first GPU failure was a Transformers 5 checkpoint-layout mismatch. The corrected rebuild reached a second upstream failure: a comma-delimited CUDA architecture list. The final recipe repairs that assignment and passes parser/regression checks; final GPU validation is deferred. |
 | Boltz2 | Passed | Fresh-image GPU smoke passed for 48 residues, one sample and the normal 512-step default, returning finite coordinates. |
 | Chai1 | Passed, with explicit Torch compatibility override | Fresh built-image GPU smoke passed with one sample and the normal 200 diffusion steps; compiled artifact step naming is correct after its repair. |
@@ -138,7 +138,7 @@ checks execution and output integration. Neither establishes prediction quality.
 | Eval agent | Passed | Clean imports/block discovery and CPU functional smoke passed. Nested Apptainer execution passed with `/dev/fuse` bound, matching the controller runtime binds. Full LLM agent trial remains untested. |
 | Eval baseline | Passed | Image build checks passed; full baseline trial pending. |
 
-The final core batch on one RTX A6000 passed fresh-image RFD3 → public MPNN,
+The final core batch on one RTX A6000 passed fresh-image RFD3 → MPNN,
 then independent AF3 and ESMFold2 predictions of all four designed sequences.
 The helper verified exact sequences, parent lineage, finite bounded coordinates,
 confidence metrics and disk-cache replay without new execution or changed output

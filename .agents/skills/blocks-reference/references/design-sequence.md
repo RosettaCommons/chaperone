@@ -14,7 +14,7 @@ Choose generation blocks by design scope, then use an MPNN block for fixed-backb
 | `protein_hunter` | Specialized binder hallucination against biomolecular targets, generally really hard to control the design outcomes and very overfitted to boltz which doens't transfer to other oracles. Integrated iteration, but Boltz-dependent and costly. |
 | `boltz2_steered` | Suppress unwanted binder helicity in Protein Hunter. Specialized and slow; verify improvement with the final scorer. |
 | `foundry_mpnn` | Default ProteinMPNN or LigandMPNN inverse folding. Clean, inexpensive wrapper; limited to fixed-backbone sequence design. |
-| `mpnn` | Public LigandMPNN. `model_type` picks protein, ligand, soluble or membrane MPNN; `noise_level` picks the checkpoint version. Use for the mature wrapper or advanced flags. Flexible, but likelihood is not fold/function evidence. |
+| `mpnn` | LigandMPNN. `model_type` picks protein, ligand, soluble or membrane MPNN; `noise_level` picks the checkpoint version. Use for the mature wrapper or advanced flags. Flexible, but likelihood is not fold/function evidence. |
 | `esm2` | Sequence embeddings and similarity features with selectable model sizes. Fast, but indirect, gears more towards natural rather than de novo sequence, and checkpoint-size dependent. |
 
 ## Selection shortcuts

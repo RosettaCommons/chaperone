@@ -48,7 +48,7 @@ The MIT license on Chaperone's eval code does not replace the output notices.
 ## Installed tools and downloaded assets
 
 Container recipes install separate upstream projects; their software and assets
-retain their own terms. In particular, the public LigandMPNN backend uses the
+retain their own terms. In particular, the LigandMPNN backend uses the
 upstream MIT-licensed source and public checkpoints. PyRosetta/Rosetta, model
 parameters, and databases may have separate access or use requirements.
 

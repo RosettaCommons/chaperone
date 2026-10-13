@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run public LigandMPNN packing on two small existing backbones.
+"""Run LigandMPNN packing on two small existing backbones.
 
     python tests/public_mpnn_packing_smoke.py \
         --inputs=/path/to/core-run/rfd3/output.parquet --test --local \
@@ -210,7 +210,7 @@ def main(argv=None):
     assert parquet.stat().st_mtime_ns == mtime
     assert load_execution_records(engine.rundir / block.name) == records
     print(
-        f"PUBLIC MPNN PACKING PASS: 8 outputs, fixed residues and X1 chains preserved; {records[0].gpu_seconds:.1f} GPU seconds; cache replay added no work"
+        f"MPNN PACKING PASS: 8 outputs, fixed residues and X1 chains preserved; {records[0].gpu_seconds:.1f} GPU seconds; cache replay added no work"
     )
 
 
