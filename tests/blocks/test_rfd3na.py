@@ -53,7 +53,7 @@ def test_rfd3na_builds_safe_default_command_and_input(tmp_path):
         "dump_trajectories=False",
         "skip_existing=True",
         f"out_dir={tmp_path}",
-        "ckpt_path=/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na_1190.ckpt",
+        f"ckpt_path={block.ckpt_path}",
     }
     assert expected.issubset(command)
 

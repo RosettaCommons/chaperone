@@ -130,7 +130,7 @@ Requires GNU coreutils `env` with `-S` support. Portable fallback: `#!/usr/bin/e
 Any Pydantic field on a block can be overridden: `--{block_name}.{field}={value}`
 
 ```bash
-./script.py --test  # Shorthand for --config=tests/test_overrides.yaml
+./script.py --test  # Packaged one-sample-per-input defaults; explicit config/flags win
 ./script.py --rfd3.n_batches=1 --rfd3.batch_size=1
 ./script.py --mpnn.num_seq_per_pdb=4
 ./script.py --af3.num_diffusion_samples=1

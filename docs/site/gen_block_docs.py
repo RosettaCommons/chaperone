@@ -12,6 +12,7 @@ discovered block, organized by category (Networks, Metrics, Utilities).
 from __future__ import annotations
 
 import sys
+import inspect
 from pathlib import Path
 from typing import get_args, get_origin, Union
 import types
@@ -42,9 +43,8 @@ BLOCK_REFERENCES: dict[str, dict[str, str]] = {
         "title": "Butcher, Krishna et al. (2025) — RFdiffusion3NA multipolymer design",
     },
     "rfd2": {
-        "paper": "https://www.science.org/doi/10.1126/science.adl2528",
-        "code": "https://github.com/baker-laboratory/rf_diffusion_all_atom",
-        "title": "Krishna et al. (2024) — Generalized biomolecular modeling and design with RoseTTAFold All-Atom",
+        "code": "https://github.com/RosettaCommons/RFdiffusion2",
+        "title": "RFdiffusion2",
     },
     "af3": {
         "paper": "https://doi.org/10.1038/s41586-024-07487-w",
@@ -99,7 +99,7 @@ BLOCK_REFERENCES: dict[str, dict[str, str]] = {
     "foundry_mpnn": {
         "paper": "https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1",
         "code": "https://github.com/RosettaCommons/foundry",
-        "title": "Dauparas et al. (2023) — LigandMPNN (Foundry variant)",
+        "title": "Foundry Protein/LigandMPNN implementation; paper describes the underlying LigandMPNN method",
     },
     # Metrics
     "rmsd": {
@@ -116,6 +116,7 @@ BLOCK_REFERENCES: dict[str, dict[str, str]] = {
     },
     "ligand_ddg": {
         "title": "Rosetta DDG binding energy calculation",
+        "code": "https://docs.rosettacommons.org/docs/latest/scripting_documentation/RosettaScripts/Filters/filter_pages/DdgFilter",
     },
 }
 
@@ -165,10 +166,50 @@ ORACLE_RECENCY = [
 ]
 
 ORACLE_GUIDANCE = (
-    "Folding oracles are listed newest first. **When in doubt, use the latest "
-    "model — [esmfold2](#esmfold2).** The older oracles remain available for "
-    "reproducing published protocols or when a specific model is required."
+    "Choose a predictor whose supported molecules, inputs, and validation evidence "
+    "fit the task. Listing a block here does not establish scientific equivalence "
+    "or a successful fresh-cluster installation. See [Core Examples](core-examples.md) "
+    "for benchmark scope and [Validation](validation.md) for prediction comparisons."
 )
+
+# Definitions belong beside parameter tables; implementation links below expose
+# exact output keys and selection behavior for every discovered block.
+METRIC_NOTES = {
+    "rmsd": "RMSD is the root mean square atom displacement in Å after fitting the selected alignment atoms. Output names such as `bkbn_align.motif_allatom_rmsd` identify the fit selection and the measured selection. Lower means closer geometry; compare only matched atoms and selections.",
+    "rasa": "Per-atom relative solvent accessibility is computed as solvent-accessible area divided by an element-specific reference area. `ligand_rasa` is the **sum** of these fractions, not a fraction bounded by one; `mean_ligand_atom_rasa` is their mean. Smaller values indicate burial. Keep probe radius, atom groups, and backbone-only settings fixed when comparing designs.",
+    "ligand_ddg": "`ddg_norepack` is Rosetta's bound-minus-separated score across jump 1, in Rosetta energy units; more negative values favor the bound state under that score function. The bundled protocol uses `beta_nov16`, minimizes before scoring, and disables repacking in the Ddg filter (`repack=0`, one repeat). It is not an experimental binding free energy or kcal/mol estimate. Check that jump 1 separates the intended partners. See the [exact protocol](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/scripts/ddg_protocol.xml) and [flags](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/scripts/flags_rescore_genpot); overriding either changes the interpretation.",
+    "ligand_ddg_soft": "`ddg_soft` is the mean bound-minus-separated Rosetta score after packing with the hard beta_nov16 function and scoring with beta_nov16_soft. With at least three replicates the best and worst are dropped; `ddg_soft_std` reports the retained replicate spread. Values are Rosetta energy units, not measured binding free energies; do not compare numerically with the hard-score `ligand_ddg` protocol.",
+    "ppi_ddg": "Protein–protein binding score computed with FastRelax and a bound-versus-separated ddG calculation. These are Rosetta energy units, not experimental affinities. Partner selections, relaxation, and score-function settings must match for comparisons; consult the implementation for the returned energy terms.",
+    "ipsae": "Interface predicted Score from Aligned Errors summarizes inter-chain confidence from a predictor's PAE matrix using the configured distance/PAE cutoffs. Higher confidence does not prove binding. Missing PAE cannot be treated as a passing score. See the [upstream implementation](https://github.com/flyark42/ipsae).",
+    "peppr": "PEPPR computes the requested structure and interface comparison metrics against a reference; there is no single universal PEPPR score. Interpret each returned metric using its upstream definition and retain the atom/chain mapping and reference used for the calculation.",
+    "hbond_metrics": "HBPLUS identifies hydrogen bonds between ligand/motif and surrounding protein atoms. Outputs count the selected interactions, optionally by ligand atom group. Counts depend on the input protonation and HBPLUS geometry rules and are not hydrogen-bond energies.",
+    "aromatic_neighbors": "Counts aromatic residues near selected ligand atoms under the configured distance cutoff. This is a geometric neighborhood count, not a pi-stacking energy or proof of a favorable interaction.",
+    "foldseek": "Groups structures by structural similarity at the requested Foldseek thresholds. Cluster counts describe diversity under that clustering protocol, rather than a per-design correctness or activity score.",
+    "plip": "PLIP classifies protein–ligand contacts into interaction types such as hydrogen bonds, hydrophobic contacts, and salt bridges. Returned counts and optional details depend on PLIP's geometric and chemical rules; they are not binding energies. See [PLIP](https://github.com/pharmai/plip).",
+    "tm_score": "TM-score compares a structure with an external reference fold using a length-normalized structural similarity score. Higher values indicate greater similarity; reference choice, aligned chains, and normalization determine comparability.",
+    "tm_score_rna": "RNA structural similarity against a reference, using the block's selected nucleotide anchor atoms and alignment/normalization settings. Higher TM-score means closer overall fold; it does not certify base-pair or catalytic geometry.",
+    "rna_connectivity": "Detects nucleic-acid backbone breaks from the O3′ of residue i to the P atom of residue i+1 using the configured distance criterion. Missing atoms and residue mapping affect which links can be evaluated.",
+    "rna_ss_f1_mcc": "F1 and Matthews correlation coefficient compare predicted/reference RNA secondary-structure pair assignments. The assigned base pairs and matching scheme define positives and negatives; inspect unresolved residues before comparing results.",
+    "rna_thermo": "ViennaRNA estimates `p_motif = exp(-(G_constrained - G_unconstrained) / RT)`, the ensemble probability of the required motif base pairs under its thermodynamic model. Pseudoknots are excluded and reported with partial status; the model lacks an Mg²⁺ term. Use it to compare designs within a target, not as an absolute measure of full-complex folding.",
+    "chirality_check": "Compares assigned per-atom CIP stereochemical codes with a reference ligand. A matching code requires a resolvable atom correspondence; missing or unassigned centers should not be assumed correct.",
+    "secondary_structure": "Reports secondary-structure composition and loop/confidence disorder summaries globally or around a ligand pocket. Confidence interpretation requires the input B-factor field to carry the intended pLDDT values.",
+    "rotamer_metrics": "Reports sidechain rotamer quality against the selected library/model. Percentile and probability fields are different quantities; compare using the same backend and residue selection.",
+    "pocket_coulomb": "An approximate charge-based pocket interaction score using the configured charge and distance treatment. Its scale depends on those settings and is not an experimental affinity.",
+    "metal3d": "A learned three-dimensional probability field for transition-metal binding sites. Predicted site confidence and position describe the model's output, not experimentally confirmed metal occupancy.",
+    "symmetry": "Measures deviation of a homo-oligomeric assembly from cyclic point-group symmetry. Atom selection and subunit correspondence define the geometric comparison; symmetry alone does not establish stability.",
+    "ligand_pocket": "Combines contact molecular surface, heavy-atom contact coverage, pocket shell/enclosure, and polar-atom neighborhood counts for the selected ligand. Surface uses Å² and distance cutoffs use Å; contact counts and coverage summarize geometry, not interaction energy.",
+    "ligand_clash": "`n_clashes` counts selected protein–ligand heavy-atom pairs separated by less than `cutoff` Å; `minimum_distance` and `closest_pair` identify the nearest contact. This simple distance test does not distinguish intentional covalent bonds.",
+    "clash": "Counts backbone-heavy-atom pairs (N/CA/C/O) closer than the cutoff in Å, excluding atoms in the same residue and consecutive residues of one chain. This is a geometric clash screen, not a full steric energy calculation.",
+    "reference_motif_rmsd": "Motif atom RMSD in Å against the original input reference, with correspondence resolved through `diffused_index_map`. Smaller values indicate closer motif geometry; mapping coverage and atom selection matter.",
+    "motif_geometry": "Reports named distances in Å and angles between selected motif atoms addressed using reference residue identifiers. Compare each quantity against the intended geometry rather than treating all distances as smaller-is-better.",
+    "contact_ms": "Distance-weighted contact molecular surface in Å²: the target surface buried by the selected binder chain under the py_contact_ms algorithm. It measures interface contact extent, not binding energy.",
+    "dssr_snap_metrics": "Counts protein–DNA hydrogen bonds classified as major-groove, minor-groove, or backbone contacts, plus hydrogen-bond support and SNAP interaction categories. SNAP-derived fields are missing if SNAP fails; missing values are not zero interactions. See the implementation for all 11 keys.",
+    "dssr_motif_base_pairing": "Compares DSSR base-pair assignments and native pairing classifications for motif residues mapped by `diffused_index_map`. Per-residue pairing and aggregate retention diagnostics preserve the full native/predicted pair annotations; SNAP is not used.",
+    "motif_confidence": "Summarizes predictor pLDDT and PAE separately for the mapped motif and scaffold. Higher pLDDT and lower PAE indicate model confidence, not experimentally validated accuracy; the upstream confidence scale and residue mapping must be preserved.",
+    "mpnn_score": "Copies per-sequence `overall_confidence`, `seq_rec`, and optional `ligand_confidence` from MPNN outputs. Confidence is an upstream model ranking signal and sequence recovery measures agreement with the input sequence; neither establishes folding or binding success. Backend definitions can differ.",
+    "sequence_identity_gate": "Checks identity against a reference sequence collection and reports the nearest match/gate verdict. Identity thresholds describe sequence similarity, not structural or functional novelty by themselves.",
+}
+
 
 
 def _oracle_sort_key(item: tuple[str, type]) -> tuple[int, str]:
@@ -215,14 +256,15 @@ def _default_str(field) -> str:
     from pydantic_core._pydantic_core import PydanticUndefinedType
 
     if field.default_factory is not None:
-        try:
-            val = field.default_factory()
-            return f"`{val!r}`"
-        except Exception:
-            return "`<factory>`"
+        # Evaluating factories leaks the documentation builder's home/site paths
+        # and may require optional binaries. These defaults resolve at runtime.
+        return "`<computed at runtime>`"
     if isinstance(field.default, PydanticUndefinedType):
         return "**required**"
     val = field.default
+    if isinstance(val, (str, Path)):
+        val = str(val).replace(str(_src.parent), "<checkout>")
+        val = val.replace(str(Path.home()), "~")
     if val is None:
         return "`None`"
     if isinstance(val, str) and len(val) > 60:
@@ -248,22 +290,27 @@ def _resources_str(resources: JobArgs | None) -> str:
     return ", ".join(parts) if parts else "Not specified"
 
 
-def _reference_lines(name: str) -> list[str]:
+def _reference_lines(name: str, cls) -> list[str]:
     """Generate reference/citation lines for a block."""
-    ref = BLOCK_REFERENCES.get(name)
-    if not ref:
-        return []
+    ref = BLOCK_REFERENCES.get(name, {})
     lines = []
     title = ref.get("title", "")
     paper = ref.get("paper")
-    code = ref.get("code")
+    spec = getattr(cls, "_script_spec", None)
+    code = getattr(spec, "source_url", None) or ref.get("code")
     if title:
         lines.append(f"> {title}")
     link_parts = []
     if paper:
         link_parts.append(f"[Paper]({paper})")
     if code:
-        link_parts.append(f"[Code]({code})")
+        link_parts.append(f"[Upstream code / documentation]({code})")
+    source = inspect.getsourcefile(cls)
+    if source:
+        relative = Path(source).resolve().relative_to(_src.parent)
+        link_parts.append(
+            f"[Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/{relative.as_posix()})"
+        )
     if link_parts:
         lines.append(f"> {' · '.join(link_parts)}")
     lines.append("")
@@ -275,7 +322,7 @@ def _render_block(name: str, cls) -> list[str]:
     lines = []
     docstring = (cls.__doc__ or "").strip().split("\n")[0]
     resources = getattr(cls, "_resources", None)
-    image = getattr(cls, "_image", None)
+    image = cls._get_image() if hasattr(cls, "_get_image") else None
     try:
         requires_input = cls._requires_input
     except Exception:
@@ -288,7 +335,19 @@ def _render_block(name: str, cls) -> list[str]:
         lines.append("")
 
     # Reference / paper link
-    lines.extend(_reference_lines(name))
+    lines.extend(_reference_lines(name, cls))
+    if name == "foundry_mpnn":
+        lines.extend([
+            "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the legacy MPNN backend. The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
+            "",
+        ])
+    if name == "mpnn":
+        lines.extend([
+            "**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `portable` and `legacy` select its runtimes explicitly. See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.",
+            "",
+        ])
+    if name in METRIC_NOTES:
+        lines.extend(["**Outputs and interpretation:** " + METRIC_NOTES[name], ""])
 
     # Compact metadata line
     meta_parts = [f"Class: `{cls.__qualname__}`"]
@@ -304,7 +363,9 @@ def _render_block(name: str, cls) -> list[str]:
     fields = [
         (fname, f)
         for fname, f in cls.model_fields.items()
-        if fname != "name" and fname not in STANDARD_FIELDS
+        if fname != "name"
+        and fname not in STANDARD_FIELDS
+        and not (isinstance(f.json_schema_extra, dict) and f.json_schema_extra.get("internal"))
     ]
     primary = [(n, f) for n, f in fields if get_tier(f) == TIER_PRIMARY]
     secondary = [(n, f) for n, f in fields if get_tier(f) != TIER_PRIMARY]
@@ -315,7 +376,7 @@ def _render_block(name: str, cls) -> list[str]:
 
         # Primary parameters first (orange-colored names)
         for fname, field in primary:
-            typ = _type_str(field.annotation)
+            typ = _type_str(field.annotation).replace("|", "\\|")
             default = _default_str(field)
             fdesc = (field.description or "—").replace("\n", " ").strip()
             if len(fdesc) > 120:
@@ -333,7 +394,7 @@ def _render_block(name: str, cls) -> list[str]:
 
         # Secondary parameters
         for fname, field in secondary:
-            typ = _type_str(field.annotation)
+            typ = _type_str(field.annotation).replace("|", "\\|")
             default = _default_str(field)
             fdesc = (field.description or "—").replace("\n", " ").strip()
             if len(fdesc) > 120:
@@ -353,9 +414,10 @@ def generate_block_docs() -> str:
         "# Block Reference",
         "",
         "Auto-generated parameter reference for all pipeline blocks.",
-        "Parameters marked with **★** are *primary* — they directly affect output count, quality, or runtime.",
+        "Highlighted parameters are *primary* — they directly affect output count, quality, or runtime.",
+        "Computed defaults resolve from settings or model logic at runtime; no documentation builder's site configuration is embedded here.",
         "",
-        "Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see *Slurm Site Configuration* in the syntax guide.",
+        "Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see [Slurm Site Configuration](syntax.md#slurm-site-configuration).",
         "",
         "---",
         "",

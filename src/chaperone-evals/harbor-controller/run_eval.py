@@ -23,7 +23,6 @@ import getpass
 import hashlib
 from pathlib import Path
 
-from dotenv import dotenv_values
 
 from environments.apptainer import (
     ApptainerEnvironment,
@@ -47,6 +46,14 @@ from task_paths import (
 
 # Keep the shared filesystem's logical spelling. Resolving /projects on a CPU
 # node rewrites it to /mnt/projects, where the host Chaperone .venv is absent.
+from site_config import (
+    get_site,
+    add_site_arguments,
+    configure_site,
+    policy_instructions,
+    scoring_environment,
+)
+
 ROOT = Path(os.path.abspath(__file__)).parent
 EVALS_ROOT = ROOT.parent
 
@@ -64,7 +71,7 @@ def _jobs_root(override: Path | None = None) -> Path:
     if configured:
         return Path(configured).expanduser().resolve()
     scratch = Path(f"/net/scratch/{getpass.getuser()}")
-    if scratch.is_dir():
+    if get_site()["name"] == "digs" and scratch.is_dir():
         return scratch / "chaperone-evals" / "runs"
     return ROOT / "jobs"
 
@@ -80,15 +87,6 @@ DEFAULT_CHAPERONE_REPO = default_chaperone_repo()
 DEFAULT_MODEL = "openai/gpt-5.6-sol"
 DEFAULT_REASONING = "medium"
 DEFAULT_CONTROLLER_MEMORY_GB = 64
-DEFAULT_HARNESS_IMAGE = Path(
-    os.environ.get(
-        "APPTAINER_BUILD_SOURCE",
-        "/projects/ml/pipelines/containers/pipelines_agent_hardened_20260816.sif",
-    )
-)
-DEFAULT_BASELINE_IMAGE = Path(
-    "/net/software/containers/pipelines/pipelines_agent_base.sif"
-)
 REQUIRED_N_PLACEHOLDER = "{{REQUIRED_N}}"
 AGENT_HOURS_PLACEHOLDER = "{{AGENT_HOURS}}"
 TASK_NAME_PLACEHOLDER = "{{TASK_NAME}}"
@@ -134,32 +132,15 @@ _SCORING_UV_ENV = {
     "UV_CONCURRENT_DOWNLOADS": "1",
     "UV_CONCURRENT_INSTALLS": "1",
 }
-_HARNESS_RUNTIME_CAPABILITIES = {
-    "HBPLUS": (Path("/projects/ml/pipelines/software/hbplus"),),
-    "AlphaFold3 container": (
-        Path("/net/software/containers/pipelines/alphafold3.sif"),
-    ),
-    "Foundry RF3/RFD3 container": (
-        Path("/net/software/containers/pipelines/foundry.sif"),
-    ),
-    "LigandMPNN container": (
-        Path(
-            "/projects/ml/modelhub/apptainer/"
-            "frozen_modelhub_datahub_cifutils_2025-02-05.sif"
-        ),
-        Path("/projects/ml/modelhub/apptainer/test_modelhub_2025-05-01.sif"),
-    ),
-    "LigandMPNN entry point": (Path("/net/software/lab/fused_mpnn/v1.1.1/run.py"),),
-    "LigandMPNN weights": (
-        Path("/net/databases/mpnn/ligand_mpnn_model_weights/s25_r010_t300_p.pt"),
-    ),
-    "RF3 checkpoint": (
-        Path(
-            "/projects/ml/pipelines/weights/foundry/checkpoints/"
-            "rf3_foundry_01_24_latest_remapped.ckpt"
-        ),
-    ),
-}
+
+
+def _runtime_capabilities():
+    return {
+        key: tuple(map(Path, values))
+        for key, values in get_site()["capabilities"].items()
+    }
+
+
 _HARNESS_CONTAINER_CAPABILITIES = (
     "AlphaFold3 container",
     "Foundry RF3/RFD3 container",
@@ -187,7 +168,7 @@ def _runtime_capability_manifest(
             if _capability_present(label, alternatives)
             else "controller preflight could not resolve the required artifact",
         }
-        for label, alternatives in sorted(_HARNESS_RUNTIME_CAPABILITIES.items())
+        for label, alternatives in sorted(_runtime_capabilities().items())
     ]
     monitor_backend = (
         workspace_seed / "src" / "chaperone_cli" / "job_wait.py"
@@ -398,7 +379,11 @@ def materialize_harbor_task(
         environment_files = environment / "files"
         environment_files.mkdir()
         setup_script = environment_files / "setup.sh"
-        setup_script.write_text(ENVIRONMENT_SETUP.read_text())
+        setup_script.write_text(
+            ENVIRONMENT_SETUP.read_text().replace(
+                "{{WORKER_PYTHON}}", shlex.quote(get_site()["worker_python"])
+            )
+        )
         setup_script.chmod(0o755)
         public_inputs = destination / "inputs"
         shutil.copytree(input_source, public_inputs)
@@ -463,6 +448,8 @@ def materialize_harbor_task(
         instruction_text.replace(REQUIRED_N_PLACEHOLDER, str(required_n))
         .replace(AGENT_HOURS_PLACEHOLDER, f"{agent_hours:g}")
         .replace(TASK_NAME_PLACEHOLDER, task.name)
+        .replace("{{SLURM_POLICY}}", policy_instructions(arm))
+        .replace("{{WORKER_PYTHON}}", shlex.quote(get_site()["worker_python"]))
     )
     # The prompt carries the same count placeholder as the arm instruction.
     # Render and serve this copy so --required-n cannot ask for one count in
@@ -498,9 +485,9 @@ CHAPERONE_CONTAINER_BIND_WORKSPACE = "true"
 [[environment.mcp_servers]]
 name = "campaign-monitor"
 transport = "stdio"
-command = "/opt/pipelines/.venv/bin/python"
+command = "{{WORKER_PYTHON}}"
 args = ["-m", "chaperone_cli.main", "monitor-mcp", "--server-name", "campaign-monitor"]
-"""
+""".replace('"{{WORKER_PYTHON}}"', json.dumps(get_site()["worker_python"]))
     else:
         # Harbor and Codex keep their control files outside the workspace. The
         # baseline workspace starts with only the selected task's public inputs.
@@ -1303,6 +1290,7 @@ def _host_scoring_python(chaperone_repo: Path) -> Path:
         candidates.append(current_python)
     environment = os.environ.copy()
     environment.update(_CONTROLLER_THREAD_ENV)
+    environment.update(scoring_environment())
     environment["PYTHONPATH"] = _scoring_pythonpath(chaperone_repo)
     probe_code = "; ".join(
         (
@@ -1356,52 +1344,6 @@ def _path_in_chaperone_namespace(path: Path, chaperone_repo: Path) -> Path:
     return logical_repo / relative
 
 
-def _scoring_site_config_repo(
-    chaperone_repo: Path, environment: Mapping[str, str]
-) -> Path:
-    """Locate the checkout that owns the checked-in site config.
-
-    Campaigns score against a sanitized frozen source tree that carries no
-    ``.env`` files. Its ``.venv`` is linked to the canonical checkout, so that
-    link is the strongest automatic provenance for the matching site config.
-    An operator may name another trusted checkout explicitly, without copying
-    any ``.env`` file into the immutable snapshot.
-    """
-    configured = environment.get("CHAPERONE_SITE_CONFIG_REPO")
-    if configured:
-        candidates = [Path(configured).expanduser()]
-    else:
-        logical_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
-        candidates = [logical_repo]
-        venv = logical_repo / ".venv"
-        try:
-            if venv.exists():
-                candidates.append(venv.resolve(strict=True).parent)
-        except OSError:
-            pass
-        candidates.append(default_chaperone_repo())
-
-    seen: set[str] = set()
-    for candidate in candidates:
-        candidate = Path(os.path.abspath(candidate))
-        if str(candidate) in seen:
-            continue
-        seen.add(str(candidate))
-        if (candidate / ".env").is_file() and (candidate / ".env.ipd").is_file():
-            return candidate
-
-    source = (
-        f" configured by CHAPERONE_SITE_CONFIG_REPO={configured!r}"
-        if configured
-        else ""
-    )
-    raise SystemExit(
-        "Could not locate the trusted .env and .env.ipd site config" + source + ". "
-        "The frozen scoring checkout is intentionally sanitized; point "
-        "CHAPERONE_SITE_CONFIG_REPO at the canonical checkout."
-    )
-
-
 def _preflight_scoring_site_environment(values: Mapping[str, str]) -> None:
     """Fail before scoring if a required site tool or data path is unavailable."""
     problems: list[str] = []
@@ -1423,21 +1365,15 @@ def _preflight_scoring_site_environment(values: Mapping[str, str]) -> None:
 def _scoring_site_environment(
     chaperone_repo: Path, environment: Mapping[str, str] | None = None
 ) -> dict[str, str]:
-    """Resolve the scorer's allowlisted site settings from the checked-in config.
+    """Resolve the scorer's allowlisted settings from the selected profile.
 
     Shell values keep the settings loader's normal highest precedence.
-    Otherwise only the approved path fields are read from the checked-in
-    ``.env``/``.env.ipd`` files; user-local files and unrelated (potentially
+    Otherwise only the approved path fields are read from the selected profile; user-local files and unrelated (potentially
     secret) settings are never propagated to the host scorer or its Slurm
     workers. The result is preflighted before it is returned.
     """
     source_environment = os.environ if environment is None else environment
-    config_repo = _scoring_site_config_repo(chaperone_repo, source_environment)
-    configured: dict[str, str] = {}
-    for filename in (".env", ".env.ipd"):
-        for name, value in dotenv_values(config_repo / filename).items():
-            if name in _SCORING_SITE_ENV_NAMES and value:
-                configured[name] = value
+    configured = get_site()["environment"]
 
     resolved: dict[str, str] = {}
     missing: list[str] = []
@@ -1463,7 +1399,7 @@ def _scoring_worker_environment(
 
     The checkout's AF3 cache default is read-only inside the nested scientific
     container, so the scorer-specific cache replaces it. Both it and the site
-    settings are exported after the worker sources ``.env.ipd``.
+    settings are exported after the worker sources its defaults.
     """
     return {
         **site_environment,
@@ -1501,6 +1437,7 @@ def _prepare_scoring_packages(target: Path) -> None:
     uv_cache.mkdir(parents=True, exist_ok=True)
     environment = os.environ.copy()
     environment.update(_CONTROLLER_THREAD_ENV)
+    environment.update(scoring_environment())
     environment.update(_SCORING_UV_ENV)
     environment["UV_CACHE_DIR"] = str(uv_cache)
     lock_path = (
@@ -1657,7 +1594,7 @@ def _score_trial(
     # in the nested contained tool. Keep held-out compilation artifacts inside
     # the exact writable run bind instead of widening container access. The
     # cache must exist before the worker wrapper is built, because the wrapper
-    # re-exports it after the checkout's .env.ipd is sourced.
+    # re-exports it after the worker defaults are applied.
     af3_jax_cache = score_run / ".cache" / "af3_jax"
     af3_jax_cache.mkdir(parents=True)
     ApptainerEnvironment._prepare_runtime_identity(scoring_runtime, results)
@@ -1682,6 +1619,7 @@ def _score_trial(
     command.append(f"--run_meta={run_meta}")
     environment = os.environ.copy()
     environment.update(_CONTROLLER_THREAD_ENV)
+    environment.update(scoring_environment())
     environment.update(
         {
             "CHAPERONE_REPO": str(chaperone_repo),
@@ -1695,7 +1633,7 @@ def _score_trial(
             _SCORING_AF3_JAX_CACHE_ENV: str(af3_jax_cache),
             "CHAPERONE_SLURM_PYTHON": str(slurm_python),
             "CHAPERONE_PLIP_PYTHONPATH": str(python_packages),
-            # The worker image's interpreter lives below /opt/pipelines and
+            # The worker image's interpreter has its own prefix and
             # cannot discover tools installed into this external checkout by
             # inspecting sys.prefix. The checkout is already mounted read-only
             # into workers; publish its exact US-align executable explicitly.
@@ -1854,14 +1792,13 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
     vendor = _find_codex_vendor()
     runtime_path = "/opt/harbor-codex/bin:/opt/harbor-codex/codex-path"
     if arm == "harness":
-        runtime_path += ":/opt/pipelines/.venv/bin"
+        runtime_path += ":" + str(Path(get_site()["worker_python"]).parent)
     runtime_path += ":/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     probe = "codex --version"
     if arm == "harness":
         probe += (
-            " && chaperone --help >/dev/null"
-            " && test -x /bin/bash && test -x /bin/sh"
-            " && /opt/pipelines/.venv/bin/python -c "
+            " && test -x /bin/bash && test -x /bin/sh && apptainer --version"
+            f" && {shlex.quote(get_site()['worker_python'])} -c "
             + shlex.quote(
                 "import biotite, catcif_tools, ml_collections, openbabel, "
                 "parasail, plip"
@@ -1928,7 +1865,12 @@ def _sbatch_command(args: argparse.Namespace, run_name: str) -> list[str]:
     return [
         "sbatch",
         "--parsable",
-        f"--partition={args.cpu_partition}",
+        *([f"--partition={args.cpu_partition}"] if args.cpu_partition else []),
+        *[
+            f"--{key}={get_site()[key]}"
+            for key in ("account", "qos")
+            if get_site()[key]
+        ],
         f"--time={args.time_limit}",
         f"--mem={args.memory_gb}G",
         "--cpus-per-task=4",
@@ -2063,9 +2005,12 @@ def _preflight(args: argparse.Namespace, task: Path) -> None:
     if not args.no_score:
         required_files.append(task_scorer(task.name))
         check_inputs_match(task.name)
+    # Disabling scoring must not grant the agent access to private material.
+    # A genuinely public-only checkout can launch without a private tree.
+    candidate_private = os.environ.get(PRIVATE_TASKS_ENV)
+    if candidate_private or any(PUBLIC_TASKS_ROOT.glob("*/score/score.py")):
         assert_private_tree_unreachable(
-            private_tasks_root(),
-            [source for source, _ in _runtime_bind_pairs()],
+            private_tasks_root(), [source for source, _ in _runtime_bind_pairs()]
         )
     if args.arm == "harness":
         required_files.append(ENVIRONMENT_SETUP)
@@ -2112,7 +2057,7 @@ def _preflight(args: argparse.Namespace, task: Path) -> None:
             required_capabilities & set(_HARNESS_CONTAINER_CAPABILITIES)
         ):
             image = next(
-                path for path in _HARNESS_RUNTIME_CAPABILITIES[label] if path.is_file()
+                path for path in _runtime_capabilities()[label] if path.is_file()
             )
             inspected = subprocess.run(
                 ["apptainer", "inspect", "--json", str(image)],
@@ -2175,7 +2120,7 @@ def main() -> None:
         ),
     )
     parser.add_argument("--poll-seconds", type=float, default=30.0)
-    parser.add_argument("--cpu-partition", default="cpu")
+    parser.add_argument("--cpu-partition", default=None)
     parser.add_argument("--time-limit", default="24:00:00")
     parser.add_argument(
         "--scoring-time-limit",
@@ -2248,7 +2193,7 @@ def main() -> None:
         "--scoring-image",
         dest="worker_image",
         type=Path,
-        default=DEFAULT_HARNESS_IMAGE,
+        default=None,
         help=(
             "Chaperone image used by scientific Slurm workers launched by the "
             "host-side scorer; --scoring-image is a compatibility alias"
@@ -2278,7 +2223,12 @@ def main() -> None:
         help="Wait for Harbor and its detached external scorer before returning.",
     )
     parser.add_argument("--dry-run", action="store_true")
+    add_site_arguments(parser)
     args = parser.parse_args()
+    try:
+        configure_site(args)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     if args.private_tasks_path is not None:
         # Exported so the detached scoring watcher and Slurm jobs inherit it.
         os.environ[PRIVATE_TASKS_ENV] = str(args.private_tasks_path.expanduser())
@@ -2294,8 +2244,7 @@ def main() -> None:
         parser.error("the harness arm requires an explicit --chaperone-path")
     if args.arm == "baseline" and args.chaperone_path is not None:
         parser.error("--chaperone-path is not accepted by the baseline arm")
-    if args.run_dir is not None:
-        JOBS_ROOT = _jobs_root(args.run_dir)
+    JOBS_ROOT = _jobs_root(args.run_dir)
     _prepare_shared_job_directories()
     if args.arm == "harness":
         try:
@@ -2309,10 +2258,6 @@ def main() -> None:
         # Keep the internal attribute uniform without accepting or consulting a
         # harness source for the clean-room baseline arm.
         args.workspace_seed = None
-    if args.image is None:
-        args.image = (
-            DEFAULT_BASELINE_IMAGE if args.arm == "baseline" else DEFAULT_HARNESS_IMAGE
-        )
 
     if args.poll_seconds <= 0:
         parser.error("--poll-seconds must be greater than zero")

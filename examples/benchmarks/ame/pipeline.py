@@ -17,13 +17,14 @@ Tip-atom RMSD (motif_allatom) after AF3 folding is the primary success metric.
 from pathlib import Path
 
 from blocks import Blocks
-from chaperone import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, get_runtime_overrides, init_cli
 from chaperone.data.schema import SELECTIONS
 
 init_cli()
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FILES_DIR = SCRIPT_DIR / "files"
+TEST_MODE = get_runtime_overrides().get("test", False)
 
 RFD3, MPNN, AF3, RMSD, RotamerMetrics = Blocks.getall(
     "rfd3", "mpnn", "af3", "rmsd", "rotamer_metrics"
@@ -34,6 +35,7 @@ RFD3, MPNN, AF3, RMSD, RotamerMetrics = Blocks.getall(
 rfd3_ame1 = RFD3(
     name="rfd3/ame1",
     inputs=str(FILES_DIR / "ame-1.json"),
+    json_keys_subset=["M0024_1nzy"] if TEST_MODE else [],
     n_batches=10,
     batch_size=10,
 )
@@ -41,6 +43,7 @@ rfd3_ame1 = RFD3(
 rfd3_ame2 = RFD3(
     name="rfd3/ame2",
     inputs=str(FILES_DIR / "ame-2.json"),
+    json_keys_subset=["dera_aldolase"] if TEST_MODE else [],
     n_batches=10,
     batch_size=10,
 )
@@ -80,7 +83,10 @@ h_ame1 = engine.run(rfd3_ame1)
 h_ame2 = engine.run(rfd3_ame2)
 
 # Concatenate and feed through shared evaluation pipeline
-handler = engine.run(shared_blocks, data=h_ame1 + h_ame2)
+# Keep CPU rotamer work separate from GPU prediction allocations.
+handler = h_ame1 + h_ame2
+for block in shared_blocks:
+    handler = engine.run(block, data=handler)
 
 df = handler.unpack()
 print(df)

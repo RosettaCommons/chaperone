@@ -5,11 +5,9 @@ diffusion structure decoder. It supports single-sequence inference and
 optional MSA conditioning, co-folds proteins with optional ligands, and
 reports per-residue pLDDT plus pTM / ipTM.
 
-Both the model and its ``transformers.models.esmfold2`` implementation live in
-Biohub forks (upstream ``transformers`` has no ESMFold2), so the container
-installs ``git+https://github.com/Biohub/transformers`` and
-``git+https://github.com/Biohub/esm``. Weights are not baked into the image —
-they are read from ``HF_HUB_CACHE`` (default ``/projects/ml/esm-weights``).
+The source recipe uses the released ``esm`` package, which exports the model
+and input builder directly. Weights are not baked into the image: they are
+read from ``ESM_WEIGHTS_DIR`` and passed to the container as ``HF_HUB_CACHE``.
 """
 
 import csv
@@ -17,7 +15,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
@@ -46,8 +44,8 @@ ESMFOLD2_RUNNER_DEST = "/opt/esmfold2/run_esmfold2_runner.py"
 # Container
 ###########################################################################
 
-# torch 2.12 / CUDA 13.0 (matches the working esmc install); the ESMFold2 model
-# lives only in the Biohub transformers fork, installed before the esm fork.
+# Match esm 3.4.1.post1's torch>=2.11,<2.12 constraint and CUDA13 operators.
+# The old Biohub/transformers fork is no longer publicly accessible.
 ESMFOLD2_CONTAINER = (
     Image("esmfold2")
     .base_image("ubuntu:24.04")
@@ -70,14 +68,13 @@ ESMFOLD2_CONTAINER = (
     )
     .run(
         ". /opt/esmfold2-env/bin/activate && "
-        "pip install torch --index-url https://download.pytorch.org/whl/cu130",
+        "pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu130",
     )
     .run(
-        # transformers fork first — it provides transformers.models.esmfold2,
-        # which the esm fork imports at runtime.
         ". /opt/esmfold2-env/bin/activate && "
-        'pip install "git+https://github.com/Biohub/transformers.git@main" && '
-        'pip install "git+https://github.com/Biohub/esm.git@main"',
+        "pip install esm==3.4.1.post1 && pip check",
+        "/opt/esmfold2-env/bin/python -c "
+        "'from esm.models.esmfold2 import EsmFold2Model, ESMFold2InputBuilder'",
     )
     .run("mkdir -p /opt/esmfold2")
     .copy(str(ESMFOLD2_RUNNER_PATH), ESMFOLD2_RUNNER_DEST)
@@ -88,7 +85,7 @@ ESMFOLD2_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/esmfold2-env",
     )
-    .label(Version="esm-3.3.0/tfm-4.57.6", CUDA="13.0")
+    .label(Version="esm-3.4.1.post1/torch-2.11.0", CUDA="13.0")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -137,6 +134,13 @@ class ESMFold2Block(AF3LikePredictionBlock):
     # diffusion_batch_size (→ num_diffusion_samples) and num_diffusion_steps
     # (→ num_sampling_steps) inherited from AF3LikePredictionBlock.
 
+    output_validation_version: Literal[2] = Field(
+        2,
+        frozen=True,
+        repr=False,
+        json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision requiring every prediction in a chunk to succeed; not a user option.",
+    )
     num_loops: int = Field(
         3,
         json_schema_extra={"tier": TIER_PRIMARY},
@@ -266,8 +270,14 @@ class ESMFold2Block(AF3LikePredictionBlock):
         # through a chunk on smaller GPUs.
         env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
         weights_dir = get_setting_field("ESM_WEIGHTS_DIR", "")
+        binds = []
         if weights_dir:
+            weights_dir = str(Path(weights_dir).expanduser().resolve())
             env["HF_HUB_CACHE"] = weights_dir
+            binds.append((weights_dir, weights_dir))
+        if Path(self.model).expanduser().is_dir():
+            self.model = str(Path(self.model).expanduser().resolve())
+            binds.append((self.model, self.model))
         # Weights are pre-staged in that cache by design, but huggingface_hub
         # still resolves the revision on load and writes a refs/ pointer back
         # into the cache directory. On a shared, full filesystem that 40-byte
@@ -279,7 +289,7 @@ class ESMFold2Block(AF3LikePredictionBlock):
         # says so instead of blaming the disk.
         env.setdefault("HF_HUB_OFFLINE", "1")
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env
+            *self._script_spec.command, env=env, binds=binds
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-SOURCE=${APPTAINER_BUILD_SOURCE:-/projects/ml/pipelines/containers/pipelines_agent_hardened_20260816.sif}
+SOURCE=${APPTAINER_BUILD_SOURCE:?Launch through run_eval.py to select an explicit site and image}
 NODE_TMP_ROOT=${SLURM_TMPDIR:-/tmp}
 
 if [[ ! -d "$NODE_TMP_ROOT" ]]; then

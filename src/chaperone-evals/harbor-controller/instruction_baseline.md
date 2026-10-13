@@ -22,22 +22,12 @@ locally; send larger, uncertain-memory, or GPU work to guarded Slurm.
 
 Write each job script beneath `/workspace` and submit it with
 `sbatch /workspace/JOB.sh`. Every script must use `#SBATCH --option=value`
-directives for `--job-name`, `--output`, `--error`, `--partition`, `--time`,
+directives for `--job-name`, `--output`, `--error`, `--time`,
 `--mem`, and `--cpus-per-task`, and all referenced paths must remain beneath
 `/workspace`.
 
-- CPU jobs use `--partition=cpu` and no GPU directive.
-- GPU jobs use `--partition=gpu` and `--gres=gpu:small:N`; the controller pins
-  accepted jobs to A4000 nodes. Untyped GPUs, model-specific GPU types, other
-  GPU classes, and other partitions are rejected. Do not add a constraint
-  yourself.
-- At most five small-class GPUs may be reserved across the entire trial,
-  including queued/running jobs and array concurrency. For example, a one-GPU
-  array may use `%5`, not `%6`. `HARBOR_MAX_TOTAL_GPUS=5` reports this limit.
-- Independently, each GPU submission may request at most 30 GPUs in aggregate
-  across all array tasks, ignoring its `%N` concurrency throttle. A one-GPU
-  `--array=0-29%5` is allowed, but `--array=0-30%5` is rejected.
-  `HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION=30` reports this limit.
+{{SLURM_POLICY}}
+
 - Workers use the same clean baseline image and `/workspace`; install every
   dependency they need there.
 - `squeue` and `scancel` are trial-scoped. `sacct`, `sstat`, `sinfo`,

@@ -82,6 +82,46 @@ class SlurmGpuGuardTest(unittest.TestCase):
             self.slurm_python,
         )
 
+    def test_portable_submitit_policy_accepts_external_gpu_type(self):
+        script = self._script(partition="accelerated", gres="gpu:a100:2")
+        args, count, _ = GUARD.prepare_submission(
+            [str(script)],
+            self.workspace,
+            self.workspace,
+            self.slurm_python,
+            allowed_gpu_type="a100",
+            cpu_partition="batch",
+            gpu_partition="accelerated",
+            gpu_constraint="",
+            account="lab",
+            qos="normal",
+        )
+        self.assertEqual(count, 2)
+        self.assertIn("--gres=gpu:a100:2", args)
+        self.assertIn("--account=lab", args)
+        self.assertFalse(any(arg.startswith("--constraint=") for arg in args))
+        with self.assertRaises(GUARD.GuardError):
+            self._prepare(script)
+
+    def test_portable_submitit_policy_accepts_untyped_default_queue(self):
+        script = self._script(gres="gpu:1")
+        script.write_text(script.read_text().replace("#SBATCH --partition=gpu\n", ""))
+        args, count, _ = GUARD.prepare_submission(
+            [str(script)],
+            self.workspace,
+            self.workspace,
+            self.slurm_python,
+            allowed_gpu_type="",
+            cpu_partition="",
+            gpu_partition="",
+            gpu_constraint="",
+        )
+        self.assertEqual(count, 1)
+        self.assertIn("--gres=gpu:1", args)
+        self.assertFalse(
+            any(arg.startswith(("--constraint=", "--partition=")) for arg in args)
+        )
+
     def _generic_script(
         self,
         *,
@@ -197,8 +237,8 @@ class SlurmGpuGuardTest(unittest.TestCase):
         cases = (
             ("gpu", "gpu:a4000:1", "only gpu:small:N"),
             ("gpu", "gpu:1", "found untyped"),
-            ("gpu-bf", "gpu:small:1", "partition must be cpu or gpu"),
-            ("cpu", "gpu:small:1", "GPU baseline jobs must use"),
+            ("gpu-bf", "gpu:small:1", "configured partition"),
+            ("cpu", "gpu:small:1", "configured partition"),
         )
         for partition, gres, message in cases:
             with self.subTest(partition=partition, gres=gres):
@@ -415,7 +455,7 @@ class SlurmGpuGuardTest(unittest.TestCase):
             self._prepare(self._script(gres="gpu:a4000:1"))
 
     def test_rejects_gpu_bf_partition(self) -> None:
-        with self.assertRaisesRegex(GUARD.GuardError, "partition must be cpu or gpu"):
+        with self.assertRaisesRegex(GUARD.GuardError, "configured partition"):
             self._prepare(self._script(partition="gpu-bf", gres="gpu:small:1"))
 
     def test_rejects_untyped_submitit_gpu(self) -> None:

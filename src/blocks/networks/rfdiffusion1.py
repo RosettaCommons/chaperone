@@ -112,7 +112,7 @@ RFD1_CONTAINER = (
         ". /opt/rfd1-env/bin/activate && pip install --upgrade pip setuptools wheel",
     )
     .git_clone(
-        "git@github.com:RosettaCommons/RFdiffusion.git",
+        "https://github.com/RosettaCommons/RFdiffusion.git",
         "/opt/RFdiffusion",
     )
     .run(

@@ -77,12 +77,12 @@ if __name__ == "__main__":
     # Optional on-demand consolidation: merge per-chunk archives into one
     # ``<step>.catcif`` per step under ``rundir/packaged/``. Per-chunk files
     # remain in place under ``rundir/<step>/``.
-    handler.store("all", RUNDIR / "packaged", format="catcif")
+    handler.store("all", engine.rundir / "packaged")
 
     # Optional: extract every archived entry back to loose ``.cif`` files
     # under ``rundir/materialized/<step>/<entry_id>.cif`` — useful for handoff
     # or quick PyMOL loading without a catcif-aware client.
-    handler.materialize(RUNDIR / "materialized", expand_catcif=True)
+    handler.materialize(engine.rundir / "materialized", expand_catcif=True)
 
     print(f"\nFinal handler: {len(handler)} rows, steps = {handler.names}")
     print(handler.unpack())

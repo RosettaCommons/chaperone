@@ -9,6 +9,7 @@ Usage:
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from absl import app, flags
 import logging
@@ -28,9 +29,9 @@ def get_writable_container_dir() -> Path:
     for d in dirs:
         if d.exists() and d.is_dir():
             try:
-                test_file = d / ".write_test"
-                test_file.touch()
-                test_file.unlink()
+                # Concurrent installers must not remove one another's probe.
+                with tempfile.NamedTemporaryFile(dir=d, prefix=".chaperone-write-test-"):
+                    pass
                 return d
             except (PermissionError, OSError) as e:
                 logger.warning(
@@ -162,6 +163,8 @@ def build_container(
 
     backend = get_settings().CHAPERONE_CONTAINER_BACKEND
 
+    if requirement := spec._labels.get("BuildAccess"):
+        print(f"  Build prerequisite: {requirement}")
     if spec.is_existing:
         print(f"  Container '{name}' references existing file: {spec._existing_path}")
         return
@@ -184,21 +187,24 @@ def _build_apptainer(
         print(f"  Already exists: {output_path}")
         return
 
-    # Pre-clone any git repos on the host so they can be injected via %files
+    def_path = output_dir / f"{name}.def"
+    if dry_run:
+        # Render without cloning or probing the container runtime. Private source
+        # access and an installed runtime are not required to inspect a recipe.
+        spec.to_singularity()
+        print(f"  [DRY RUN] Would write definition to {def_path}")
+        print(f"  [DRY RUN] Would run: apptainer build {output_path} {def_path}")
+        return
+
     clone_dir = None
     if spec._git_clones:
         clone_dir = Path(tempfile.mkdtemp(prefix=f"chaperone-{name}-"))
-        spec = spec.prepare_git_clones(clone_dir)
-
-    def_content = spec.to_singularity()
-    def_path = output_dir / f"{name}.def"
-
-    if dry_run:
-        print(f"  [DRY RUN] Would write definition to {def_path}")
-        print(f"  [DRY RUN] Would run: apptainer build {output_path} {def_path}")
-        if clone_dir:
+        try:
+            spec = spec.prepare_git_clones(clone_dir)
+        except Exception:
             shutil.rmtree(clone_dir, ignore_errors=True)
-        return
+            raise
+    def_content = spec.to_singularity()
 
     output_dir.mkdir(parents=True, exist_ok=True)
     with open(def_path, "w") as f:
@@ -227,52 +233,54 @@ def _build_apptainer(
 def _build_docker(
     spec, name: str, output_dir: Path, force: bool = False, dry_run: bool = False
 ):
-    """Build a container using docker."""
+    """Build with an isolated context containing exactly the recipe's sources."""
     import tempfile
 
     tag = f"chaperone/{name}:latest"
+    dockerfile_path = output_dir / f"Dockerfile.{name}"
+    if dry_run:
+        spec.to_dockerfile()
+        print(f"  [DRY RUN] Would write Dockerfile to {dockerfile_path}")
+        print(f"  [DRY RUN] Would stage recipe sources and run: docker build -t {tag} .")
+        return
 
     if not force:
-        result = subprocess.run(
-            ["docker", "image", "inspect", tag],
-            capture_output=True,
-        )
+        result = subprocess.run(["docker", "image", "inspect", tag], capture_output=True)
         if result.returncode == 0:
             print(f"  Already exists: {tag}")
             return
 
-    # Pre-clone any git repos on the host so they can be injected via COPY
-    clone_dir = None
-    if spec._git_clones:
-        clone_dir = Path(tempfile.mkdtemp(prefix=f"chaperone-{name}-"))
-        spec = spec.prepare_git_clones(clone_dir)
-
-    dockerfile_content = spec.to_dockerfile()
-    dockerfile_path = output_dir / f"Dockerfile.{name}"
-
-    if dry_run:
-        print(f"  [DRY RUN] Would write Dockerfile to {dockerfile_path}")
-        print(f"  [DRY RUN] Would run: docker build -t {tag} -f {dockerfile_path} .")
-        if clone_dir:
-            shutil.rmtree(clone_dir, ignore_errors=True)
-        return
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    with open(dockerfile_path, "w") as f:
-        f.write(dockerfile_content)
-    print(f"  Dockerfile written: {dockerfile_path}")
-
-    cmd = ["docker", "build", "-t", tag, "-f", str(dockerfile_path), str(output_dir)]
-
-    print(f"  Building: {' '.join(cmd)}")
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to build {name}: {e}")
-    finally:
-        if clone_dir:
-            shutil.rmtree(clone_dir, ignore_errors=True)
-
+    # Docker cannot COPY absolute host paths or files outside its context.
+    # This also avoids exposing the checkout, private data or credentials to
+    # the daemon merely because a recipe copies one small runner script.
+    with tempfile.TemporaryDirectory(prefix=f"chaperone-{name}-") as temporary:
+        workdir = Path(temporary)
+        prepared = spec.prepare_git_clones(workdir / "clones")
+        context = workdir / "context"
+        context.mkdir()
+        prepared = prepared._clone()
+        staged_copies = []
+        for index, (source, destination) in enumerate(prepared._copies):
+            source = Path(source).expanduser().resolve(strict=True)
+            relative = f"sources/{index}/{source.name}"
+            staged = context / relative
+            staged.parent.mkdir(parents=True)
+            if source.is_dir():
+                shutil.copytree(source, staged, symlinks=True)
+            else:
+                shutil.copy2(source, staged)
+            staged_copies.append((relative, destination))
+        prepared._copies = staged_copies
+        definition = prepared.to_dockerfile()
+        (context / "Dockerfile").write_text(definition)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        dockerfile_path.write_text(definition)
+        print(f"  Definition written: {dockerfile_path}")
+        command = ["docker", "build", "-t", tag, str(context)]
+        try:
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(f"Failed to build {name}: {exc}") from exc
     print(f"  Built: {tag}")
 
 
@@ -280,20 +288,25 @@ def install(names: list[str]):
     """Install containers by name."""
     from blocks import get_container
 
-    output_dir = get_writable_container_dir()
+    requested = [(name, get_container(name)) for name in names]
+    unknown = [name for name, spec in requested if spec is None]
+    if unknown:
+        raise app.UsageError(
+            f"Unknown container: {', '.join(unknown)}. "
+            f"Available: {sorted(get_all_containers())}"
+        )
+
+    if FLAGS.dry_run:
+        from chaperone.containers import get_container_dirs
+        output_dir = get_container_dirs()[0]
+    else:
+        output_dir = get_writable_container_dir()
     print(f"\nContainer directory: {output_dir}\n")
 
-    for name in names:
-        spec = get_container(name)
-        if spec is None:
-            all_containers = get_all_containers()
-            print(f"Unknown container: {name}")
-            print(f"Available: {sorted(all_containers.keys())}")
-            continue
-
+    for name, spec in requested:
         print(f"Installing {name}...")
         build_container(
-            spec, name, output_dir, force=FLAGS.force, dry_run=FLAGS.dry_run
+            spec, spec.name, output_dir, force=FLAGS.force, dry_run=FLAGS.dry_run
         )
         print("  Done.\n")
 
@@ -313,7 +326,9 @@ def main(argv):
             if spec.is_existing:
                 print(f"  {name:15} (existing: {spec._existing_path})")
             else:
-                print(f"  {name:15} (buildable from Image)")
+                requirement = spec._labels.get("BuildAccess")
+                status = f"restricted: {requirement}" if requirement else "source recipe available"
+                print(f"  {name:15} ({status})")
         print()
         return 0
 

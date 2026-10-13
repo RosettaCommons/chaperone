@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 # Common CUDA installation commands for Ubuntu 24.04.
 # 12-8 is the default so sm_120 (Blackwell, e.g. RTX Pro b4000) is supported;
 # lower versions stay callable via `make_cuda_install("12-6")`.
-def make_cuda_install(version: str = "12-8") -> list[str]:
-    """HPCCM run-steps that install ``cuda-toolkit-<version>`` on Ubuntu 24.04."""
+def make_cuda_install(version: str = "12-8", *, ubuntu: str = "2404") -> list[str]:
+    """Install CUDA from the repository matching the recipe's Ubuntu release."""
+    if ubuntu not in {"2204", "2404"}:
+        raise ValueError(f"Unsupported CUDA Ubuntu repository: {ubuntu}")
     return [
         "mkdir -p /etc/apt/keyrings",
-        "curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg",
-        'echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list',
+        f"curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{ubuntu}/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg",
+        f'echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{ubuntu}/x86_64 /" > /etc/apt/sources.list.d/cuda.list',
         f"apt-get update && apt-get install -y cuda-toolkit-{version}",
     ]
 

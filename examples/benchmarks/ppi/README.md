@@ -31,8 +31,8 @@ rfd3 → filter → mpnn → rf3 → rmsd → filter
 ## Running on-prem (SLURM)
 
 ```bash
-./examples/benchmarks/ppi/pipeline_foundry.py     --config=tests/test_overrides.yaml
-./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --config=tests/test_overrides.yaml
+./examples/benchmarks/ppi/pipeline_foundry.py     --test
+./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test
 ```
 
 Both use `FOUNDRY_CONTAINER` for RFD3 and RF3. The foundry variant
@@ -56,13 +56,13 @@ Legacy-only additional prerequisite:
 # All-foundry:
 CHAPERONE_COMPUTE_BACKEND=modal \
 FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
-./examples/benchmarks/ppi/pipeline_foundry.py --config=tests/test_overrides.yaml
+./examples/benchmarks/ppi/pipeline_foundry.py --test
 
 # Legacy mpnn:
 CHAPERONE_COMPUTE_BACKEND=modal \
 FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
 MPNN_WEIGHTS_DIR=/abs/path/to/mpnn/weights \
-./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --config=tests/test_overrides.yaml
+./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test
 ```
 
 First cloud runs rebuild container images (foundry ~30–60 min,

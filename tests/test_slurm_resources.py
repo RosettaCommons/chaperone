@@ -387,8 +387,6 @@ GPU_BLOCKS = {
     "openfold3", "protein_hunter", "protenix", "rf3", "rf3_dev", "rfd1", "rfd2",
     "rfd3", "rfd3_partial", "rfd3na", "simplefold",
 }  # fmt: skip
-# Remove once the portable RFdiffusion2 change lands: that block still pins gres.
-STILL_PINNED = {"rfd2"}
 
 
 def _blocks_with_resources():
@@ -411,8 +409,6 @@ def test_blocks_declare_classes_not_cluster_resources():
     for name, cls in _blocks_with_resources():
         resources = cls._resources
         assert resources.partition in ("cpu", "gpu"), name
-        if name in STILL_PINNED:
-            continue
         assert resources.gres is None, f"{name} pins a gres; declare gpu_class"
         assert (resources.gpu_class is not None) == (name in GPU_BLOCKS), name
 
@@ -422,7 +418,7 @@ def test_no_bare_size_class_gres_literal_in_block_sources():
     offenders = [
         str(path.relative_to(REPO))
         for path in (REPO / "src" / "blocks").rglob("*.py")
-        if path.name != "rfdiffusion2.py" and pattern.search(path.read_text())
+        if pattern.search(path.read_text())
     ]
     assert offenders == []
 
@@ -430,7 +426,7 @@ def test_no_bare_size_class_gres_literal_in_block_sources():
 @pytest.fixture
 def ipd_site(site, monkeypatch):
     """Apply the Slurm settings that .env.ipd carries."""
-    ipd = ChaperoneSettings(_env_file=REPO / ".env.ipd")
+    ipd = ChaperoneSettings(_env_file=REPO / "src/chaperone/site_profiles/digs.env")
     settings = chaperone.get_settings()
     for name in SITE_FIELDS:
         monkeypatch.setattr(settings, name, getattr(ipd, name))

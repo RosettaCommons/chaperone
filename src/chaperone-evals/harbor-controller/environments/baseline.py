@@ -19,9 +19,6 @@ from typing import override
 from harbor.environments.singularity.singularity import SingularityEnvironment
 
 from environments.slurm_broker import (
-    ALLOWED_GPU_TYPE,
-    MAX_REQUESTED_GPUS_PER_SUBMISSION,
-    MAX_TOTAL_GPUS,
     SBATCH_GUARD,
     SOCKET_TARGET,
     SlurmBrokerProcess,
@@ -29,7 +26,7 @@ from environments.slurm_broker import (
 from environments.health_watchdog import ControllerHealthWatchdog
 
 
-BASELINE_IMAGE = Path("/net/software/containers/pipelines/pipelines_agent_base.sif")
+from site_config import get_site
 
 _FORBIDDEN_ENV_NAMES = {
     "CHAPERONE_COMPUTE_BACKEND",
@@ -277,7 +274,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
             runner=runner,
             workspace=workspace,
             runtime=runtime,
-            image=BASELINE_IMAGE.resolve(),
+            image=Path(get_site()["baseline_image"]).resolve(),
         )
         self._slurm_broker = SlurmBrokerProcess(
             workspace=workspace,
@@ -297,11 +294,11 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
         os.environ["SINGULARITY_CLEANENV"] = "1"
         configured_env.update(
             {
-                "HARBOR_MAX_TOTAL_GPUS": str(MAX_TOTAL_GPUS),
+                "HARBOR_MAX_TOTAL_GPUS": str(get_site()["max_total_gpus"]),
                 "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION": str(
-                    MAX_REQUESTED_GPUS_PER_SUBMISSION
+                    get_site()["max_requested_gpus_per_submission"]
                 ),
-                "HARBOR_ALLOWED_GPU_TYPE": ALLOWED_GPU_TYPE,
+                "HARBOR_ALLOWED_GPU_TYPE": get_site()["gpu_type"],
                 "HARBOR_SBATCH_SOCKET": SOCKET_TARGET,
                 "HARBOR_SLURM_POLICY": "generic-contained",
             }
@@ -399,7 +396,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
                 + detail
             )
         configured = Path(self._docker_image or "").expanduser().resolve()
-        expected = BASELINE_IMAGE.resolve()
+        expected = Path(get_site()["baseline_image"]).resolve()
         if configured != expected:
             raise ValueError(
                 "Baseline trials must use the audited clean image "

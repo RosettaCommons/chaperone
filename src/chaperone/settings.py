@@ -16,44 +16,40 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _find_env_files() -> tuple[str, ...]:
-    """Find env files to load, in priority order (later files override earlier).
+    """Load portable defaults, an explicit site, then user overrides.
 
-    Loading order:
-    1. .env — generic defaults (checked into git)
-    2. .env.ipd — IPD-specific paths/mirrors (checked in, loaded only if at IPD)
-    3. .env.local — user-specific overrides (gitignored)
-    4. ~/.env.chaperone — legacy fallback for user home config
-
-    Resolves the Chaperone repo root by walking up from this file (__file__),
-    so .env files are found regardless of the caller's working directory.
+    CHAPERONE_SITE=digs opts into packaged defaults; a supplied .env.ipd is
+    loaded when present. Shared cluster directories never select a site. CHAPERONE_ENV_FILE can point at a shared site/user file;
+    .env.local and process environment values take precedence.
     """
     env_files: list[str] = []
-
-    # Walk up from this file to find the repo root containing .env
-    project_root: Path | None = None
-    current = Path(__file__).resolve().parent
-    for parent in [current, *current.parents]:
-        if (parent / ".env").is_file():
-            project_root = parent
-            break
-
-    if project_root is not None:
-        # Base defaults
+    project_root = next(
+        (p for p in Path(__file__).resolve().parents if (p / ".env").is_file()),
+        Path.cwd(),
+    )
+    if (project_root / ".env").is_file():
         env_files.append(str(project_root / ".env"))
-        # IPD overrides (only if at IPD)
-        ipd_env = project_root / ".env.ipd"
-        if ipd_env.is_file() and Path("/projects/ml/pipelines").is_dir():
-            env_files.append(str(ipd_env))
-        # User-local overrides (gitignored)
-        local_env = project_root / ".env.local"
-        if local_env.is_file():
-            env_files.append(str(local_env))
-
-    # Legacy fallback
+    site = os.environ.get("CHAPERONE_SITE", "portable")
+    if site not in {"portable", "digs"}:
+        raise ValueError("CHAPERONE_SITE must be portable or digs")
+    if site == "digs":
+        env_files.append(str(Path(__file__).parent / "site_profiles" / "digs.env"))
+    # A supplied (untracked) IPD file is an explicit opt-in, even without a site
+    # flag. Installed wheels also accept the file in the working directory.
+    ipd_file = project_root / ".env.ipd"
+    if ipd_file.is_file():
+        env_files.append(str(ipd_file))
     home_env = Path("~/.env.chaperone").expanduser()
     if home_env.is_file():
         env_files.append(str(home_env))
-
+    configured = os.environ.get("CHAPERONE_ENV_FILE")
+    if configured:
+        path = Path(configured).expanduser().resolve()
+        if not path.is_file():
+            raise ValueError(f"CHAPERONE_ENV_FILE does not exist: {path}")
+        env_files.append(str(path))
+    if (project_root / ".env.local").is_file():
+        env_files.append(str(project_root / ".env.local"))
     return tuple(env_files)
 
 
@@ -82,7 +78,9 @@ def _resolve_container_backend(value: str) -> str:
 def _get_default_chaperone_root() -> Path:
     """Get default CHAPERONE_ROOT, resolving user properly."""
     user = getpass.getuser()
-    return Path(f"/net/scratch/{user}/chaperone")
+    if os.environ.get("CHAPERONE_SITE") == "digs":
+        return Path(f"/net/scratch/{user}/chaperone")
+    return Path.cwd()
 
 
 class ChaperoneSettings(BaseSettings):
@@ -113,7 +111,7 @@ class ChaperoneSettings(BaseSettings):
     )
     CHAPERONE_ROOT: Path = Field(
         default_factory=_get_default_chaperone_root,
-        description="Root directory for resolving relative rundirs. Defaults to /net/scratch/{user}/chaperone.",
+        description="Root directory for resolving relative rundirs. Defaults to the working directory (digs: /net/scratch/{user}/chaperone).",
     )
     ENFORCE_RELATIVE_RUNDIR: bool = Field(
         default=False,
@@ -174,19 +172,21 @@ class ChaperoneSettings(BaseSettings):
         description="Colon-separated list of directories to search for container images.",
     )
     CHAPERONE_CONTAINER_BIND_RUNDIR: bool = Field(
-        default=False,
-        description=(
-            "Bind the active Chaperone RUNDIR read-write at the same path in "
-            "nested tool containers. Intended for contained controller jobs "
-            "whose run directory is otherwise hidden by --containall."
-        ),
+        default=True,
+        description="Bind the exact active RUNDIR into tool containers, once the engine selects it.",
     )
     CHAPERONE_CONTAINER_BIND_WORKSPACE: bool = Field(
-        default=False,
+        default=True,
         description=(
-            "Bind only HARBOR_HOST_WORKSPACE read-write at the same absolute "
-            "path in nested tool containers. This exposes workspace code without "
-            "restoring broad ambient host mounts under --containall."
+            "Bind the exact work folder into tool containers. Evaluations always use "
+            "their controller-provided HARBOR_HOST_WORKSPACE."
+        ),
+    )
+    CHAPERONE_CONTAINER_WORKSPACE: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Ordinary work folder containing source scripts and inputs; defaults to the "
+            "working directory. Ignored when HARBOR_HOST_WORKSPACE is supplied."
         ),
     )
 
@@ -229,8 +229,7 @@ class ChaperoneSettings(BaseSettings):
     CHAPERONE_GPU_PARTITION: Optional[str] = Field(
         default=None,
         description=(
-            "Slurm partition for GPU blocks. Falls back to "
-            "CHAPERONE_DEFAULT_PARTITION."
+            "Slurm partition for GPU blocks. Falls back to CHAPERONE_DEFAULT_PARTITION."
         ),
     )
     CHAPERONE_GRES_MAP: dict[str, str] = Field(
@@ -283,13 +282,17 @@ class ChaperoneSettings(BaseSettings):
         default=None,
         description="3DNA install root exported as $X3DNA for its binaries.",
     )
+    DALPHABALL_BIN: Optional[str] = Field(
+        default=None,
+        description="DAlphaBall executable required by the ligand_ddg Holes metric.",
+    )
     ESM_WEIGHTS_DIR: str = Field(
-        default="/projects/ml/esm-weights",
+        default_factory=lambda: str(Path("~/.cache/chaperone/esm").expanduser()),
         description="HuggingFace cache directory for ESMFold2 / ESMC model weights "
         "(used as HF_HUB_CACHE by the esmfold2 block).",
     )
     SIMPLEFOLD_WEIGHTS_DIR: str = Field(
-        default="/projects/ml/pipelines/weights/simplefold",
+        default_factory=lambda: str(Path("~/.cache/chaperone/simplefold").expanduser()),
         description=(
             "Shared cache for SimpleFold checkpoints, its fair-esm ESM2 weights, "
             "and the CCD dictionary."
@@ -338,6 +341,18 @@ class ChaperoneSettings(BaseSettings):
         description=(
             "Directory containing AlphaFold3 model weights (license-gated; "
             "request access from DeepMind)."
+        ),
+    )
+    CHAPERONE_MPNN_CONTAINER: Literal["auto", "public", "portable", "legacy"] = Field(
+        default="auto",
+        description=(
+            "MPNN runtime selection. Auto uses the public MIT LigandMPNN image "
+            "unless MPNN_WEIGHTS_DIR supplies a legacy site profile, in which case "
+            "it prefers modelhub_portable.sif, then the existing IPD image. "
+            "Public forces public source and bundled public checkpoints; "
+            "portable forces the rebuildable private fused_mpnn image; "
+            "legacy explicitly selects the existing IPD Apptainer image. "
+            "Set before importing blocks."
         ),
     )
     MPNN_WEIGHTS_DIR: Optional[str] = Field(

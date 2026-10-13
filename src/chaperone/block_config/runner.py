@@ -266,7 +266,7 @@ def _phase_wait(state: dict) -> int:
             # Don't pass log_path — our sys.stdout tee already captures
             # Manifest.exec's per-line writes. Passing log_path would open
             # the log a second time in "w" mode and clobber what we wrote.
-            Manifest.exec(sandbox_dir)
+            Manifest.exec(sandbox_dir).check_returncode()
     except Exception:
         tb = traceback.format_exc()
         logger.error("runner_wait: Manifest.exec failed:\n%s", tb)

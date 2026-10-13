@@ -3,6 +3,8 @@ import json
 import glob
 import shutil
 import logging
+import shlex
+from pathlib import Path
 
 from typing import Optional, Literal
 
@@ -23,6 +25,58 @@ from blocks.constants import cuda_python_base
 logger = logging.getLogger(__name__)
 
 # ── Container definition ─────────────────────────────────────────────────
+
+# Upstream does not publish a uv.lock. Preserve the 4.x ESM checkpoint layout:
+# Transformers 5 moves its per-layer rotary buffers, breaking strict DISCO loads.
+_DISCO_UV_CONFIG = """
+[tool.uv]
+constraint-dependencies = ["torch==2.11.0", "deepspeed==0.19.3", "lightning==2.6.5", "transformers==4.57.6", "numpy==1.26.4"]
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+[tool.uv.sources.torch]
+index = "pytorch-cu128"
+"""
+_DISCO_ESM_COMPATIBILITY_CHECK = """
+from transformers import EsmConfig, EsmForMaskedLM
+config = EsmConfig(vocab_size=33, hidden_size=16, num_hidden_layers=2, num_attention_heads=2, intermediate_size=32, position_embedding_type='rotary', pad_token_id=1, mask_token_id=32)
+model = EsmForMaskedLM(config)
+expected = {f'esm.encoder.layer.{i}.attention.self.rotary_embeddings.inv_freq' for i in range(2)}
+observed = {key for key in model.state_dict() if key.endswith('rotary_embeddings.inv_freq')}
+if observed != expected:
+    raise RuntimeError(f'ESM rotary buffer layout is incompatible with the DISCO checkpoint: {observed}')
+model.load_state_dict(model.state_dict(), strict=True)
+"""
+_DISCO_CUDA_ARCH_ASSIGNMENT = (
+    'os.environ["TORCH_CUDA_ARCH_LIST"] = '
+    '(os.environ.get("TORCH_CUDA_ARCH_LIST") or '
+    '".".join(map(str, torch.cuda.get_device_capability(self.device)))).replace(",", ";")'
+)
+_DISCO_CUDA_ARCH_PATCH = f"""
+from pathlib import Path
+path = Path('/opt/disco/runner/inference.py')
+source = path.read_text()
+old = 'os.environ["TORCH_CUDA_ARCH_LIST"] = "8.0,8.9"'
+if source.count(old) != 1:
+    raise RuntimeError('DISCO CUDA architecture assignment changed; review the pinned source')
+path.write_text(source.replace(old, {_DISCO_CUDA_ARCH_ASSIGNMENT!r}))
+"""
+_DISCO_DEEPSPEED_ARCH_CHECK = """
+import os
+from deepspeed.ops.op_builder.builder import CUDAOpBuilder
+class ArchitectureCheck(CUDAOpBuilder):
+    def absolute_name(self):
+        return 'architecture_check'
+    def sources(self):
+        return []
+for arch, expected in [('8.6', '8.6+PTX'), ('12.0', '12.0+PTX'), ('8.0;8.9', '8.0;8.9+PTX')]:
+    builder = ArchitectureCheck('architecture_check')
+    builder.jit_mode = True
+    builder._jit_arch_list = arch
+    builder.compute_capability_args()
+    assert os.environ['TORCH_CUDA_ARCH_LIST'] == expected
+"""
 
 DISCO_CONTAINER = (
     cuda_python_base(
@@ -45,8 +99,7 @@ DISCO_CONTAINER = (
         ),
     )
     .run(
-        # Install uv for dependency management
-        "curl -LsSf https://astral.sh/uv/install.sh | sh",
+        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24",
     )
     .git_clone(
         "https://github.com/DISCO-design/DISCO.git",
@@ -54,17 +107,28 @@ DISCO_CONTAINER = (
         branch="main",
     )
     .run(
-        # Install DISCO via uv sync
-        "export PATH=$HOME/.local/bin:$PATH && "
-        "cd /opt/disco && "
-        "uv sync && "
-        # Install torch with CUDA 12.4 backend
-        "uv pip uninstall torch && "
-        "uv pip install torch --torch-backend=cu124",
+        "git -C /opt/disco checkout --detach 398098c57e3f1dd6dd6205c059f7792dcc9b9147",
+        "python3.12 -c " + shlex.quote(f"exec({_DISCO_CUDA_ARCH_PATCH!r})"),
+        "python3.12 -c " + shlex.quote(
+            "from pathlib import Path; p = Path('/opt/disco/pyproject.toml'); "
+            f"p.write_text(p.read_text() + {_DISCO_UV_CONFIG!r})"
+        ),
+        "cd /opt/disco && /opt/uv-env/bin/uv sync --python python3.12",
+        "/opt/uv-env/bin/uv pip check --python /opt/disco/.venv/bin/python",
     )
     .run(
         # Clone CUTLASS for DeepSpeed EvoformerAttention
-        "git clone --depth 1 https://github.com/NVIDIA/cutlass.git /opt/cutlass",
+        "git init /opt/cutlass && "
+        "git -C /opt/cutlass remote add origin https://github.com/NVIDIA/cutlass.git && "
+        "git -C /opt/cutlass fetch --depth 1 origin bd01dd3651330accacb8083aedfac3bf522f25e5 && "
+        "git -C /opt/cutlass checkout --detach FETCH_HEAD",
+    )
+    .run(
+        "/opt/disco/.venv/bin/python -c " + shlex.quote(f"exec({_DISCO_ESM_COMPATIBILITY_CHECK!r})"),
+        "/opt/disco/.venv/bin/python -c " + shlex.quote(f"exec({_DISCO_DEEPSPEED_ARCH_CHECK!r})"),
+        "cd /opt/disco && CUDA_HOME=/usr/local/cuda CUTLASS_PATH=/opt/cutlass "
+        "/opt/disco/.venv/bin/python -c "
+        "'import torch; import runner.inference; assert torch.version.cuda == \"12.8\"; print(torch.__version__)'",
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -74,7 +138,7 @@ DISCO_CONTAINER = (
         VIRTUAL_ENV="/opt/disco/.venv",
         CUTLASS_PATH="/opt/cutlass",
     )
-    .label(Version="v1.0.0", CUDA="12.6")
+    .label(Version="398098c57e3f1dd6dd6205c059f7792dcc9b9147", CUDA="12.8", PyTorch="2.11.0")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -162,6 +226,13 @@ class DISCOBlock(CompiledBlockFunction):
         None,
         description="Path to custom model checkpoint (default: auto-download from HuggingFace)",
     )
+    cache_dir: str = Field(
+        default_factory=lambda: str(
+            get_setting_field("HF_HUB_CACHE", None)
+            or Path.home() / ".cache" / "huggingface" / "hub"
+        ),
+        description="Hugging Face model cache mounted into the container",
+    )
 
     @field_validator("inputs")
     def ensure_inputs_exist(cls, v):
@@ -173,7 +244,18 @@ class DISCOBlock(CompiledBlockFunction):
     def ensure_ckpt_exists(cls, v):
         if v is not None and not os.path.exists(v):
             raise ValueError(f"Checkpoint path {v} does not exist")
-        return v
+        return str(Path(v).resolve()) if v is not None else None
+
+    def get_command_template(self) -> list[str]:
+        self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
+        binds = [(self.cache_dir, self.cache_dir)]
+        if self.ckpt_path:
+            binds.append((self.ckpt_path, self.ckpt_path))
+        return self._script_spec.image.build_command(
+            *self._script_spec.command,
+            env={"HF_HUB_CACHE": self.cache_dir},
+            binds=binds,
+        )
 
     def init_handler(self):
         rows = []
@@ -182,6 +264,7 @@ class DISCOBlock(CompiledBlockFunction):
         return PipelineDataHandler(rows)
 
     def create_command(self, handler, sandbox_dir, chunk_id):
+        Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
         sandbox_dir = os.path.abspath(sandbox_dir)
         os.makedirs(sandbox_dir, exist_ok=True)
 

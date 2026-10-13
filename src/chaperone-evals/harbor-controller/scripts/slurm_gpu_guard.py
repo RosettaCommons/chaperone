@@ -50,7 +50,12 @@ FORWARDED_ENV_NAMES = {
 FORWARDED_ENV_PREFIXES = ("CHAPERONE_",)
 # Controller-side settings that share the CHAPERONE_ prefix but are never
 # worker configuration (the held-out task tree location, bootstrap options).
-NEVER_FORWARDED_ENV_NAMES = {"CHAPERONE_EVALS_PRIVATE", "CHAPERONE_PYTHON_VERSION"}
+NEVER_FORWARDED_ENV_NAMES = {
+    "CHAPERONE_EVALS_PRIVATE",
+    "CHAPERONE_PYTHON_VERSION",
+    "CHAPERONE_EVAL_SITE_CONFIG",
+    "CHAPERONE_ENV_FILE",
+}
 
 
 def _is_forwarded_name(name: str) -> bool:
@@ -112,7 +117,6 @@ _REQUIRED_SUBMITIT_DIRECTIVES = {
     "--nodes",
     "--open-mode",
     "--output",
-    "--partition",
     "--signal",
     "--time",
     "--wckey",
@@ -135,7 +139,6 @@ _REQUIRED_GENERIC_DIRECTIVES = {
     "--job-name",
     "--mem",
     "--output",
-    "--partition",
     "--time",
 }
 _SLURM_PATH_PLACEHOLDER = "harbor-slurm-placeholder"
@@ -406,7 +409,7 @@ def validate_request(
             f"sbatch request rejected: requested {count} GPUs in one allocation; "
             f"the entire trial may reserve at most {max_total_gpus} GPUs total"
         )
-    normalized_allowed = allowed_gpu_type.lower()
+    normalized_allowed = allowed_gpu_type.lower() or None
     if count > 0 and gpu_types != {normalized_allowed}:
         rendered = ", ".join(
             "untyped" if value is None else value
@@ -414,7 +417,7 @@ def validate_request(
         )
         raise GuardError(
             "sbatch request rejected: GPU allocations must explicitly request "
-            f"only gpu:{normalized_allowed}:N; found {rendered or 'untyped'}"
+            f"only gpu:{normalized_allowed + ':' if normalized_allowed else ''}N; found {rendered or 'untyped'}"
         )
     return count
 
@@ -534,8 +537,6 @@ def _generic_directives(
         raise GuardError("unsafe --job-name in baseline script")
     if directives.get("--nodes", "1") != "1":
         raise GuardError("baseline jobs must request exactly one node")
-    if directives["--partition"] not in {"cpu", "gpu"}:
-        raise GuardError("baseline partition must be cpu or gpu")
     if not re.fullmatch(
         r"[0-9]+(?:-[0-9]+)?(?:%[1-9][0-9]*)?", directives.get("--array", "0")
     ):
@@ -553,6 +554,35 @@ def _generic_directives(
     return directives
 
 
+def _scheduler_arguments(
+    directives,
+    gpu_count,
+    allowed_gpu_type,
+    cpu_partition,
+    gpu_partition,
+    gpu_constraint,
+    account,
+    qos,
+):
+    partition = gpu_partition if gpu_count else cpu_partition
+    if directives.get("--partition", "") != partition:
+        raise GuardError(f"jobs must use the configured partition {partition!r}")
+    result = [f"--partition={partition}"] if partition else []
+    if gpu_count:
+        expected = f"gpu:{allowed_gpu_type.lower() + ':' if allowed_gpu_type else ''}{gpu_count}"
+        if directives.get("--gres", "").lower() != expected:
+            raise GuardError(f"GPU jobs must use --gres={expected}")
+        result.append(f"--gres={expected}")
+        if gpu_constraint:
+            result.append(f"--constraint={gpu_constraint}")
+    elif directives.get("--gres") is not None:
+        raise GuardError("CPU jobs must not specify --gres")
+    for key, value in (("account", account), ("qos", qos)):
+        if value:
+            result.append(f"--{key}={value}")
+    return result
+
+
 def prepare_generic_submission(
     argv: list[str],
     cwd: Path,
@@ -564,6 +594,11 @@ def prepare_generic_submission(
     max_requested_gpus_per_submission: int = (
         DEFAULT_MAX_REQUESTED_GPUS_PER_SUBMISSION
     ),
+    cpu_partition: str = "cpu",
+    gpu_partition: str = "gpu",
+    gpu_constraint: str = "A4000",
+    account: str = "",
+    qos: str = "",
 ) -> tuple[list[str], int, str, dict[str, str]]:
     """Validate a baseline payload and build canonical sbatch arguments."""
     if len(argv) != 1 or argv[0].startswith("-"):
@@ -601,8 +636,6 @@ def prepare_generic_submission(
         max_total_gpus,
         max_requested_gpus_per_submission,
     )
-    partition = directives["--partition"]
-    gres = directives.get("--gres")
     scheduler_log_dir.mkdir(parents=True, exist_ok=True)
     scheduler_log_dir = scheduler_log_dir.resolve(strict=True)
     log_stem = directives["--job-name"] + "-%A_%a"
@@ -613,27 +646,24 @@ def prepare_generic_submission(
         f"--job-name={directives['--job-name']}",
         f"--output={scheduler_log_dir / (log_stem + '.out')}",
         f"--error={scheduler_log_dir / (log_stem + '.err')}",
-        f"--partition={partition}",
         f"--time={directives['--time']}",
         f"--mem={directives['--mem']}",
         f"--cpus-per-task={directives['--cpus-per-task']}",
     ]
     if "--array" in directives:
         canonical.append(f"--array={directives['--array']}")
-    if gpu_count:
-        expected_gres = f"gpu:{allowed_gpu_type.lower()}:{gpu_count}"
-        if partition != "gpu" or gres is None or gres.lower() != expected_gres:
-            raise GuardError(
-                f"GPU baseline jobs must use --partition=gpu and --gres={expected_gres}"
-            )
-        canonical.extend(
-            [
-                f"--gres={expected_gres}",
-                "--constraint=A4000",
-            ]
+    canonical.extend(
+        _scheduler_arguments(
+            directives,
+            gpu_count,
+            allowed_gpu_type,
+            cpu_partition,
+            gpu_partition,
+            gpu_constraint,
+            account,
+            qos,
         )
-    elif partition != "cpu" or gres is not None:
-        raise GuardError("CPU baseline jobs must use --partition=cpu without --gres")
+    )
     return canonical, gpu_count, script, directives
 
 
@@ -672,8 +702,6 @@ def _submitit_directives(script: str, workspace: Path) -> dict[str, str]:
         raise GuardError("Submitit jobs must request exactly one node")
     if directives["--open-mode"] != "append":
         raise GuardError("Submitit jobs must use --open-mode=append")
-    if directives["--partition"] not in {"cpu", "gpu"}:
-        raise GuardError("Submitit partition must be cpu or gpu")
     if not re.fullmatch(r"USR2@[1-9][0-9]*", directives["--signal"]):
         raise GuardError("Submitit jobs must use a bounded USR2 signal delay")
     if directives["--wckey"] != "submitit":
@@ -784,6 +812,11 @@ def prepare_submission(
     max_requested_gpus_per_submission: int = (
         DEFAULT_MAX_REQUESTED_GPUS_PER_SUBMISSION
     ),
+    cpu_partition: str = "cpu",
+    gpu_partition: str = "gpu",
+    gpu_constraint: str = "A4000",
+    account: str = "",
+    qos: str = "",
 ) -> tuple[list[str], int, str | None]:
     """Validate one broker request and return canonical real-sbatch arguments."""
     if stdin:
@@ -826,29 +859,26 @@ def prepare_submission(
         max_total_gpus,
         max_requested_gpus_per_submission,
     )
-    partition = directives["--partition"]
-    gres = directives.get("--gres")
     gpus_per_node = directives.get("--gpus-per-node")
     canonical = [
         f"--chdir={cwd}",
         "--export=NONE",
     ]
-    if gpu_count:
-        expected_gres = f"gpu:{allowed_gpu_type.lower()}:{gpu_count}"
-        if partition != "gpu" or gres is None or gres.lower() != expected_gres:
-            raise GuardError(
-                f"GPU Submitit jobs must use --partition=gpu and --gres={expected_gres}"
-            )
-        canonical.extend(
-            [
-                f"--gres={expected_gres}",
-                "--constraint=A4000",
-            ]
+    canonical.extend(
+        _scheduler_arguments(
+            directives,
+            gpu_count,
+            allowed_gpu_type,
+            cpu_partition,
+            gpu_partition,
+            gpu_constraint,
+            account,
+            qos,
         )
-    elif partition != "cpu" or gres is not None:
-        raise GuardError("CPU Submitit jobs must use --partition=cpu without --gres")
-    if gpus_per_node is not None and partition != "cpu":
+    )
+    if gpus_per_node is not None and gpu_count:
         raise GuardError("--gpus-per-node=0 is accepted only for CPU Submitit jobs")
+    canonical = [arg for arg in canonical if not arg.startswith("--partition=")]
     # Submit the exact bytes that were validated instead of asking real sbatch
     # to reopen an agent-writable file after validation (a TOCTOU escape).
     return canonical, gpu_count, script
@@ -923,6 +953,7 @@ class _BrokerHandler(socketserver.StreamRequestHandler):
                             server.max_total_gpus,
                             server.allowed_gpu_type,
                             server.max_requested_gpus_per_submission,
+                            **server.scheduler_policy,
                         )
                     )
                     script = server.snapshot_generic_payload(payload, directives)
@@ -938,6 +969,7 @@ class _BrokerHandler(socketserver.StreamRequestHandler):
                         server.max_total_gpus,
                         server.allowed_gpu_type,
                         server.max_requested_gpus_per_submission,
+                        **server.scheduler_policy,
                     )
             elif command == "scancel":
                 if stdin:
@@ -1052,6 +1084,7 @@ class _BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
             DEFAULT_MAX_REQUESTED_GPUS_PER_SUBMISSION
         ),
         exclude_nodes: str = "",
+        scheduler_policy: dict | None = None,
     ) -> None:
         self.real_sbatch = real_sbatch
         self.real_scancel = real_scancel
@@ -1070,6 +1103,7 @@ class _BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
         self.max_total_gpus = max_total_gpus
         self.max_requested_gpus_per_submission = max_requested_gpus_per_submission
         self.allowed_gpu_type = allowed_gpu_type.lower()
+        self.scheduler_policy = scheduler_policy or {}
         self.exclude_nodes = _merged_excluded_nodes(None, exclude_nodes)
         if policy not in {"submitit", "generic"}:
             raise GuardError(f"unsupported broker policy {policy!r}")
@@ -1528,6 +1562,7 @@ def serve(
         DEFAULT_MAX_REQUESTED_GPUS_PER_SUBMISSION
     ),
     exclude_nodes: str = "",
+    scheduler_policy: dict | None = None,
 ) -> int:
     if max_total_gpus < 1:
         raise SystemExit("--max-total-gpus must be positive")
@@ -1569,6 +1604,7 @@ def serve(
         submission_registry,
         max_requested_gpus_per_submission,
         exclude_nodes,
+        scheduler_policy,
     )
     socket_path.chmod(0o600)
 
@@ -1619,6 +1655,14 @@ def main() -> int:
         parser.add_argument("--generic-runner", type=Path)
         parser.add_argument("--payload-dir", type=Path)
         parser.add_argument("--submission-registry", type=Path)
+        for name, default in (
+            ("cpu_partition", "cpu"),
+            ("gpu_partition", "gpu"),
+            ("gpu_constraint", "A4000"),
+            ("account", ""),
+            ("qos", ""),
+        ):
+            parser.add_argument("--" + name.replace("_", "-"), default=default)
         args = parser.parse_args()
         return serve(
             args.socket,
@@ -1638,6 +1682,16 @@ def main() -> int:
             args.submission_registry,
             args.max_requested_gpus_per_submission,
             args.exclude_nodes,
+            {
+                key: getattr(args, key)
+                for key in (
+                    "cpu_partition",
+                    "gpu_partition",
+                    "gpu_constraint",
+                    "account",
+                    "qos",
+                )
+            },
         )
     return client(os.environ.get("HARBOR_SBATCH_SOCKET", DEFAULT_SOCKET), sys.argv[1:])
 

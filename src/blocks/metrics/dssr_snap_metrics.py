@@ -121,7 +121,9 @@ METRIC_LABELS: tuple[str, ...] = (
 
 def _default_bin(name: str) -> str | None:
     """Return ``$X3DNA_BIN_DIR/<name>`` if the setting is configured, else None."""
-    bin_dir = get_setting_field("X3DNA_BIN_DIR")
+    # Must not raise: this is a Field default_factory, so an unset setting would
+    # make the block unconstructable on any machine without 3DNA installed.
+    bin_dir = get_setting_field("X3DNA_BIN_DIR", None)
     return str(Path(bin_dir) / name) if bin_dir else None
 
 

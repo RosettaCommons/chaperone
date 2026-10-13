@@ -1,6 +1,7 @@
 [project]
 name = "chaperone-evals"
 version = "0.1.0"
+license = "MIT"
 description = "Agent evaluation harness for Chaperone"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,7 +21,7 @@ test = ["pytest>=8.4"]
 chaperone = { path = "../..", editable = true }
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 # Nothing to install: the controller runs from this directory.

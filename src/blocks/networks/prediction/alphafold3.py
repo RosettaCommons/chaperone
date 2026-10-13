@@ -67,6 +67,8 @@ ALPHAFOLD3_CONTAINER = (
         "gnupg",
         "cmake",
         "ninja-build",
+        "patch",
+        "zlib1g-dev",
         "python3.12",
         "python3.12-dev",
         "python3.12-venv",
@@ -77,37 +79,38 @@ ALPHAFOLD3_CONTAINER = (
         "libxrender1",
     )
     .run(*CUDA_INSTALL)
+    .git_clone(
+        "https://github.com/google-deepmind/alphafold3",
+        "/opt/alphafold3",
+        branch="main",
+    )
+    .run("cd /opt/alphafold3 && git checkout --detach 71e671112ab5f287fdabd3ce86b5d05805dd0d81")
     # Build HMMER 3.4 from source
     .run(
         "mkdir -p /opt/hmmer_build /usr/local/hmmer",
         "wget http://eddylab.org/software/hmmer/hmmer-3.4.tar.gz -P /opt/hmmer_build",
+        "cd /opt/hmmer_build && echo "
+        "'ca70d94fd0cf271bd7063423aabb116d42de533117343a9b27a65c17ff06fbf3 hmmer-3.4.tar.gz' "
+        "| sha256sum --check",
         "cd /opt/hmmer_build && tar zxf hmmer-3.4.tar.gz && rm hmmer-3.4.tar.gz",
+        "cd /opt/hmmer_build && patch -p0 < /opt/alphafold3/docker/jackhmmer_seq_limit.patch",
         "cd /opt/hmmer_build/hmmer-3.4 && ./configure --prefix /usr/local/hmmer && make -j16 && make install",
         "cd /opt/hmmer_build/hmmer-3.4/easel && make install",
         "rm -rf /opt/hmmer_build",
     )
-    # Create Python venv and install AF3
+    # Pin both the source and its tested dependency lock. Resolving transitive
+    # Flax/Qwix versions independently can import APIs missing from JAX even
+    # when pip accepts their declared dependency ranges.
     .run(
-        "python3.12 -m venv /opt/af3-env",
-        ". /opt/af3-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24",
+        "cd /opt/alphafold3 && UV_PROJECT_ENVIRONMENT=/opt/af3-env "
+        "/opt/uv-env/bin/uv sync --frozen --no-dev --no-editable",
+        "/opt/uv-env/bin/uv pip check --python /opt/af3-env/bin/python",
+        "/opt/af3-env/bin/build_data",
     )
-    # Install scikit-build-core and pybind11 first (AF3 build deps)
+    # The lock includes CUDA 12.9/cuDNN 9.17 wheels with Blackwell support.
+    # Expose their libraries to the linker as well as the Python packages.
     .run(
-        ". /opt/af3-env/bin/activate && pip install scikit-build-core pybind11 numpy",
-    )
-    # Install NVIDIA CUDA pip packages BEFORE AF3 so JAX resolves the CUDA
-    # jaxlib variant without relying on pip's host GPU detection. Symlink .so files into
-    # /usr/local/cuda/lib64 and run ldconfig so both LD_LIBRARY_PATH and
-    # the dynamic linker cache can find them at runtime.
-    .run(
-        # Version floors ensure Blackwell (sm_120) kernels are present:
-        # cuDNN>=9.7 and CUDA runtime/cublas>=12.8 are the minimum sm_120-aware
-        # builds. Lower versions still resolve fine on Ampere/Hopper.
-        ". /opt/af3-env/bin/activate && pip install "
-        "'nvidia-cublas-cu12>=12.8' 'nvidia-cuda-cupti-cu12>=12.8' 'nvidia-cuda-nvcc-cu12>=12.8' "
-        "'nvidia-cuda-nvrtc-cu12>=12.8' 'nvidia-cuda-runtime-cu12>=12.8' 'nvidia-cudnn-cu12>=9.7' "
-        "'nvidia-cufft-cu12>=11.3' nvidia-curand-cu12 'nvidia-cusolver-cu12>=11.7' "
-        "'nvidia-cusparse-cu12>=12.5' 'nvidia-nccl-cu12>=2.25' 'nvidia-nvjitlink-cu12>=12.8'",
         "for d in /opt/af3-env/lib/python3.12/site-packages/nvidia/*/lib; do "
         'for f in "$d"/*.so*; do '
         '[ -f "$f" ] && ln -sf "$f" /usr/local/cuda/lib64/; '
@@ -125,23 +128,11 @@ ALPHAFOLD3_CONTAINER = (
         " && echo /usr/local/cuda/lib64 >> /etc/ld.so.conf.d/nvidia-pip.conf"
         " && ldconfig",
     )
-    # Clone AF3 from upstream rather than copying from a host path, so the
-    # container is buildable without relying on host CUDA libraries. The host
-    # clone happens via `Image.prepare_git_clones()` before the build and
-    # gets copied in via %files / COPY. Pin to a released tag once we've
-    # validated compatibility with the rest of the stack.
-    .git_clone(
-        "https://github.com/google-deepmind/alphafold3",
-        "/opt/alphafold3",
-        branch="main",
-    )
+    .copy(str(SCRIPT_DIR / "run_alphafold_AF.py"), "/opt/chaperone-build-smoke/run_alphafold_AF.py")
     .run(
-        ". /opt/af3-env/bin/activate && cd /opt/alphafold3 && pip install .",
-        ". /opt/af3-env/bin/activate && build_data",
-        # Force-upgrade jax after AF3's install so AF3's loose pin doesn't drag
-        # us back below the sm_120-capable release (jaxlib>=0.5.0, i.e. JAX 25.01+).
-        ". /opt/af3-env/bin/activate && pip install --upgrade "
-        "'jax[cuda12]>=0.5.0' 'jaxlib>=0.5.0'",
+        "JAX_PLATFORMS=cpu /opt/af3-env/bin/python -c "
+        "\"import runpy; runpy.run_path('/opt/chaperone-build-smoke/run_alphafold_AF.py', "
+        "run_name='chaperone_build_smoke')\"",
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -154,7 +145,7 @@ ALPHAFOLD3_CONTAINER = (
         XLA_CLIENT_MEM_FRACTION="0.95",
         TF_ENABLE_ONEDNN_OPTS="0",
     )
-    .label(Version="3.0.1", CUDA="12.8")
+    .label(Version="71e671112ab5f287fdabd3ce86b5d05805dd0d81", CUDA="12.8-toolkit/12.9-wheels")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -785,11 +776,21 @@ class AlphaFold3Block(AF3LikePredictionBlock):
         ``ALPHAFOLD3_WEIGHTS_DIR`` overrides ``--model_dir`` and uses its
         parent for ``--db_dir``. Otherwise the container defaults are kept.
         """
-        base = self._script_spec.to_template()
         weights_dir = get_setting_field("ALPHAFOLD3_WEIGHTS_DIR", default="")
+        binds = []
+        if self.jax_cache_dir:
+            self.jax_cache_dir = str(Path(self.jax_cache_dir).expanduser().resolve())
+            binds.append((self.jax_cache_dir, self.jax_cache_dir))
+        weights_path = None
+        if weights_dir:
+            weights_path = Path(weights_dir).expanduser().resolve()
+            weights_dir = str(weights_path)
+            binds.append((weights_dir, weights_dir + ":ro"))
+        base = self._script_spec.image.build_command(
+            *self._script_spec.command, binds=binds,
+        )
         if not weights_dir:
             return base
-        weights_path = Path(weights_dir)
         db_dir = str(weights_path.parent)
         overrides = [
             arg
@@ -804,6 +805,11 @@ class AlphaFold3Block(AF3LikePredictionBlock):
         )
         return overrides
 
+    jax_cache_dir: Optional[str] = Field(
+        default_factory=lambda: get_setting_field("AF3_JAX_CACHE_DIR", default=None),
+        description="Writable compilation cache mounted directly into the container",
+    )
+
     _resources = JobArgs(
         partition="gpu",
         gpu_class="small",
@@ -817,8 +823,17 @@ class AlphaFold3Block(AF3LikePredictionBlock):
         description=(
             "AF3 input preparation mode. The default 'mmcif' serializes the complete "
             "AtomArray and uses AF3's native Input.from_mmcif converter. Use 'json' "
-            "for legacy JSON-only options, or 'auto' to select JSON when one is set."
+            "for legacy JSON-only options, or 'auto' to select JSON when one is set. "
+            "Native sequence artifacts always use JSON, including those carrying "
+            "a pre-design backbone as context, so the designed sequence is authoritative."
         ),
+    )
+    input_preparation_version: Literal[2] = Field(
+        2,
+        frozen=True,
+        repr=False,
+        json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision for sequence-authoritative inputs and multi-seed manifests; not a user option.",
     )
     # ── Benchmarking against the input structures ───────────────────────
     #
@@ -1162,11 +1177,15 @@ class AlphaFold3Block(AF3LikePredictionBlock):
             inputs = handler.get_data(which=self.which, load=True)
         inputs = list(inputs)
 
-        # mmCIF serializes a structure; a sequence-only row has none, so those
-        # inputs can only go through the JSON path.
+        # A native sequence artifact may carry the pre-design backbone as
+        # context. Serializing that structure would silently predict its old
+        # sequence instead of the authoritative MPNN sequence.
         use_mmcif = self._use_mmcif_input()
-        if use_mmcif and any(loaded.atom_array is None for loaded in inputs):
-            logger.info("Sequence-only AF3 input has no structure; using JSON input")
+        if use_mmcif and (
+            getattr(handler, "has_sequence_data", False)
+            or any(loaded.atom_array is None for loaded in inputs)
+        ):
+            logger.info("Native sequence artifacts require AF3 JSON sequence input")
             use_mmcif = False
 
         if use_mmcif:
@@ -1179,7 +1198,9 @@ class AlphaFold3Block(AF3LikePredictionBlock):
                     loaded.atom_array,
                     loaded.basename,
                     remove_ligands=self.remove_ligands,
+                    seed=self.model_seeds[0],
                 )
+                payload["seeds"] = list(self.model_seeds)
                 if self.use_local_msas:
                     unpaired_msas, msa_depths = self._mmcif_chain_msas(
                         loaded.atom_array,
@@ -1284,9 +1305,9 @@ class AlphaFold3Block(AF3LikePredictionBlock):
             cmd.append(f"--buckets={','.join(str(b) for b in self.buckets)}")
         if self.conformer_max_iterations is not None:
             cmd.append(f"--conformer_max_iterations={self.conformer_max_iterations}")
-        jax_cache_dir = get_setting_field("AF3_JAX_CACHE_DIR", default=None)
-        if jax_cache_dir:
-            cmd.append(f"--jax_compilation_cache_dir={jax_cache_dir}")
+        if self.jax_cache_dir:
+            Path(self.jax_cache_dir).mkdir(parents=True, exist_ok=True)
+            cmd.append(f"--jax_compilation_cache_dir={self.jax_cache_dir}")
         return cmd
 
     def _compute_min_pae_interaction(self, pae_matrix):

@@ -440,6 +440,88 @@ def execute_chunk_job(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# /net/scratch mounts with acregmax=acdirmax=120 AND nocto, so close-to-open
+# revalidation is off. A readdir bust clears a stale negative dentry most of the
+# time, but not always, so recovery is bounded by something that clears the 120s
+# TTL rather than by the bust alone. The wait is only ever paid when a chunk
+# already looks failed, so a healthy run costs nothing -- and waiting out the
+# TTL is strictly better than discarding work that is sitting on disk.
+_RECOVERY_WAIT_S = 150.0
+_RECOVERY_POLL_S = 2.0
+
+
+def _bust_and_check(path: Path) -> bool:
+    """Force a fresh readdir around *path*, then test existence.
+
+    The stale entry is a *negative* dentry, so the parent must be re-read as
+    well: listing only the leaf cannot help when the cached miss is on the
+    leaf's own name.
+    """
+    for probe in (path.parent.parent, path.parent):
+        try:
+            os.listdir(probe)
+        except OSError:
+            pass
+    return path.exists()
+
+
+def recover_written_outputs(
+    contexts, outputs, *, wait_s: float = _RECOVERY_WAIT_S, sleep=time.sleep
+) -> int:
+    """Accept chunks whose output parquet is on disk despite a failed future.
+
+    submitit raises UncompletedJobError when the login node is still serving a
+    directory listing that predates the compute node writing its result pickle.
+    That is indistinguishable from a job which genuinely wrote nothing, so the
+    filesystem is the tiebreaker: a chunk that produced its parquet succeeded,
+    unless its terminal report records a worker failure. Without this the driver retries completed chunks
+    and can fail the whole run with "N chunk(s) still failing" while every
+    chunk's output.parquet is present.
+
+    Mutates ``outputs`` in place and returns the number of chunks recovered.
+    """
+    pending = [i for i, out in enumerate(outputs) if out is None]
+    if not pending:
+        return 0
+
+    deadline = time.monotonic() + wait_s
+    recovered_count = 0
+    while pending:
+        still_pending = []
+        for i in pending:
+            parquet = contexts[i].steps[-1].chunk_dir / "output.parquet"
+            terminal = parquet.with_name("terminal.json")
+            try:
+                failed = json.loads(terminal.read_text()).get("status") == "error"
+            except (OSError, ValueError):
+                failed = False
+            if failed:
+                continue
+            if _bust_and_check(parquet):
+                logger.warning(
+                    "Chunk %s was reported as failed but wrote %s; accepting it "
+                    "(stale NFS attr cache on the result pickle).",
+                    contexts[i].chunk_id,
+                    parquet,
+                )
+                outputs[i] = parquet
+                recovered_count += 1
+            else:
+                still_pending.append(i)
+        pending = still_pending
+        if not pending or time.monotonic() >= deadline:
+            break
+        sleep(_RECOVERY_POLL_S)
+
+    if pending:
+        logger.info(
+            "%d chunk(s) wrote no output.parquet after %.0fs; treating as failed",
+            len(pending),
+            wait_s,
+        )
+    return recovered_count
+
+
 def execute_chunks(
     blocks: List["BlockFunction"],
     handler_in,
@@ -488,13 +570,19 @@ def execute_chunks(
     max_retries = run_args.max_retries
     excluded_nodes = run_args.job_args.excluded_nodes_set
 
+    previous_failed_count = None
     for attempt in range(max_retries + 1):
+        # Slurm failures must reach recovery even on the final attempt. The
+        # explicit failure check below still rejects incomplete results.
         attempt_args = run_args.for_attempt(
-            is_last=attempt == max_retries, excluded_nodes=excluded_nodes
+            is_last=attempt == max_retries and run_args.is_local,
+            excluded_nodes=excluded_nodes,
         )
 
         runner = _create_runner(attempt_args, log_folder)
-        if attempt < max_retries and hasattr(runner, "fail_on_error"):
+        if (attempt < max_retries or not run_args.is_local) and hasattr(
+            runner, "fail_on_error"
+        ):
             runner.fail_on_error = False
 
         new_outputs = _dispatch_jobs(
@@ -507,9 +595,15 @@ def execute_chunks(
             force_exec=run_args.force_exec,
             skip_chunk_cache=run_args.skip_chunk_cache,
         )
+        # Recover only ordinary Slurm runs. Forced execution/recompilation may
+        # still have an old parquet if the worker never started.
+        if not run_args.is_local and not (
+            run_args.force_exec or run_args.skip_chunk_cache or run_args.recompile
+        ):
+            recover_written_outputs(contexts_to_run, new_outputs)
         failed_count = sum(1 for p in new_outputs if p is None)
 
-        if failed_count == 0:
+        if failed_count == 0 or attempt == max_retries:
             break
 
         # Query sacct for failed nodes and add to exclude list
@@ -524,17 +618,27 @@ def execute_chunks(
                 f"{failed_count} chunk(s) failed, excluding nodes "
                 f"{sorted(newly_excluded)}[/yellow]"
             )
-        else:
+        elif (
+            previous_failed_count is not None and failed_count >= previous_failed_count
+        ):
             console.print(
-                f"[yellow] Retry {attempt + 1}/{max_retries}: "
-                f"{failed_count} chunk(s) failed (no new nodes to exclude), "
-                f"skipping further retries[/yellow]"
+                f"[yellow]{failed_count} chunk(s) still failed after a retry "
+                "with no progress; stopping[/yellow]"
             )
             break
-    else:
+        else:
+            console.print(
+                f"[yellow]Retry {attempt + 1}/{max_retries}: "
+                f"{failed_count} chunk(s) failed with no node correlation; "
+                "retrying on the same nodes[/yellow]"
+            )
+        previous_failed_count = failed_count
+
+    # Both exhaustion and an early no-progress stop must fail explicitly.
+    if failed_count:
         raise RuntimeError(
             f"{label}: {failed_count} chunk(s) still failing after "
-            f"{max_retries} retries (excluded nodes: {sorted(excluded_nodes)})"
+            f"{attempt} retries (excluded nodes: {sorted(excluded_nodes)})"
         )
 
     # ── NFS attr-cache bust ────────────────────────────────────────────

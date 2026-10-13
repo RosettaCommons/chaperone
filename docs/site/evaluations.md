@@ -61,11 +61,90 @@ export OPENAI_API_KEY=...        # or use an existing `codex login`
 The controller lives inside the Chaperone checkout it evaluates and uses that
 checkout for scoring. Set `CHAPERONE_REPO` to score against a different one.
 
-Scoring reads the site tool locations (`HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`,
-`X3DNA_BIN_DIR`, `X3DNA_DIR`) from the checkout's checked-in `.env` and `.env.ipd`, and checks
-that they exist before it starts. A value set in your shell wins. The sanitized scoring
-snapshot carries no `.env` files, so if the checkout it is linked to is not the one with
-the site config, set `CHAPERONE_SITE_CONFIG_REPO` to that checkout.
+## Cluster configuration
+
+The default `--site portable` has no digs images or scientific mounts. Copy
+[`portable.example.json`](https://github.com/RosettaCommons/chaperone/blob/main/src/chaperone-evals/harbor-controller/sites/portable.example.json)
+to a local file, replace its paths and resource names, and pass
+`--site-config /absolute/path/to/site.json`. All image, asset, checkout, and run
+paths must be visible on the submission host and compute nodes. The example is
+a starting configuration, not a complete set of assets for every task.
+
+The JSON selects `agent_image`, `worker_image`, `baseline_image`, the interpreter
+inside the scientific images (`worker_python`), and the scheduler policy:
+`cpu_partition`, `gpu_partition`, `gpu_type`, `gpu_constraint`, `account`, `qos`,
+`max_total_gpus`, and `max_requested_gpus_per_submission`. An empty CPU partition omits `--partition`; an empty GPU partition inherits the
+CPU partition, matching Chaperone core settings. Empty `gpu_type` requests `gpu:N`; empty constraint omits
+`--constraint`. The controller alone applies account, QoS and constraint.
+
+`runtime_binds` is the complete read-only allowlist of host runtime/asset paths;
+entries are absolute paths or `[source, target]` pairs. Include the Slurm libraries
+and socket for your installation as well as the scientific assets. `environment`
+contains allowlisted scientific settings. `capabilities` names the paths used by
+preflight to verify the task's required tools; declaring a capability does not
+install it or mount it. Paths must also be covered by `runtime_binds`. Never mount
+a parent of the private task/scorer tree. Broad `/shared`, `/projects`, or home
+mounts would defeat evaluation isolation.
+
+An optional JSON `env_file` reads allowlisted scientific settings from a supplied
+`.env.ipd` or another dotenv file. JSON `environment` overrides those settings.
+Both sources accept `CHAPERONE_MPNN_CONTAINER=auto`, `public`, `portable`, or
+`legacy` to select the MPNN runtime consistently in agent workers and scoring.
+`public` uses the public LigandMPNN image with bundled checkpoints; `portable`
+uses the rebuilt private fork, including on GPUs unsupported by its older site
+image. This setting selects an existing runtime; it does not install images or
+supply the private backend's weights. Workspace-control settings remain excluded.
+Scheduler fields in the JSON remain authoritative so workers and the submission
+guard agree. Core Chaperone also accepts an untracked `.env.ipd` in the checkout
+root, independently of the eval policy.
+
+For the previous digs setup, pass `--site digs`. This retains the existing agent
+and baseline images, asset paths, CPU/GPU queues, `gpu:small:N`, the **A4000**
+constraint, five concurrently reserved GPUs per trial, and thirty requested GPUs
+per submission across all array tasks. To use B4000s instead, supply an override
+JSON with `{"gpu_constraint": "B4000"}` after confirming the scheduler's feature
+name and using images compatible with that hardware. `--site digs --site-config
+...` merges overrides into the digs preset. `CHAPERONE_EVAL_SITE` and
+`CHAPERONE_EVAL_SITE_CONFIG` provide equivalent defaults for all controller entry
+points. The controller passes these to its Slurm launcher and external scorer.
+
+Both profiles retain trial-scoped cancellation, guarded submission, GPU accounting,
+array limits, baseline image auditing, and private scorer isolation. The instructions
+shown to each agent are generated from the selected policy. `--image` overrides the
+selected arm's image and `--worker-image` overrides the scoring/scientific worker image.
+
+Scoring reads `HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`, `X3DNA_BIN_DIR`, and
+`X3DNA_DIR` from the selected profile, with shell overrides, and verifies the paths
+before starting. No checkout `.env.ipd` is required. Scientific tasks still need
+licensed tools, model weights, and their block containers; the controller cannot
+make those external assets available by itself.
+
+### Building runtime images outside digs
+
+From the repository root on a Linux host with Apptainer build support:
+
+```bash
+apptainer build --fakeroot agent.sif src/chaperone-evals/harbor-controller/containers/agent.def
+apptainer build --fakeroot baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
+```
+
+These recipes copy only framework packages into the scientific image and no
+repository files into the baseline. Set both `agent_image` and `worker_image` to
+the resulting scientific SIF and `baseline_image` to the clean SIF. The scientific recipe includes non-setuid Apptainer for nested block containers,
+following its [official installation guide](https://apptainer.org/docs/admin/1.4/installation.html).
+The compute nodes must permit unprivileged user namespaces and FUSE. Native Linux
+Codex must be installed on the host; the controller mounts its executable.
+Build scientific block containers separately with `chaperone install`; the runtime
+image does not include model containers or weights. Both supplied recipes were
+built on Linux during the [release validation](release-validation.md), and the
+fresh scientific image passed clean framework imports, block discovery and the
+CPU functional smoke covering cache, metrics, selection and CatCIF roundtrips.
+Nested Apptainer execution also passed with `/dev/fuse` bound, matching the
+controller's default runtime binds. Preserve `/dev/fuse` when supplying a custom
+`runtime_binds` list.
+These checks do not constitute a full LLM agent trial or a scientific benchmark.
+Validate nested GPU execution and the complete evaluation on your target cluster
+before using it for benchmark results.
 
 A trial whose agent already wrote `submission/designs.csv` is scored even if Harbor's
 result record is failed or missing, because the agent's work is finished at that point.
@@ -78,7 +157,7 @@ Start with a small smoke run:
 cd src/chaperone-evals/harbor-controller
 
 ./run_eval.py biotin_binder_design \
-  --arm harness \
+  --arm harness --site-config /absolute/path/to/site.json \
   --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
@@ -89,7 +168,7 @@ For the baseline arm, leave out `--chaperone-path`:
 
 ```bash
 ./run_eval.py biotin_binder_design \
-  --arm baseline \
+  --arm baseline --site-config /absolute/path/to/site.json \
   --reasoning-effort low \
   --required-n 10 \
   --run-name biotin-baseline-smoke
@@ -122,8 +201,8 @@ when the agent finishes. It returns once both are accepted.
 ## Results
 
 The launcher prints the Slurm job id, the result directory and the scoring watcher's
-receipt. By default runs go under `/net/scratch/$USER/chaperone-evals/runs` when that
-exists, otherwise `harbor-controller/jobs`; `--run-dir` overrides it. Under the run root:
+receipt. Portable runs default to `harbor-controller/jobs`; digs uses
+`/net/scratch/$USER/chaperone-evals/runs` when available. `--run-dir` overrides it. Under the run root:
 
 ```text
 slurm/<run-name>-<job-id>.{out,err}
@@ -165,8 +244,8 @@ earlier outputs, and nothing under `src/chaperone-evals/`. The bundle is validat
 again after it is built, and rejected if any file matches a pattern from
 `audit_hints.json`.
 
-Compute is capped too: a trial can reserve at most five `gpu:small` GPUs at a time
-across all its Slurm jobs. Held-out scoring jobs are not counted against the agent.
+Compute is capped by the selected site policy across all Slurm jobs and arrays
+in a trial (digs defaults to five concurrent `gpu:small` GPUs). Held-out scoring jobs are not counted against the agent.
 
 ## Troubleshooting
 
@@ -176,8 +255,7 @@ across all its Slurm jobs. Held-out scoring jobs are not counted against the age
 | `Held-out audit patterns not found` | The tree has no `audit_hints.json`. A harness bundle cannot be built without it. |
 | `Public and private inputs/ differ` | `CHAPERONE_EVALS_PRIVATE` points at a tree whose `inputs/` no longer match the ones in this repository. Sync them. |
 | `No scorer for task` | The task name is wrong or has no `score/score.py`. |
-| `Scoring site-config preflight failed` | A site tool or data path named in `.env` / `.env.ipd` is missing or not executable on this host. Fix the path, or override it in your shell. |
-| `Could not locate the trusted .env and .env.ipd site config` | Set `CHAPERONE_SITE_CONFIG_REPO` to a checkout that has both files. |
+| `Scoring site-config preflight failed` | A site tool or data path in the selected eval profile is missing or not executable on this host. Fix the path, or override it in your shell. |
 | `Refusing to overwrite existing scoring folder` | The trial already has a `scoring/` folder. `rescore.py` only handles unscored trials; add `--clear-empty-scoring` if the folder is empty. |
 
 ## Tests

@@ -80,6 +80,19 @@ The submission host needs `uv`, Apptainer, `sbatch`, `squeue` and `sacct`.
 Set `CHAPERONE_REPO` to evaluate a different Chaperone checkout than the one
 containing this directory.
 
+## Select a cluster
+
+The default profile is portable and requires your own runtime images and asset
+paths. Pass `--site-config /absolute/path/to/site.json` using
+`harbor-controller/sites/portable.example.json` (relative to the eval project)
+as a starting point. On digs, use `--site digs` to retain the existing images,
+GPU usage accounting and A4000 policy. Add a site JSON override to select another
+GPU constraint such as B4000. Optional `env_file` imports scientific settings from
+a supplied `.env.ipd`; the controller JSON owns the scheduler policy.
+
+See the [cluster configuration and image build guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/evaluations.md#cluster-configuration)
+for the full configuration, image recipes, and external-cluster prerequisites.
+
 ## Run an evaluation
 
 ```bash
@@ -87,14 +100,14 @@ cd src/chaperone-evals/harbor-controller
 
 # harness arm: the agent gets this checkout
 ./run_eval.py biotin_binder_design \
-  --arm harness \
+  --arm harness --site-config /absolute/path/to/site.json \
   --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
   --run-name biotin-harness-smoke
 
 # baseline arm: no Chaperone
-./run_eval.py biotin_binder_design --arm baseline --required-n 10 \
+./run_eval.py biotin_binder_design --arm baseline --site-config /absolute/path/to/site.json --required-n 10 \
   --run-name biotin-baseline-smoke
 ```
 

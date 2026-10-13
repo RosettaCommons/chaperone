@@ -139,11 +139,17 @@ class SlurmTaskRunner(TaskRunner):
         items_per_job: int = 1,
         max_array_size: int | None = None,
         check_duplicates: bool = False,
-        slurm_kwargs: Any = {},
+        slurm_kwargs: Any = None,
         # Backwards compatibility: accept compute_backend kwarg
         compute_backend: str | ComputeBackend | None = None,
     ):
         super().__init__()
+
+        # Mutable-default trap: with `= {}` every runner that did not pass
+        # slurm_kwargs shared ONE dict, and both the compute_backend pop below
+        # and the `exclude` write further down mutate it -- so one step's
+        # excluded nodes silently applied to every later step of the run.
+        slurm_kwargs = {} if slurm_kwargs is None else dict(slurm_kwargs)
 
         # Backwards compatibility: convert compute_backend kwarg to partition
         if compute_backend is not None:

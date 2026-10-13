@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from run_eval import (  # noqa: E402
-    DEFAULT_HARNESS_IMAGE,
     DEFAULT_CHAPERONE_REPO,
     _score,
     _wait_for_job,
@@ -36,7 +35,7 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--run-dir", required=True, type=Path)
     parser.add_argument("--chaperone-repo", type=Path, default=DEFAULT_CHAPERONE_REPO)
-    parser.add_argument("--worker-image", type=Path, default=DEFAULT_HARNESS_IMAGE)
+    parser.add_argument("--worker-image", type=Path, default=None)
     parser.add_argument("--required-n", type=_positive_integer, default=96)
     parser.add_argument("--public-contract", type=Path)
     parser.add_argument(
@@ -44,7 +43,14 @@ def main() -> None:
         help="Outer Harbor Slurm job to await before inspecting its result.",
     )
     parser.add_argument("--poll-seconds", type=float, default=30.0)
+    from site_config import add_site_arguments, configure_site
+
+    add_site_arguments(parser)
     args = parser.parse_args()
+    try:
+        configure_site(args)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     if args.poll_seconds <= 0:
         parser.error("--poll-seconds must be greater than zero")
 

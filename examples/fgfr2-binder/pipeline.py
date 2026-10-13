@@ -165,9 +165,9 @@ blocks = [
 engine = ExecutionEngine(rundir=SCRIPT_DIR / "rundir", reinit=True)
 handler = engine.run(blocks, job_args=JOB_ARGS)
 
-df = handler.unpack()
+df = handler.unpack(all=False, to_pandas=False)
 if "af3_ipsae.ipsae" in df.columns:
-    df = df.sort_values(by="af3_ipsae.ipsae", ascending=False)
+    df = df.sort("af3_ipsae.ipsae", descending=True)
 
 # Write a metrics-only CSV next to the run log. Drops nested structure columns
 # (paths, metadata blobs) and keeps just the scoring columns for easy ranking.
@@ -184,10 +184,11 @@ metric_prefixes = (
 metric_cols = [
     c
     for c in df.columns
-    if c.startswith(metric_prefixes) or c in {"name", "design_id", "step_idx"}
+    if (c.startswith(metric_prefixes) or c in {"name", "design_id", "step_idx"})
+    and not df.schema[c].is_nested()
 ]
-scores = df[metric_cols].copy()
+scores = df.select(metric_cols)
 scores_path = rundir / "scores.csv"
-scores.to_csv(scores_path, index=False)
+scores.write_csv(scores_path)
 print(f"\nWrote {scores_path}\n")
 print(df)

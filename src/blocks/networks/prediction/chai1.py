@@ -3,6 +3,8 @@
 import glob
 import logging
 import os
+import shlex
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -22,6 +24,29 @@ logger = logging.getLogger(__name__)
 ###########################################################################
 # Container
 ###########################################################################
+
+# Chai 0.6.1 caps Torch below 2.7, whose CUDA wheels lack Blackwell kernels.
+# The site's working stack uses 2.7.1/cu128. Preserve Chai's metadata and check
+# every other dependency normally; do not hide unrelated resolver conflicts.
+_CHAI_INSTALL_DEPENDENCIES = """
+import importlib.metadata as metadata
+import subprocess
+import sys
+from packaging.requirements import Requirement
+requirements = [value for value in metadata.requires('chai_lab') if Requirement(value).name != 'torch']
+subprocess.run([sys.executable, '-m', 'pip', 'install', *requirements, 'numpy==1.26.4', 'torch==2.7.1'], check=True)
+"""
+_CHAI_DEPENDENCY_CHECK = """
+import subprocess
+import sys
+result = subprocess.run([sys.executable, '-m', 'pip', 'check'], capture_output=True, text=True)
+print(result.stdout, end='')
+print(result.stderr, end='', file=sys.stderr)
+expected = 'chai-lab 0.6.1 has requirement torch<2.7,>=2.3.1, but you have torch 2.7.1+cu128.'
+if result.returncode != 1 or result.stdout.strip().splitlines() != [expected]:
+    raise RuntimeError('Unexpected Chai dependency conflict; only the documented Torch 2.7.1/cu128 override is allowed')
+print('Accepted documented Chai 0.6.1 Torch override for Blackwell; all other dependencies checked')
+"""
 
 CHAI1_CONTAINER = (
     Image("chai1")
@@ -45,10 +70,15 @@ CHAI1_CONTAINER = (
     )
     .run(
         ". /opt/chai1-env/bin/activate && "
-        "pip install torch --index-url https://download.pytorch.org/whl/cu126",
+        "pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128",
     )
     .run(
-        ". /opt/chai1-env/bin/activate && pip install chai_lab",
+        ". /opt/chai1-env/bin/activate && pip install --no-deps 'chai_lab==0.6.1' && pip install packaging",
+        "/opt/chai1-env/bin/python -c " + shlex.quote(f"exec({_CHAI_INSTALL_DEPENDENCIES!r})"),
+    )
+    .run(
+        "/opt/chai1-env/bin/python -c " + shlex.quote(f"exec({_CHAI_DEPENDENCY_CHECK!r})"),
+        '/opt/chai1-env/bin/python -c \'import torch; from chai_lab.chai1 import run_inference; assert torch.version.cuda == "12.8"\'',
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -57,7 +87,10 @@ CHAI1_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/chai1-env",
     )
-    .label(Version="0.6.1", CUDA="12.6")
+    .label(
+        Version="0.6.1", CUDA="12.8", PyTorch="2.7.1",
+        DependencyOverride="chai_lab-0.6.1_torch-lt2.7_override-2.7.1-cu128",
+    )
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -114,8 +147,8 @@ class Chai1Block(AF3LikePredictionBlock):
     # Model/cache paths
     cache_dir: Optional[str] = Field(
         default_factory=lambda: get_setting_field(
-            "CHAI_DOWNLOADS_DIR", os.path.expanduser("~/.chai")
-        ),
+            "CHAI_DOWNLOADS_DIR", None
+        ) or os.path.expanduser("~/.chai"),
         description="Directory for Chai-1 model weights. Defaults to CHAI_DOWNLOADS_DIR setting.",
     )
 
@@ -135,14 +168,19 @@ class Chai1Block(AF3LikePredictionBlock):
         return self
 
     def get_command_template(self) -> list[str]:
-        env = self._jit_safe_env()
-        if self.cache_dir:
-            env["CHAI_DOWNLOADS_DIR"] = self.cache_dir
+        self.cache_dir = str(Path(self.cache_dir or "~/.chai").expanduser().resolve())
+        env = {**self._jit_safe_env(), "CHAI_DOWNLOADS_DIR": self.cache_dir}
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env or None
+            *self._script_spec.command,
+            env=env,
+            binds=[(self.cache_dir, self.cache_dir)],
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
+        try:
+            Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise OSError(f"Cannot prepare CHAI_DOWNLOADS_DIR cache directory: {self.cache_dir}") from error
         sandbox_dir, inputdir, outputdir = self._setup_io_dirs(sandbox_dir)
 
         # Write FASTA inputs for each design in the chunk
@@ -237,11 +275,6 @@ class Chai1Block(AF3LikePredictionBlock):
             # Design name is the parent directory (outputs/<design>/pred.model_idx_N.cif)
             design_name = os.path.basename(os.path.dirname(path))
             model_idx = os.path.splitext(os.path.basename(path))[0]  # pred.model_idx_N
-            row_name = (
-                f"{design_name}_{model_idx}"
-                if not self.read_most_confident_model
-                else design_name
-            )
 
             # Symlink output CIF with design name so merge can match
             # pred.model_idx_0.cif -> <design>_model.cif (or <design>_model_idx_N.cif)
@@ -284,7 +317,7 @@ class Chai1Block(AF3LikePredictionBlock):
 
             rows.append(
                 make_row(
-                    name=row_name,
+                    name=self.name,
                     path=str(linked_path),
                     metadata={},
                     metrics={self.name: metrics},

@@ -33,8 +33,10 @@ from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
-from blocks.constants import AF3_RELEASE_LINES
-from blocks.networks.prediction.helpers import create_af3_json_from_design
+from blocks.networks.prediction.helpers import (
+    create_af3_json_from_design,
+    to_af3_template_cif_string,
+)
 from blocks.networks.prediction.alphafold3 import AlphaFold3Block
 
 logger = logging.getLogger(__name__)
@@ -42,20 +44,7 @@ logger = logging.getLogger(__name__)
 
 def _to_cif_string(chain_atom_array, name: str) -> str:
     """Serialize a single-chain AtomArray to an mmCIF string for AF3 templates."""
-    import numpy as np
-    from atomworks.io.utils.io_utils import (
-        to_cif_string,
-    )  # local import; same util the helper uses
-
-    from chaperone.io import ensure_bonds
-
-    template = ensure_bonds(chain_atom_array).copy()
-    categories = template.get_annotation_categories()
-    if "occupancy" not in categories:
-        template.set_annotation("occupancy", np.ones(len(template), dtype=float))
-    if "b_factor" not in categories:
-        template.set_annotation("b_factor", np.zeros(len(template), dtype=float))
-    return to_cif_string(template, id=name) + "".join(AF3_RELEASE_LINES)
+    return to_af3_template_cif_string(chain_atom_array, name)
 
 
 def _swap_target_chain(design_atom_array, full_receptor_atom_array, target_chain: str):

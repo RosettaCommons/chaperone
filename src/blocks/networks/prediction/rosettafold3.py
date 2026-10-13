@@ -1,4 +1,5 @@
 # Basic blocks for design pipelines
+import csv
 import dataclasses
 import glob
 import hashlib
@@ -11,13 +12,15 @@ from pathlib import Path
 from typing import Literal, Optional
 from pydantic import Field, model_validator
 import numpy as np
+import polars as pl
 
 from chaperone import PipelineDataHandler, JobArgs, get_setting_field
 from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
 from chaperone.block_config.prediction import MIN_PAE_INTERACTION_KEY
 from chaperone.common import glob_designs_in_dir, tail_block_log
 from chaperone.data import make_row
-from blocks.networks.foundry.container import FOUNDRY_CONTAINER
+from chaperone.data.schema import SCHEMA
+from blocks.networks.foundry.container import FOUNDRY_CONTAINER, default_checkpoint
 from blocks.networks.prediction.helpers import (
     create_rf3_json_from_design,
     fill_rf3_json_from_template,
@@ -81,12 +84,12 @@ def _write_rf3_input_manifest(sandbox_dir, records) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
-def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
-    """Resolve an RF3 output back to its staged input manifest record."""
+def _rf3_input_name_for_output(path: str, manifest: dict) -> str | None:
+    """Resolve an RF3 output back to its staged input manifest key."""
     output = Path(path)
     for parent in output.parents:
         if parent.name in manifest:
-            return manifest[parent.name]
+            return parent.name
     stem = output.name
     for extension in (".cif.gz", ".cif", ".pdb"):
         if stem.endswith(extension):
@@ -94,8 +97,12 @@ def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
             break
     matches = [name for name in manifest if stem == name or stem.startswith(name + "_")]
     if len(matches) == 1:
-        return manifest[matches[0]]
-    return {}
+        return matches[0]
+    return None
+
+
+def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
+    return manifest.get(_rf3_input_name_for_output(path, manifest), {})
 
 
 ###########################################################################
@@ -118,6 +125,11 @@ class RosettaFold3Block(AF3LikePredictionBlock):
     _name = "rf3"
     _display_name = "RosettaFold3"
     _description = "RosettaFold3 structure prediction"
+    output_lineage_version: Literal[2] = Field(
+        2, frozen=True, repr=False, json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision for complete outputs and explicit sequence lineage.",
+    )
+
     _script_spec = ScriptSpec(
         command=["rf3", "fold"],
         image=FOUNDRY_CONTAINER,
@@ -184,16 +196,11 @@ class RosettaFold3Block(AF3LikePredictionBlock):
         ),
     )
 
-    # Unlike most AF3LikePredictionBlock subclasses, which resolve weights via
-    # cache_dir, this block only appends `ckpt_path=...` when the field is
-    # truthy. Inheriting the base class's None therefore sends `rf3 fold` no
-    # checkpoint argument at all, and foundry falls back to a per-user path
-    # under ~/.foundry that does not exist on a worker — surfacing as
-    # "Invalid checkpoint: rf3" long after the real cause. Default to the
-    # Shared Foundry checkpoint.
-    ckpt_path: Optional[str] = (
-        "/projects/ml/pipelines/weights/foundry/checkpoints/"
-        "rf3_foundry_01_24_latest_remapped.ckpt"
+    ckpt_path: Optional[str] = Field(
+        default_factory=lambda: default_checkpoint(
+            "rf3", "rf3_foundry_01_24_latest_remapped.ckpt"
+        ),
+        description="Checkpoint path or Foundry registry name (default: rf3).",
     )
 
     # Ligand bond graph assignment
@@ -567,11 +574,35 @@ class RosettaFold3Block(AF3LikePredictionBlock):
             name=self.name,
             compile_as_metric=self.compile_as_metric,
             read_most_confident_model=self.read_most_confident_model,
+            expected_seeds=self.model_seeds,
+            early_stopping_plddt_threshold=self.early_stopping_plddt_threshold,
         )
 
 
+def _rf3_was_early_stopped(output_root, input_name, threshold):
+    """Recognize Foundry's per-input outcome, never infer stopping from no CIF.
+
+    Pinned Foundry records an intentional stop as one ranking CSV row. Require
+    its explicit flag and finite pLDDT below the configured threshold so an
+    unrelated, truncated, or malformed output cannot hide a missing prediction.
+    """
+    if threshold is None or threshold <= 0:
+        return False
+    ranking = Path(output_root) / input_name / f"{input_name}_ranking_scores.csv"
+    try:
+        with ranking.open(newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        if len(rows) != 1 or rows[0].get("early_stopped") != "True":
+            return False
+        plddt = float(rows[0]["mean_plddt"])
+        return bool(np.isfinite(plddt) and 0 <= plddt < threshold)
+    except (OSError, csv.Error, KeyError, ValueError, TypeError):
+        return False
+
+
 def compile_rf3(
-    sandbox_dir, name="rf3", compile_as_metric=False, read_most_confident_model=True
+    sandbox_dir, name="rf3", compile_as_metric=False, read_most_confident_model=True,
+    expected_seeds=None, early_stopping_plddt_threshold=0.5,
 ):
     """Compile RF3 outputs into a PipelineDataHandler."""
     outputdir = os.path.join(sandbox_dir, "outputs")
@@ -624,7 +655,36 @@ def compile_rf3(
         if not os.path.basename(path).startswith(("denoised_model_", "noisy_model_"))
     ]
 
-    if len(paths) == 0:
+    try:
+        manifest = json.loads((Path(sandbox_dir) / _RF3_INPUT_MANIFEST).read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        manifest = {}
+
+    recognized_stops = set()
+    if manifest:
+        for seed in expected_seeds or [None]:
+            seed_root = Path(search_dir) / f"seed_{seed}"
+            selected = paths if seed is None else [
+                path for path in paths if Path(path).is_relative_to(seed_root)
+            ]
+            completed = {_rf3_input_name_for_output(path, manifest) for path in selected}
+            stopped = {
+                input_name for input_name in set(manifest) - completed
+                if _rf3_was_early_stopped(
+                    search_dir if seed is None else seed_root,
+                    input_name, early_stopping_plddt_threshold,
+                )
+            }
+            recognized_stops.update((seed, input_name) for input_name in stopped)
+            missing = set(manifest) - completed - stopped
+            if missing:
+                raise RuntimeError(
+                    "RF3 did not produce outputs for required inputs: "
+                    + ", ".join(sorted(missing))
+                    + (f" (seed {seed})" if seed is not None else "")
+                )
+
+    if not paths and not recognized_stops:
         raise RuntimeError(
             f"RF3 execution completed but no output files were generated in {search_dir}. "
             f"This may indicate:\n"
@@ -633,10 +693,8 @@ def compile_rf3(
             + tail_block_log(search_dir)
         )
 
-    try:
-        manifest = json.loads((Path(sandbox_dir) / _RF3_INPUT_MANIFEST).read_text())
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        manifest = {}
+    if recognized_stops:
+        logger.info("RF3 intentionally early-stopped %d input/seed prediction(s)", len(recognized_stops))
 
     rows = []
     for path in paths:
@@ -697,14 +755,14 @@ def compile_rf3(
                 metadata={},
                 metrics={name: metrics},
                 path_handle=path_handle,
-                parent_design_id=(
-                    source.get("parent_design_id") if path_handle is None else None
-                ),
+                # Native MPNN siblings share a backbone path; keep their exact
+                # logical parent as well as the legacy structure backlink.
+                parent_design_id=source.get("parent_design_id"),
                 as_metric=compile_as_metric,
             )
         )
 
-    return PipelineDataHandler(rows)
+    return PipelineDataHandler(rows if rows else pl.DataFrame(schema=SCHEMA))
 
 
 ###########################################################################

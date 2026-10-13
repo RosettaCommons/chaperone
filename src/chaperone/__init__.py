@@ -226,8 +226,8 @@ _GLOBAL_FLAG_DEFS = [
         "test",
         "boolean",
         False,
-        "Shorthand for --config=tests/test_overrides.yaml. "
-        "Runs a minimal single-design test.",
+        "Use packaged smoke defaults (one sample per input for supported blocks). "
+        "Input count/size are unchanged; explicit config and block flags still win.",
     ),
     (
         "auto_store_format",
@@ -381,19 +381,14 @@ def init_cli(
     # Parse argv via FLAGS() — ABSL's direct parse API (no app.run() needed)
     FLAGS(argv)
 
-    # --test expands to --config=tests/test_overrides.yaml + sensible test defaults
-    if hasattr(FLAGS, "test") and FLAGS["test"].present and FLAGS["test"].value:
-        from pathlib import Path
-
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        test_config = repo_root / "tests" / "test_overrides.yaml"
-        if not test_config.is_file():
-            raise FileNotFoundError(f"--test: cannot find {test_config}")
-        # Only set config if not explicitly provided
-        if not (hasattr(FLAGS, "config") and FLAGS["config"].present):
-            FLAGS["config"].value = str(test_config)
-            FLAGS["config"].present = True  # type: ignore[attr-defined]
-        logger.info(f"--test mode: config={test_config}")
+    # Smoke defaults ship in the package; no checkout-only tests/ files are
+    # needed in a wheel or sanitized agent snapshot.
+    test_mode = bool(hasattr(FLAGS, "test") and FLAGS["test"].value)
+    if test_mode:
+        logger.info(
+            "--test: packaged sampling limits enabled; input counts and sizes "
+            "are unchanged. Explicit config/flags override smoke defaults."
+        )
 
         # --test disables engine-level auto-store unless user explicitly set them
         if not FLAGS["auto_store_format"].present:
@@ -425,11 +420,16 @@ def init_cli(
     # Load YAML defaults from two independent sources:
     #   --config flag  → cli_config_defaults  (above script kwargs)
     #   defaults_yaml  → script_yaml_defaults (below script kwargs)
-    cli_config_defaults: dict[str, dict] = {}
+    from chaperone.smoke_defaults import smoke_defaults
+
+    cli_config_defaults: dict[str, dict] = smoke_defaults() if test_mode else {}
     script_yaml_defaults: dict[str, dict] = {}
 
     if hasattr(FLAGS, "config") and FLAGS["config"].present:
-        cli_config_defaults = _load_yaml_defaults(FLAGS["config"].value)
+        for block_name, values in _load_yaml_defaults(FLAGS["config"].value).items():
+            cli_config_defaults[block_name] = {
+                **cli_config_defaults.get(block_name, {}), **values
+            }
         logger.info(f"init_cli(): loaded CLI config from {FLAGS['config'].value}")
 
     if defaults_yaml is not None:

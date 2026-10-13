@@ -556,13 +556,15 @@ def _get_selection_mask(
     ##############################################################
 
     if sele == SELECTIONS.CA:
-        return np.isin(atom_array.atom_name, ["CA"])
+        # Exclude hetero atoms — CCD ligands like FOL have an atom named "CA"
+        # (carboxylate alpha) which would otherwise get picked up as protein.
+        return np.isin(atom_array.atom_name, ["CA"]) & ~atom_array.hetero
 
     elif sele == SELECTIONS.BKBN:
-        return np.isin(atom_array.atom_name, ["N", "CA", "C", "O"])
+        return np.isin(atom_array.atom_name, ["N", "CA", "C", "O"]) & ~atom_array.hetero
 
     elif sele == SELECTIONS.BKBN_NO_OXYGEN:
-        return np.isin(atom_array.atom_name, ["N", "CA", "C"])
+        return np.isin(atom_array.atom_name, ["N", "CA", "C"]) & ~atom_array.hetero
 
     elif sele == SELECTIONS.ALLATOM:
         return np.ones(len(atom_array), dtype=bool)

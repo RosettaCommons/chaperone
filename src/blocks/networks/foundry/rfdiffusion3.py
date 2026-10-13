@@ -12,7 +12,7 @@ from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 from chaperone.data import make_row
 
 from chaperone.common import glob_designs_in_dir, tail_block_log
-from blocks.networks.foundry.container import FOUNDRY_CONTAINER
+from blocks.networks.foundry.container import FOUNDRY_CONTAINER, default_checkpoint
 import logging
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ See the RFdiffusion3 skill for more information
 """,
     )
     ckpt_path: Optional[str] = Field(
-        "/projects/ml/pipelines/weights/foundry/checkpoints/rfd3_latest.ckpt",
+        default_factory=lambda: default_checkpoint("rfd3", "rfd3_latest.ckpt"),
         json_schema_extra={"tier": TIER_PRIMARY},
         description="Optional checkpoint path (foundry will manage checkpoints itself)",
     )

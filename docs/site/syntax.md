@@ -192,7 +192,9 @@ With none set, a GPU block submits with `--gres=gpu:1` and no `--partition`, and
 
 Chaperone does not check GPU types. Whatever `gres` reaches `sbatch` unchanged, so the cluster decides what is valid: IPD registers size classes (`gpu:small:1`, `gpu:large:1`) and rejects model names such as `gpu:a4000:1`, while most other clusters register model names or accept only `gpu:1`. A map given in the environment is merged key by key with one in a `.env*` file.
 
-At IPD, `.env.ipd` sets `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu` and the map `small` -> `gpu:small:1`, `large` -> `gpu:large:1`, so blocks request exactly what they always did.
+An optional, user-supplied `.env.ipd` in the checkout root is loaded automatically; the public repository does not track it. Without that file, installation uses portable defaults. Alternatively, select the packaged IPD preset explicitly with `CHAPERONE_SITE=digs`. The IPD preset sets `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu` and the map `small` -> `gpu:small:1`, `large` -> `gpu:large:1`, so blocks request exactly what they always did.
+
+Configuration files are read from lower to higher priority: repository `.env`, an explicitly selected `CHAPERONE_SITE` preset, optional repository `.env.ipd`, `~/.env.chaperone`, a file named by `CHAPERONE_ENV_FILE`, then repository `.env.local`. Process environment variables take precedence. `CHAPERONE_GRES_MAP` merges keys across these sources, so overriding `small` does not erase the site's `large` mapping. Keep private credentials out of committed configuration.
 
 ### JobArgs Resolution
 

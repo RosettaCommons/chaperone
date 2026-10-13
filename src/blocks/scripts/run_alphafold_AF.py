@@ -613,7 +613,11 @@ def load_fold_inputs_from_manifest(manifest_path: pathlib.Path):
     for payload in payloads:
         cif_value = payload["cif"]
         cif_string = _resolve_path_or_string(cif_value)
-        seed = payload.get("seed", 1)
+        # New manifests retain every requested independent model seed. Keep
+        # accepting the original single-seed manifest format as well.
+        seeds = payload.get("seeds", [payload.get("seed", 1)])
+        if not isinstance(seeds, list) or not seeds:
+            raise ValueError("AF3 manifest seeds must be a nonempty list")
         fold_inputs.append(
             build_fold_input_from_cif(
                 cif_string=cif_string,
@@ -622,7 +626,7 @@ def load_fold_inputs_from_manifest(manifest_path: pathlib.Path):
                 unpaired_msa=payload.get("unpaired_msa"),
                 template=payload.get("template"),
                 user_ccd=payload.get("user_ccd"),
-                rng_seeds=(int(seed),),
+                rng_seeds=tuple(int(seed) for seed in seeds),
             )
         )
     return fold_inputs
@@ -1255,7 +1259,6 @@ def process_fold_input(
     if (
         skip_existing
         and _check_job_already_completed(output_dir, fold_input.sanitised_name())
-        or os.path.exists(output_dir)
     ):
         print(
             f"Output directory {output_dir} already contains completed results. "

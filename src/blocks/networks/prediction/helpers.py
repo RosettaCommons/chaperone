@@ -27,6 +27,30 @@ from blocks.utils.oracles import is_ccd_name
 logger = logging.getLogger(__name__)
 
 
+def to_af3_template_cif_string(chain_atom_array, name: str) -> str:
+    """Serialize a protein template with AF3's entity and release metadata."""
+    from atomworks.io.utils.io_utils import CIFWriteConfig
+
+    from blocks.constants import AF3_RELEASE_LINES
+    from chaperone.io import ensure_bonds
+
+    template = ensure_bonds(chain_atom_array).copy()
+    categories = template.get_annotation_categories()
+    if "occupancy" not in categories:
+        template.set_annotation("occupancy", np.ones(len(template), dtype=float))
+    if "b_factor" not in categories:
+        template.set_annotation("b_factor", np.zeros(len(template), dtype=float))
+    return to_cif_string(
+        template,
+        config=CIFWriteConfig(
+            id=name,
+            include_entity_categories=True,
+            include_chem_comp=False,
+            include_nan_coords=False,
+        ),
+    ) + "".join(AF3_RELEASE_LINES)
+
+
 def _extract_protein_sequence_map(
     atom_array, protein_sequences: dict[str, str] | None = None
 ) -> dict[str, str]:
@@ -395,10 +419,6 @@ def create_af3_json_from_design(
     template_resi: A string of template indices for each chain. e.g. 'A1,A2,A3,B4,B5,B6'
     invert_template_resi: If True, invert the template indices, i.g. residues other than template_resi will be templated
     """
-    from blocks.constants import AF3_RELEASE_LINES
-
-    from chaperone.io import ensure_bonds
-
     # empty JSON start
     json_data = {
         "name": name,
@@ -435,11 +455,9 @@ def create_af3_json_from_design(
                     ]
                 templates.append(
                     {
-                        "mmcif": to_cif_string(
-                            ensure_bonds(chain_atom_array),
-                            id=f"{name}_chain_{chain}",
-                        )
-                        + "".join(AF3_RELEASE_LINES),
+                        "mmcif": to_af3_template_cif_string(
+                            chain_atom_array, name=f"{name}_chain_{chain}"
+                        ),
                         "queryIndices": template_resi.get(chain, []),
                         "templateIndices": template_resi.get(chain, []),
                     }

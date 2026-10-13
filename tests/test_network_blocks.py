@@ -83,11 +83,12 @@ def test_target_template_cif_supplies_required_numeric_annotations(monkeypatch):
     array.coord = np.zeros((1, 3), dtype=float)
     captured = {}
 
-    def fake_to_cif_string(template, *, id):
+    def fake_to_cif_string(template, *, config):
         captured["template"] = template
-        return f"data_{id}\n"
+        assert config.include_entity_categories
+        return f"data_{config.id}\n"
 
-    monkeypatch.setattr("atomworks.io.utils.io_utils.to_cif_string", fake_to_cif_string)
+    monkeypatch.setattr("blocks.networks.prediction.helpers.to_cif_string", fake_to_cif_string)
 
     _to_cif_string(array, "template")
 
@@ -215,7 +216,9 @@ def test_compile_rejects_empty_run(tmp_path: Path) -> None:
 # test_boltzgen.py
 
 
-def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path) -> None:
+def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path, monkeypatch) -> None:
+    from chaperone import get_settings
+    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", "apptainer")
     config = tmp_path / "design.yaml"
     config.write_text("entities: []\n")
 
@@ -239,9 +242,12 @@ def test_existing_modelhub_image_uses_exec_not_runscript():
     assert command[-1].endswith("/fused_mpnn/v1.1.1/run.py")
 
 
+@pytest.mark.parametrize("backend,expected", [("legacy", ["A1", "A7"]), ("public", "A1 A7")])
 def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
-    tmp_path,
+    tmp_path, monkeypatch, backend, expected,
 ):
+    import blocks.networks.mpnn as mpnn
+    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.LIGANDMPNN_PUBLIC_CONTAINER if backend == "public" else mpnn._MODELHUB_SIF_CONTAINER)
     structure = tmp_path / "input.pdb"
     structure.write_text(
         "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\n"
@@ -261,7 +267,7 @@ def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
         (tmp_path / "chunk_0" / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     assert constraints.endswith("pdb_position_fixed_chunk0.json")
-    assert next(iter(payload.values())) == ["A1", "A7"]
+    assert next(iter(payload.values())) == expected
 
 
 # test_protein_hunter.py
@@ -335,7 +341,7 @@ def test_rf3_single_seed_uses_supported_seed_setting():
         (RosettaFold3Block, "seed=20"),
         (RF3DevBlock, "+seed=20"),
     ):
-        command = block_cls(seed_offset=17, model_seeds=None)._append_common_cli_args(
+        command = block_cls(seed_offset=17, model_seeds=None, command_template=["rf3", "fold"])._append_common_cli_args(
             ["rf3", "fold"], chunk_id=3
         )
         assert seed_arg in command
@@ -345,7 +351,7 @@ def test_rf3_single_seed_uses_supported_seed_setting():
 def test_rf3_model_seeds_expand_to_independent_invocations():
     base = ["rf3", "fold", "inputs=in.json", "out_dir=outputs"]
     for block_cls, seed_prefix in ((RosettaFold3Block, ""), (RF3DevBlock, "+")):
-        command = block_cls(model_seeds=[101, 202])._expand_model_seed_commands(
+        command = block_cls(model_seeds=[101, 202], command_template=["rf3", "fold"])._expand_model_seed_commands(
             base, "outputs"
         )
         assert command[:2] == ["bash", "-lc"]

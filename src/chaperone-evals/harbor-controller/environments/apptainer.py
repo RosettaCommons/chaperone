@@ -21,69 +21,22 @@ from harbor.models.task.config import EnvironmentConfig
 from harbor.models.trial.paths import TrialPaths
 
 from environments.slurm_broker import (
-    MAX_REQUESTED_GPUS_PER_SUBMISSION,
     SlurmBrokerProcess,
 )
 from environments.health_watchdog import ControllerHealthWatchdog
 from scripts.snapshot_harness import validate_snapshot
+from site_config import get_site, ENV_NAMES
 
 
 # Runtime dependencies and scientific assets explicitly assigned by the task.
 # Missing paths are skipped so the controller remains portable.
-_READ_ONLY_RUNTIME_PATHS = (
-    # Needed for Chaperone to execute assigned SIF images from inside the
-    # outer agent container without exposing the host's complete /dev tree.
-    "/dev/fuse",
-    "/etc/slurm",
-    "/run/munge/munge.socket.2",
-    "/usr/lib/slurm",
-    "/usr/lib/x86_64-linux-gnu/libmunge.so.2",
-    "/usr/bin/sacct",
-    "/usr/bin/scancel",
-    "/usr/bin/scontrol",
-    "/usr/bin/squeue",
-    "/usr/bin/srun",
-    "/usr/bin/sstat",
-    "/projects/ml/pipelines/weights",
-    "/projects/ml/pipelines/containers",
-    "/projects/ml/pipelines/software",
-    "/projects/ml/pipelines/cache",
-    # Classic LigandMPNN selects its on-prem image by probing modelhub at
-    # import time, and that image executes the fused_mpnn checkout below.
-    # Both must be visible in the outer controller and in each isolated
-    # scientific worker; otherwise the block incorrectly selects an unbuilt
-    # portable image or fails to find run.py after submission.
-    "/projects/ml/modelhub",
-    "/net/software/lab/fused_mpnn",
-    # Other task-relevant RF/ESM oracle assets whose wrappers reference
-    # institutional absolute paths rather than embedding code or weights in
-    # their images.
-    "/net/tukwila/rohith/RFdiffusion2",
-    "/net/databases/lab/aa-diffusion",
-    "/net/software/containers/colabfold.sif",
-    "/projects/ml/esm-weights",
-    "/projects/ml/frozen_pdb_copies/2024_12_11_ccd",
-    "/projects/ml/frozen_pdb_copies/2024_12_01_pdb",
-    "/net/databases/alphafold",
-    "/net/software/pyrosetta3.12/latest/setup",
-    "/net/software/foldseek",
-    "/net/software/containers/pipelines",
-    "/net/software/containers/versions",
-    "/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease",
-    # The mpnn block defaults its weights to /databases/mpnn/..., but that path
-    # exists on this cluster only as /net/databases/mpnn. Bound same-path it
-    # silently vanished (missing sources are skipped), so every MPNN stage died
-    # with FileNotFoundError on a weight file that was present all along.
-    "/net/databases/mpnn",
-    ("/net/databases/mpnn", "/databases/mpnn"),
-)
 
 
 def _runtime_bind_pairs() -> list[tuple[str, str]]:
     """(source, target) for each runtime path, expanding bare same-path entries."""
     return [
-        entry if isinstance(entry, tuple) else (entry, entry)
-        for entry in _READ_ONLY_RUNTIME_PATHS
+        tuple(entry) if isinstance(entry, (tuple, list)) else (entry, entry)
+        for entry in get_site()["runtime_binds"]
     ]
 
 
@@ -103,8 +56,6 @@ def _optional_path_exists(path: Path) -> bool:
 
 _CONTROLLER_ROOT = Path(__file__).resolve().parents[1]
 _SBATCH_GUARD = _CONTROLLER_ROOT / "scripts" / "slurm_gpu_guard.py"
-_MAX_TOTAL_GPUS = 5
-_ALLOWED_GPU_TYPE = "small"
 _UNIX_SOCKET_PATH_MAX_BYTES = 107
 _BROKERED_SLURM_PATHS = {
     "/usr/bin/scancel",
@@ -135,28 +86,6 @@ _HOST_ENV_PASSTHROUGH = (
 # defaults, and are the only additional host variables admitted through the
 # worker's ``apptainer exec --cleanenv`` boundary.
 _ALLOWLISTED_WORKER_ENV_PASSTHROUGH = ("USALIGN_BIN",)
-
-SCIENTIFIC_ENV_DEFAULTS = {
-    "HF_HUB_CACHE": "/projects/ml/pipelines/weights/huggingface/hub",
-    "BOLTZ_CACHE_DIR": "/projects/ml/pipelines/weights/boltz2",
-    "AF3_JAX_CACHE_DIR": "/projects/ml/pipelines/weights/af3_cache",
-    "ALPHAFOLD3_WEIGHTS_DIR": "/net/databases/alphafold",
-    "OPENFOLD3_CACHE_DIR": "/projects/ml/pipelines/weights/openfold3",
-    "HBPLUS_COPY": "/projects/ml/pipelines/software/hbplus",
-    "PYROSETTA_PATH": "/net/software/pyrosetta3.12/latest/setup",
-    "X3DNA_BIN_DIR": "/projects/ml/pipelines/software/x3dna-v2.3/bin",
-    "X3DNA_DIR": "/projects/ml/pipelines/software/x3dna-v2.3/x3dna-v2.3",
-    "FOLDSEEK_EXEC": "/net/software/foldseek/bin/foldseek",
-    "FOUNDRY_CHECKPOINT_DIRS": (
-        "/projects/ml/pipelines/weights/foundry:"
-        "/projects/ml/pipelines/weights/foundry/checkpoints"
-    ),
-    "CCD_MIRROR_PATH": "/projects/ml/frozen_pdb_copies/2024_12_11_ccd",
-    "PDB_MIRROR_PATH": "/projects/ml/frozen_pdb_copies/2024_12_01_pdb",
-    "CHAPERONE_CONTAINER_DIRS": (
-        "/net/software/containers/pipelines:/projects/ml/pipelines/containers"
-    ),
-}
 
 
 class ApptainerEnvironment(SingularityEnvironment):
@@ -194,7 +123,10 @@ class ApptainerEnvironment(SingularityEnvironment):
         self._health_watchdog: ControllerHealthWatchdog | None = None
         self._slurm_python: Path | None = None
         self._slurm_worker_image = Path(
-            apptainer_image or task_env_config.docker_image or ""
+            get_site()["worker_image"]
+            or apptainer_image
+            or task_env_config.docker_image
+            or ""
         ).resolve()
         try:
             gpu_count = int(apptainer_gpus)
@@ -241,9 +173,23 @@ class ApptainerEnvironment(SingularityEnvironment):
             image_cache_dir.mkdir(parents=True, exist_ok=True)
             kwargs.setdefault("singularity_image_cache_dir", image_cache_dir)
             self._prepare_runtime_identity(runtime_dir, self._host_workspace)
+            # Scientific assets are mounted read-only. Compilation caches
+            # must instead live in the writable trial, even when the selected
+            # site profile points AF3 at a shared weights/cache directory.
+            # Use the same value when constructing blocks in the agent and
+            # when executing their serialized commands in Slurm workers.
+            af3_jax_cache = self._host_workspace / ".cache" / "af3_jax"
+            af3_jax_cache.mkdir(parents=True, exist_ok=True)
+            trial_site_environment = {
+                **get_site()["environment"],
+                "AF3_JAX_CACHE_DIR": str(af3_jax_cache),
+            }
             slurm_python = runtime_dir / "slurm-python"
             self._prepare_slurm_python(
-                slurm_python, self._host_workspace, self._slurm_worker_image
+                slurm_python,
+                self._host_workspace,
+                self._slurm_worker_image,
+                site_environment=trial_site_environment,
             )
             self._slurm_python = slurm_python.resolve()
             codex_vendor = self._find_codex_vendor()
@@ -272,11 +218,13 @@ class ApptainerEnvironment(SingularityEnvironment):
                     "QHOP": "false",
                     "HARBOR_SBATCH_SOCKET": "/run/harbor-slurm/sbatch.sock",
                     "CHAPERONE_SLURM_PYTHON": str(slurm_python),
-                    "CHAPERONE_SLURM_ARRAY_PARALLELISM": str(_MAX_TOTAL_GPUS),
-                    "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION": str(
-                        MAX_REQUESTED_GPUS_PER_SUBMISSION
+                    "CHAPERONE_SLURM_ARRAY_PARALLELISM": str(
+                        get_site()["max_total_gpus"]
                     ),
-                    **SCIENTIFIC_ENV_DEFAULTS,
+                    "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION": str(
+                        get_site()["max_requested_gpus_per_submission"]
+                    ),
+                    **trial_site_environment,
                 }
             )
             resolved_mounts.extend(
@@ -455,7 +403,7 @@ class ApptainerEnvironment(SingularityEnvironment):
         """Create the shared executable Submitit uses on compute nodes.
 
         ``site_environment`` holds controller-resolved values for scientific
-        tool locations (names from ``SCIENTIFIC_ENV_DEFAULTS`` only). They are
+        tool locations (names from ``site_config.ENV_NAMES`` only). They are
         exported inside the worker after the checkout's ``.env`` files are
         sourced, so they win over the checkout defaults: the host scorer and the
         ``--cleanenv`` Slurm worker then see the same setting.
@@ -533,8 +481,8 @@ class ApptainerEnvironment(SingularityEnvironment):
                 continue
             seen.add(specification)
             bind_args.extend(("-B", specification))
-        site_environment = dict(site_environment or {})
-        unapproved = set(site_environment) - set(SCIENTIFIC_ENV_DEFAULTS)
+        site_environment = {**get_site()["environment"], **(site_environment or {})}
+        unapproved = set(site_environment) - ENV_NAMES
         if unapproved:
             raise ValueError(
                 "unapproved scientific worker environment names: "
@@ -562,7 +510,6 @@ class ApptainerEnvironment(SingularityEnvironment):
                 f"if [[ -f {shlex.quote(str(chaperone_repo / '.env'))} ]]; then",
                 "  set -a",
                 f"  source {shlex.quote(str(chaperone_repo / '.env'))}",
-                f"  [[ ! -f {shlex.quote(str(chaperone_repo / '.env.ipd'))} ]] || source {shlex.quote(str(chaperone_repo / '.env.ipd'))}",
                 "  set +a",
                 "fi",
                 # Reassert the controller's values after the env files so an
@@ -573,7 +520,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                 "export CHAPERONE_COMPUTE_BACKEND=auto",
                 "export CHAPERONE_CONTAINER_BACKEND=apptainer",
                 f'cd "${{HARBOR_WORKER_CWD:-{str(workspace)}}}"',
-                'exec /opt/pipelines/.venv/bin/python "$@"',
+                f'exec {shlex.quote(get_site()["worker_python"])} "$@"',
             )
         )
         command = shlex.join(
@@ -636,10 +583,10 @@ class ApptainerEnvironment(SingularityEnvironment):
                     )
                 )
                 + "; do",
-                '  if [[ -v "$name" ]]; then env_args+=(--env "$name=${!name}"); fi',
+                '  if declare -p "$name" >/dev/null 2>&1; then env_args+=(--env "$name=${!name}"); fi',
                 "done",
-                "for name in " + " ".join(sorted(SCIENTIFIC_ENV_DEFAULTS)) + "; do",
-                '  if [[ -v "$name" ]]; then env_args+=(--env "$name=${!name}"); fi',
+                "for name in " + " ".join(sorted(ENV_NAMES)) + "; do",
+                '  if declare -p "$name" >/dev/null 2>&1; then env_args+=(--env "$name=${!name}"); fi',
                 "done",
                 'while IFS= read -r name; do env_args+=(--env "$name=${!name}"); done < <(compgen -A variable SLURM_)',
                 command.replace(
@@ -811,7 +758,7 @@ class ApptainerEnvironment(SingularityEnvironment):
             self._start_sbatch_broker()
             result = await self.exec(
                 "codex --version"
-                " && chaperone --help >/dev/null"
+                f" && {shlex.quote(get_site()['worker_python'])} -m chaperone_cli.main --help >/dev/null"
                 " && sbatch --version >/dev/null"
                 " && getent ahosts api.openai.com >/dev/null"
             )
@@ -825,7 +772,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                 async def probe() -> None:
                     health = await self.exec(
                         "set -e; test -x /bin/bash; test -x /bin/sh; "
-                        "test -x /opt/pipelines/.venv/bin/python; "
+                        f"test -x {shlex.quote(get_site()['worker_python'])}; "
                         "test -S /run/harbor-slurm/sbatch.sock; "
                         "probe=.harbor/.controller-health-probe; "
                         'printf healthy >"$probe"; test "$(cat "$probe")" = healthy; '

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from environments.apptainer import ApptainerEnvironment
 from run_eval import (
-    DEFAULT_HARNESS_IMAGE,
     _CONTROLLER_THREAD_ENV,
     _SCORING_AF3_JAX_CACHE_ENV,
     _SCORING_RUNDIR_BIND_ENV,
@@ -204,7 +203,7 @@ def main() -> None:
         "--scoring-image",
         dest="worker_image",
         type=Path,
-        default=DEFAULT_HARNESS_IMAGE,
+        default=None,
         help=(
             "Chaperone image used by scientific Slurm workers; the scorer "
             "itself always runs in the host .venv"
@@ -234,7 +233,14 @@ def main() -> None:
     parser.add_argument(
         "--dry-run", action="store_true", help="Validate and print without scoring"
     )
+    from site_config import add_site_arguments, configure_site
+
+    add_site_arguments(parser)
     args = parser.parse_args()
+    try:
+        configure_site(args)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
 
     job_dir = args.job.expanduser().resolve()
     if not job_dir.is_dir():
@@ -298,7 +304,7 @@ def main() -> None:
     site_environment = _scoring_site_environment(chaperone_repo)
     _prepare_scoring_packages(python_packages)
     # The run directory and AF3 cache must exist before the worker wrapper is
-    # built, because the wrapper re-exports the cache after .env.ipd is sourced.
+    # built, because the wrapper re-exports the cache after worker defaults are applied.
     rundir = (args.rundir or scoring_dir / "score_run").expanduser().resolve()
     rundir.mkdir(parents=True, exist_ok=True)
     af3_jax_cache = rundir / ".cache" / "af3_jax"
@@ -340,7 +346,9 @@ def main() -> None:
     if args.dry_run:
         return
 
-    environment = os.environ.copy()
+    from site_config import scoring_environment
+
+    environment = {**os.environ, **scoring_environment()}
     environment.update(
         {
             "CHAPERONE_REPO": str(chaperone_repo),

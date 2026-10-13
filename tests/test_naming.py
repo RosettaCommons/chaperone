@@ -47,6 +47,7 @@ SITE_AND_IMAGE_PATHS = [
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
 NOUN_USES = [
+    (r"^docs/README\.md$", r"original Pipelines site's", "attribution to the upstream documentation theme"),
     (r"^README\.md$", r"reproducible pipelines", "generic workflows"),
     (r"^README\.md$", r"debugging pipelines", "generic workflows"),
     (r"^README\.md$", r"worked pipelines", "generic workflows"),

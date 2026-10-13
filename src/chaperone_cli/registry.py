@@ -30,7 +30,7 @@ def register_flags(block_classes=None):
     registered = (
         tuple((op._name, op) for op in block_classes)
         if block_classes is not None
-        else tuple(Blocks.items())
+        else tuple((name, Blocks[name]) for name in Blocks.keys())
     )
     for op_name, op in registered:
         flags.DEFINE_boolean(

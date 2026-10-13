@@ -1775,8 +1775,20 @@ class PipelineDataHandler:
         if new is None or new._df is None or new._df.height == 0:
             if how == "left":
                 return base
-            logger.error("Handler to merge onto is empty or None.")
-            return base
+            # An inner join against an empty child yields nothing. Returning
+            # ``base`` would pass parent rows through as if the block had
+            # produced them, so a block that emitted no output is recorded as a
+            # success and its chunk is never retried.
+            if base is None or base._df is None:
+                return new
+            if base._df.height:
+                logger.warning(
+                    "Inner merge: child handler is empty; dropping %d parent row(s). "
+                    "The upstream block produced no output for these inputs.",
+                    base._df.height,
+                )
+            # ``clear()`` keeps the schema, which concat_outputs needs.
+            return cls(base._df.clear())
         if base is None or base._df is None or base._df.height == 0:
             return new
         assert (
