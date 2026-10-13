@@ -10,18 +10,14 @@ scaffolds and RF3 validation.
 
 Pipeline: rfd3 -> filter -> mpnn (legacy) -> rf3 -> rmsd -> filter
 
-Cloud runs:
-    CHAPERONE_COMPUTE_BACKEND=modal \
+Run:
     FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
-    MPNN_WEIGHTS_DIR=/abs/path/to/fused_mpnn_weights \
-    ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py \
-        --test
+    MPNN_WEIGHTS_DIR=/abs/path/to/mpnn/weights \
+    ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test
 
-The legacy mpnn block auto-selects the on-prem SIF when it exists on
-disk, otherwise falls back to the cloud-buildable ``modelhub_cloud``
-variant (git_clone of baker-laboratory/fused_mpnn). See
-``src/blocks/networks/mpnn.py`` for the selection logic and
-``docs/cloud.md`` for the full cloud setup.
+The legacy mpnn block runs from the site's modelhub SIF; without one it
+raises an error pointing to ``foundry_mpnn`` / public LigandMPNN. See
+``src/blocks/networks/mpnn.py`` for the selection logic.
 """
 
 from pathlib import Path
@@ -56,8 +52,7 @@ blocks = [
         },
     ),
     # Legacy MPNN — ligand-aware inverse folding. Uses fused_mpnn's
-    # LigandMPNN model via the modelhub container (on-prem SIF or the
-    # cloud-buildable variant, auto-selected at import time).
+    # LigandMPNN model via the site's modelhub SIF.
     MPNN(
         model_type="ligand_mpnn",
         num_seq_per_pdb=4,

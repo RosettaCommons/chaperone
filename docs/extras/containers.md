@@ -11,12 +11,11 @@ All env vars are managed through `ChaperoneSettings` in `settings.py`. **Never**
 **Adding new env vars:** Any new env var that should be read from `.env`/`.env.ipd`/`.env.local` **must** have a corresponding field in `ChaperoneSettings` (`settings.py`). The pydantic-settings loader only picks up env vars that match declared fields — undeclared vars in `.env.ipd` are silently ignored.
 
 Key `CHAPERONE_` settings:
-- `CHAPERONE_COMPUTE_BACKEND` — `auto` (default: local GPU → SLURM → local fallback), `slurm`, `local`, `modal`/`cloud`, `sge`/`pbs` (not yet implemented)
+- `CHAPERONE_COMPUTE_BACKEND` — `auto` (default: local GPU → SLURM → local fallback), `slurm`, `local`
 - `CHAPERONE_DEFAULT_PARTITION`, `CHAPERONE_GPU_PARTITION`, `CHAPERONE_GRES_MAP`, `CHAPERONE_DEFAULT_ACCOUNT`, `CHAPERONE_DEFAULT_QOS`, `CHAPERONE_DEFAULT_EXTRA_SBATCH` — site mapping for Slurm resources. Blocks request an abstract CPU/GPU class; these name the real partition, `--gres`, account, QOS and extra `sbatch` options. Unset means no `--partition` and `--gres=gpu:1`. `.env.ipd` carries the IPD values. See "Slurm Site Configuration" in `docs/site/syntax.md`
 - `CHAPERONE_CONTAINER_BACKEND` — `apptainer/docker` (auto-resolves to first available)
 - `CHAPERONE_CONTAINER_DIRS` — colon-separated container image search paths
 - `CHAPERONE_DISABLE_RICH` — disable rich console formatting
-- `CHAPERONE_CLOUD_MODE` — when True (auto-enabled for modal/cloud backend), blocks stage all external files into hermetic chunk directories
 
 ## Configuration
 

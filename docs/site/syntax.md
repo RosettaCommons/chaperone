@@ -85,7 +85,6 @@ The `CHAPERONE_COMPUTE_BACKEND` setting determines the default execution mode wh
 | `auto` (default) | auto-detected | Local GPU → `"local"`, SLURM available → `"cluster_compiled"`, fallback → `"local"` |
 | `slurm` | `"cluster_compiled"` | Always submit to HPC cluster |
 | `local` | `"local"` | Always run locally |
-| `sge` / `pbs` / `cloud` | — | Not yet implemented (`NotImplementedError`) |
 
 An explicit `mode` in `RuntimeArgs` always takes precedence over the backend setting.
 

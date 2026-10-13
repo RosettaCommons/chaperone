@@ -491,10 +491,6 @@ def generate_block_docs() -> str:
         "Pass a list of strings to run against a local install instead of the "
         "default container. Available on compiled blocks. |"
     )
-    lines.append(
-        "| `cloud` | Cloud execution configuration for running on Modal. "
-        "Default: `None` (local/SLURM). Available on compiled blocks. |"
-    )
     lines.append("")
 
     return "\n".join(lines)
