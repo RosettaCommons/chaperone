@@ -751,22 +751,22 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     @staticmethod
     def _write_portable_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
         """Stage a PDB for upstream main, preserving the original CIF as parent."""
-        from biotite.structure.io.pdb import PDBFile
+        from chaperone.io import write_pdb
 
         stem = Path(input_path).name
         for suffix in (".gz", ".cif", ".pdb"):
             stem = stem.removesuffix(suffix)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"{stem}.pdb"
-        pdb = PDBFile()
         try:
-            pdb.set_structure(rename.rename(atoms))
+            write_pdb(rename.rename(atoms), out_path)
+        except OSError:
+            raise
         except Exception as error:
             raise ValueError(
                 f"Public MPNN requires PDB-representable inputs: {input_path}. "
                 "Check chain/residue identifiers and ligand component names."
             ) from error
-        pdb.write(str(out_path))
         return str(out_path)
 
     @staticmethod

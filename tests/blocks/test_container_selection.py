@@ -249,20 +249,17 @@ def test_rfd2_onprem_full_command_is_unchanged(monkeypatch, settings, tmp_path):
     ]
 
 
-def test_rfd2_portable_runs_the_baked_in_code(monkeypatch, settings, tmp_path):
+def test_rfd2_portable_runs_the_baked_in_code_and_checkpoint(monkeypatch, settings):
     _select_rfd2(monkeypatch, onprem=False)
-    settings.RFD2_WEIGHTS_DIR = str(tmp_path / "weights")
 
     block = rfdiffusion2.RFD2Block(inputs="cfg")
-    weights = str(tmp_path / "weights")
 
-    assert block.ckpt_path == f"{weights}/RFD_173.pt"
+    assert block.ckpt_path == "/opt/rfd2-weights/RFD_173.pt"
+    # Nothing is bound from the host: code and checkpoint are in the image.
     assert block.command_template == [
         *APPTAINER_PREFIX,
         "run",
         *CONTAIN_FLAGS,
-        "--bind",
-        f"{weights}:{weights}",
         "--env",
         "PYTHONPATH=/opt/RFdiffusion2",
         "--env",
@@ -272,9 +269,8 @@ def test_rfd2_portable_runs_the_baked_in_code(monkeypatch, settings, tmp_path):
     ]
 
 
-def test_rfd2_portable_names_no_site_paths(monkeypatch, settings, tmp_path):
+def test_rfd2_portable_names_no_site_paths(monkeypatch, settings):
     _select_rfd2(monkeypatch, onprem=False)
-    settings.RFD2_WEIGHTS_DIR = str(tmp_path)
 
     block = rfdiffusion2.RFD2Block(inputs="cfg")
 
@@ -282,28 +278,8 @@ def test_rfd2_portable_names_no_site_paths(monkeypatch, settings, tmp_path):
     assert "/net/" not in block.ckpt_path
 
 
-def test_rfd2_portable_uses_an_explicit_checkpoint(monkeypatch, settings, tmp_path):
+def test_rfd2_portable_passes_the_baked_checkpoint(monkeypatch, settings, tmp_path):
     _select_rfd2(monkeypatch, onprem=False)
-    ckpt = tmp_path / "other" / "model.pt"
-
-    block = rfdiffusion2.RFD2Block(inputs="cfg", ckpt_path=str(ckpt))
-
-    assert f"{ckpt.parent}:{ckpt.parent}" in block.command_template
-
-
-def test_rfd2_portable_reports_missing_weights(monkeypatch, settings, tmp_path):
-    _select_rfd2(monkeypatch, onprem=False)
-    settings.RFD2_WEIGHTS_DIR = str(tmp_path)
-    block = rfdiffusion2.RFD2Block(inputs="cfg")
-
-    with pytest.raises(FileNotFoundError, match="RFD2_WEIGHTS_DIR"):
-        block.create_command(block.init_handler(), tmp_path / "sandbox", chunk_id=0)
-
-
-def test_rfd2_portable_accepts_present_weights(monkeypatch, settings, tmp_path):
-    _select_rfd2(monkeypatch, onprem=False)
-    settings.RFD2_WEIGHTS_DIR = str(tmp_path)
-    (tmp_path / "RFD_173.pt").write_bytes(b"")
     cfg = tmp_path / "design.yaml"
     cfg.write_text("{}\n")
     sandbox = tmp_path / "sandbox"
@@ -312,7 +288,26 @@ def test_rfd2_portable_accepts_present_weights(monkeypatch, settings, tmp_path):
 
     command = block.create_command(block.init_handler(), sandbox, chunk_id=0)
 
-    assert f"inference.ckpt_path={tmp_path}/RFD_173.pt" in command
+    assert "inference.ckpt_path=/opt/rfd2-weights/RFD_173.pt" in command
+
+
+def test_rfd2_portable_binds_an_explicit_checkpoint(monkeypatch, settings, tmp_path):
+    _select_rfd2(monkeypatch, onprem=False)
+    ckpt = tmp_path / "other" / "model.pt"
+
+    block = rfdiffusion2.RFD2Block(inputs="cfg", ckpt_path=str(ckpt))
+
+    assert f"{ckpt.parent}:{ckpt.parent}" in block.command_template
+
+
+def test_rfd2_portable_reports_a_missing_explicit_checkpoint(
+    monkeypatch, settings, tmp_path
+):
+    _select_rfd2(monkeypatch, onprem=False)
+    block = rfdiffusion2.RFD2Block(inputs="cfg", ckpt_path=str(tmp_path / "no.pt"))
+
+    with pytest.raises(FileNotFoundError, match="no.pt"):
+        block.create_command(block.init_handler(), tmp_path / "sandbox", chunk_id=0)
 
 
 def test_rfd2_portable_is_registered_when_selected(monkeypatch):
@@ -363,43 +358,17 @@ def test_mpnn_onprem_rejects_missing_configured_weights(monkeypatch, settings, t
         mpnn.ClassicMPNNBlock().get_command_template()
 
 
-# ── chaperone weights install ───────────────────────────────────────────
+def test_rfd2_portable_bakes_a_hash_checked_checkpoint():
+    definition = rfdiffusion2.RFD2_PORTABLE_CONTAINER.to_singularity()
 
-
-def test_weights_install_downloads_the_default_checkpoint(monkeypatch, tmp_path):
-    from chaperone_cli import weights
-
-    monkeypatch.setattr(
-        chaperone,
-        "get_settings",
-        lambda: SimpleNamespace(RFD2_WEIGHTS_DIR=str(tmp_path)),
-    )
-    fetched = []
-    monkeypatch.setattr(
-        weights.urllib.request,
-        "urlretrieve",
-        lambda url, dest: (fetched.append(url), open(dest, "wb").close()),
-    )
-
-    assert weights.main(["install", "rfd2"]) == 0
-    assert (tmp_path / "RFD_173.pt").is_file()
-    assert fetched == [
+    assert (
         "https://files.ipd.uw.edu/pub/rfdiffusion2/model_weights/RFD_173.pt"
-    ]
-
-    assert weights.main(["install", "rfd2"]) == 0  # present: not fetched again
-    assert len(fetched) == 1
-
-
-def test_weights_install_needs_the_setting(monkeypatch):
-    from chaperone_cli import weights
-
-    monkeypatch.setattr(
-        chaperone, "get_settings", lambda: SimpleNamespace(RFD2_WEIGHTS_DIR=None)
+        in definition
     )
-
-    with pytest.raises(SystemExit, match="RFD2_WEIGHTS_DIR"):
-        weights.main(["install", "rfd2"])
+    assert (
+        "590e126057f780afc1249d29545f0f90635562b1a3df5aff013afcfc39c3d3c3"
+        "  /opt/rfd2-weights/RFD_173.pt' | sha256sum -c -"
+    ) in definition
 
 
 @pytest.mark.parametrize("alias_exists", [False, True])

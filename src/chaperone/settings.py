@@ -355,15 +355,6 @@ class ChaperoneSettings(BaseSettings):
             "provided by the existing Apptainer image."
         ),
     )
-    RFD2_WEIGHTS_DIR: Optional[str] = Field(
-        default=None,
-        description=(
-            "Directory containing RFdiffusion2 checkpoints (e.g. RFD_173.pt), "
-            "downloaded with `chaperone weights install rfd2`. Only used by "
-            "the portable rfdiffusion2_portable image; the on-prem image keeps "
-            "its checkpoints on site storage."
-        ),
-    )
     CCD_MIRROR_PATH: Optional[str] = Field(
         default=None,
         description="Path to local CCD mirror directory.",

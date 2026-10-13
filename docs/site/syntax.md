@@ -27,7 +27,7 @@ ExecutionEngine(
 |-----------|------|---------|-------------|
 | `rundir` | str \| Path \| None | `None` | Output directory. Falls back to `CHAPERONE_RUNDIR` env var / `.env` file; relative paths resolve under `CHAPERONE_ROOT` (default `/net/scratch/{user}/chaperone`) |
 | `reinit` | bool | `True` | `True` = fresh manifest (disk-cached parquets still reused); `False` = load existing manifest to resume/extend a run |
-| `run_args_default` | RuntimeArgs \| dict \| None | `None` | Fallback `RuntimeArgs` when `run()` is called without `run_args` |
+| `run_args_default` | RuntimeArgs \| dict \| None | `None` | Runtime defaults for `run()`; partial `run_args` dictionaries merge by key, while an explicit `RuntimeArgs` object replaces them |
 | `job_args_default` | JobArgs \| dict \| None | `None` | Fallback `JobArgs` when `run()` is called without `job_args` |
 
 ### Running Blocks

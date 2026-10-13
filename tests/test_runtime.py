@@ -536,3 +536,18 @@ def test_result_ready_refreshes_parent_directory_before_exists(tmp_path, monkeyp
 
     assert future._result_ready() is True
     assert calls == [tmp_path]
+
+
+@pytest.mark.parametrize("dataclass_defaults", [False, True])
+def test_partial_runtime_override_preserves_engine_execution_policy(tmp_path, dataclass_defaults):
+    defaults = dict(mode="local", max_workers=1, max_retries=0, use_local_gpus=False,
+                    skip_cache=True)
+    baseline = RuntimeArgs(**defaults) if dataclass_defaults else defaults.copy()
+    engine = ExecutionEngine(rundir=tmp_path, run_args_default=baseline)
+    override = {"skip_cache": False, "force_exec": True}
+    resolved, _ = engine._apply_defaults(override, None)
+    assert all(resolved[key] == value for key, value in {**defaults, **override}.items())
+    assert override == {"skip_cache": False, "force_exec": True}
+    assert (vars(baseline) if dataclass_defaults else baseline)["skip_cache"] is True
+    explicit = RuntimeArgs(mode="slurm")
+    assert engine._apply_defaults(explicit, None)[0] is explicit
