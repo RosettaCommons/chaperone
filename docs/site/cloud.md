@@ -116,7 +116,28 @@ or Slurm job IDs from the controller.
 The public MPNN GPU smoke subsequently passed on A10G, including a CUDA tensor
 operation in the model image, two eight-residue sequences from its default
 LigandMPNN checkpoint, preserved chain ID and cache replay. This validates the
-Modal GPU execution path; Foundry RFD3/RF3 GPU inference on Modal remains untested.
+Modal GPU execution path.
+
+The pinned Foundry CUDA image also built from source on Modal and passed
+`pip check`, Apex/CUDA imports and RFD3/RFD3NA/RF3/MPNN imports. Live RFD3 and
+RF3 tests then passed on the same image, using checkpoints mounted from a
+Modal volume. The runtime probe verified Foundry revision `c97ad246`, AtomWorks
+`2.2.1`, Biotite `1.4.0` and PyTorch `2.11.0+cu128`. The `A10G` request reported
+NVIDIA A10 hardware inside both Sandboxes.
+
+| Test | Settings | Result |
+| --- | --- | --- |
+| RFD3 | One 32-residue design, 200 steps, seed 42 | 241 atoms, finite coordinates, 51.25 recorded GPU seconds |
+| RF3 | One 32-residue sequence, 50 steps, 10 recycles, seed 42, early stopping disabled | 253 atoms, finite coordinates, pLDDT 0.7404, no clash flag, 34.76 recorded GPU seconds |
+
+Both tests passed output retrieval, compilation, expected sequence length and
+cache replay with exactly one remote execution record per model. Sandboxes
+were terminated afterward; the checkpoint volume is retained for reuse.
+The two tests took 96 seconds after the fresh image build. These short
+protein-only tests establish runtime functionality, not scientific quality,
+AtomWorks 3 equivalence, MSA/ligand coverage or production-scale behavior.
+Machine-readable evidence, checkpoint hashes and Sandbox IDs are recorded in
+`docs/validation/modal_foundry_2026-10-13.json` in the repository.
 
 The ordinary regression suite performs no cloud submissions. Live tests are
 opt-in and may incur Modal charges:
@@ -124,8 +145,13 @@ opt-in and may incur Modal charges:
 ```bash
 CHAPERONE_RUN_MODAL_TESTS=1 pytest tests/test_modal_backend.py -m cloud -k copy
 CHAPERONE_RUN_MODAL_MPNN=1 pytest tests/test_modal_backend.py -m cloud -k public_mpnn
+# After uploading both public checkpoints to chaperone-foundry-checkpoints:
+CHAPERONE_RUN_MODAL_FOUNDRY=1 pytest tests/test_modal_foundry.py -q -s
 ```
 
 The first command tests CPU and GPU copies; the second builds the public MPNN
 image and checks CPU and GPU sequence generation and cache replay. Synthetic inputs
 exercise pipeline functionality, not protein design quality.
+The Foundry test uses the volume named by `CHAPERONE_MODAL_FOUNDRY_VOLUME`,
+defaulting to `chaperone-foundry-checkpoints`. It expects `rfd3_latest.ckpt` and
+`rf3_foundry_01_24_latest_remapped.ckpt` at the volume root.
