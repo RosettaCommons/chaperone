@@ -48,7 +48,8 @@ been built or exercised. Validate one small workload on your cluster before scal
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
 | `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. See the [validation record](release-validation.md) for actual inference status. |
-| `rfdiffusion1`, `rfdiffusion2_portable` | HTTPS source recipes; install the corresponding checkpoints and provide their configured weight paths. |
+| `rfdiffusion1` | HTTPS source recipe; install the checkpoints and provide the configured weight path. |
+| `rfdiffusion2_portable` | HTTPS source recipe. The `RFD_173.pt` checkpoint is downloaded during the build and checked against a pinned SHA-256; pass `ckpt_path` to use another file. |
 | `colabfold_portable`, `simplefold` | Public source recipes with model downloads/caches configured separately. SimpleFold's CUDA apt repository matches its Ubuntu base. |
 | `bindcraft`, `boltz2`, `boltzgen`, `disco`, `e1`, `esm2`, `metal3d`, `openfold3`, `protein_hunter`, `protenix`, `tmol` | Source recipes available. Consult the tool links in the [block reference](blocks-reference.md) for checkpoints, databases, model licenses, hardware requirements, and task-specific settings. |
 

@@ -850,7 +850,7 @@ Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 |-----------|------|---------|-------------|
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`inputs`</span> | `str \| list[str]` | **required** | Hydra config name to use (references a yaml/json file in benchmark configs) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`num_designs`</span> | `int` | `1` | Number of designs to generate per benchmark case |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `str` | `<computed at runtime>` | Path to RFdiffusion2 checkpoint file. The portable image defaults to RFD_173.pt under the RFD2_WEIGHTS_DIR setting. |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `str` | `<computed at runtime>` | Path to RFdiffusion2 checkpoint file. The portable image defaults to the RFD_173.pt baked into it. |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 | `raise_on_missing_trbs` | `bool` | `True` | Raise error if TRB file is missing for a design |

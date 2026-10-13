@@ -73,18 +73,20 @@ academic/non-commercial use by default, and AlphaFold2 parameters are CC BY
 4.0. Keep the SIF access-controlled and verify dependency licensing before
 redistributing it or using it commercially.
 
-## RFdiffusion2 checkpoint (portable image)
+## RFdiffusion2 image
 
 On the IPD cluster `rfd2` uses the prebuilt SIF and the checkpoint on site
-storage; nothing below applies there. Elsewhere, build the image and download
-the checkpoint (1.3 GB, not baked into the image) into `RFD2_WEIGHTS_DIR`:
+storage. Elsewhere, build the self-contained image:
 
 ```bash
-chaperone install rfdiffusion2_portable
-chaperone weights install rfd2      # downloads RFD_173.pt into RFD2_WEIGHTS_DIR
+chaperone install rfdiffusion2_portable   # 11-17 min, ~14 GB
 ```
 
-`RFD_173.pt` is the checkpoint RosettaCommons/RFdiffusion2 recommends (the same
-file its `setup.py` downloads from `files.ipd.uw.edu`). The command does nothing
-if the file is already there. The block fails with a message naming
-`RFD2_WEIGHTS_DIR` if the file is missing.
+It contains the pinned RFdiffusion2 code and the `RFD_173.pt` checkpoint (the
+one upstream recommends), which the build downloads from
+`files.ipd.uw.edu/pub/rfdiffusion2/model_weights/` and checks against a pinned
+SHA-256. The build fails if the hash does not match. The block uses this
+checkpoint by default; pass `ckpt_path` to use another file from the host.
+
+RFdiffusion2 is BSD-3-Clause. Upstream states no separate terms for the weights, which it
+distributes openly from the same host; confirm that before redistributing a built image.
