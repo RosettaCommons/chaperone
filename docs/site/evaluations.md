@@ -51,7 +51,7 @@ cd src/chaperone-evals
 
 Bootstrap installs the harness project (`uv pip install -e src/chaperone-evals`) into the
 checkout's `.venv`, on top of anything already installed, and links the controller to
-it. That project depends on the checkout's own `pipelines` package, so there is no
+it. That project depends on the checkout's own `chaperone` package, so there is no
 separate environment. Then authenticate:
 
 ```bash
@@ -59,13 +59,13 @@ export OPENAI_API_KEY=...        # or use an existing `codex login`
 ```
 
 The controller lives inside the Chaperone checkout it evaluates and uses that
-checkout for scoring. Set `PIPELINES_REPO` to score against a different one.
+checkout for scoring. Set `CHAPERONE_REPO` to score against a different one.
 
 Scoring reads the site tool locations (`HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`,
 `X3DNA_BIN_DIR`, `X3DNA_DIR`) from the checkout's checked-in `.env` and `.env.ipd`, and checks
 that they exist before it starts. A value set in your shell wins. The sanitized scoring
 snapshot carries no `.env` files, so if the checkout it is linked to is not the one with
-the site config, set `PIPELINES_SITE_CONFIG_REPO` to that checkout.
+the site config, set `CHAPERONE_SITE_CONFIG_REPO` to that checkout.
 
 A trial whose agent already wrote `submission/designs.csv` is scored even if Harbor's
 result record is failed or missing, because the agent's work is finished at that point.
@@ -79,13 +79,13 @@ cd src/chaperone-evals/harbor-controller
 
 ./run_eval.py biotin_binder_design \
   --arm harness \
-  --pipelines-path /absolute/path/to/chaperone \
+  --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
   --run-name biotin-harness-smoke
 ```
 
-For the baseline arm, leave out `--pipelines-path`:
+For the baseline arm, leave out `--chaperone-path`:
 
 ```bash
 ./run_eval.py biotin_binder_design \
@@ -101,9 +101,9 @@ when the agent finishes. It returns once both are accepted.
 
 | Option | Purpose |
 |--------|---------|
-| `--arm {harness,baseline}` | Which arm to run. The harness arm needs `--pipelines-path`. |
-| `--pipelines-path PATH` | Chaperone working tree handed to the agent (harness arm only). |
-| `--pipelines-repo PATH` | Host checkout used for scoring. Never shown to the agent. |
+| `--arm {harness,baseline}` | Which arm to run. The harness arm needs `--chaperone-path`. |
+| `--chaperone-path PATH` | Chaperone working tree handed to the agent (harness arm only). |
+| `--chaperone-repo PATH` | Host checkout used for scoring. Never shown to the agent. |
 | `--required-n N` | Number of designs to submit. Sets both the prompt and the scorer. Lower it for smoke tests. |
 | `--attempts N`, `--concurrency N` | Repeat or parallelize independent trials. |
 | `--model`, `--reasoning-effort` | Override the model and effort. |
@@ -177,7 +177,7 @@ across all its Slurm jobs. Held-out scoring jobs are not counted against the age
 | `Public and private inputs/ differ` | `CHAPERONE_EVALS_PRIVATE` points at a tree whose `inputs/` no longer match the ones in this repository. Sync them. |
 | `No scorer for task` | The task name is wrong or has no `score/score.py`. |
 | `Scoring site-config preflight failed` | A site tool or data path named in `.env` / `.env.ipd` is missing or not executable on this host. Fix the path, or override it in your shell. |
-| `Could not locate the trusted .env and .env.ipd site config` | Set `PIPELINES_SITE_CONFIG_REPO` to a checkout that has both files. |
+| `Could not locate the trusted .env and .env.ipd site config` | Set `CHAPERONE_SITE_CONFIG_REPO` to a checkout that has both files. |
 | `Refusing to overwrite existing scoring folder` | The trial already has a `scoring/` folder. `rescore.py` only handles unscored trials; add `--clear-empty-scoring` if the folder is empty. |
 
 ## Tests

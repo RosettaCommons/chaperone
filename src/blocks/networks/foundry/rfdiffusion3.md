@@ -31,7 +31,7 @@ JSON inputs take the following nested top-level structure;
     }
 }
 ```
-This will configure RFD3 to run `spec-1` and `spec-2` as different output configurations. In pipelines, these get parsed as separate "tasks" in the dataframe, to allow for easy sweeps of configs
+This will configure RFD3 to run `spec-1` and `spec-2` as different output configurations. In Chaperone, these get parsed as separate "tasks" in the dataframe, to allow for easy sweeps of configs
 
 ### Quick Reference: InputSpecification Fields
 

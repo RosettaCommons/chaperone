@@ -5,21 +5,21 @@ have {{AGENT_HOURS}} hours to deliver exactly {{REQUIRED_N}} genuine designs.
 ## Workspace and harness
 
 Work in the current directory. Its real shared-filesystem path is
-`$HARBOR_HOST_WORKSPACE`; `/workspace` is an alias, but Pipelines commands and
+`$HARBOR_HOST_WORKSPACE`; `/workspace` is an alias, but Chaperone commands and
 generated job paths must use the real path so Slurm workers can resolve them.
-Task inputs are in `inputs/`, and the writable harness checkout is `pipelines/`.
+Task inputs are in `inputs/`, and the writable harness checkout is `chaperone/`.
 When a Slurm-visible absolute input path is required, derive it as
 `Path(os.environ["HARBOR_HOST_WORKSPACE"]) / "inputs" / <name>`; do not infer
 the task-input directory by walking upward from a campaign script.
 The checkout is a history-free source snapshot and intentionally has no
 `.git/` directory; do not run Git commands inside it.
 
-Read `pipelines/AGENTS.md`; it is authoritative for harness behavior. Ordinary
+Read `chaperone/AGENTS.md`; it is authoritative for harness behavior. Ordinary
 working artifacts, caches, native compaction, and prompt caching remain
 available; there is no campaign ledger or monitor bookkeeping protocol.
 
-Run every computational stage through Pipelines. Keep campaign code, public
-metrics, and results under `pipelines/campaigns/{{TASK_NAME}}/`. Never access
+Run every computational stage through Chaperone. Keep campaign code, public
+metrics, and results under `chaperone/campaigns/{{TASK_NAME}}/`. Never access
 or reconstruct the held-out scorer. `pipeline.py` may mechanically generate
 whatever internal metrics and working artifacts it needs; do not package them
 for evaluation.
@@ -30,12 +30,12 @@ into the submission.
 
 ## Runtime
 
-The shell and guarded workers already run in the hardened Pipelines image. Do
+The shell and guarded workers already run in the hardened Chaperone image. Do
 not rebuild it or launch nested `apptainer exec`. Invoke it directly:
 
 ```bash
-/opt/pipelines/.venv/bin/pipelines --help
-/opt/pipelines/.venv/bin/python pipelines/path/to/campaign.py
+/opt/pipelines/.venv/bin/chaperone --help
+/opt/pipelines/.venv/bin/python chaperone/path/to/campaign.py
 ```
 
 Campaign scripts created with `chaperone.init_cli()` support `-h`, `--help`,
@@ -52,7 +52,7 @@ exact ligand residue name to its SMILES string, for example
 ## Compute routing
 
 The outer process has four CPU cores, limited memory, and no GPU. Keep
-`PIPELINES_COMPUTE_BACKEND=auto` and route all work with explicit Pipelines
+`CHAPERONE_COMPUTE_BACKEND=auto` and route all work with explicit Chaperone
 `JobArgs`:
 
 - Use `partition="local"` only for lightweight CPU work that comfortably fits
@@ -73,7 +73,7 @@ The outer process has four CPU cores, limited memory, and no GPU. Keep
 - Set `JobArgs(slurm_array_parallelism=5)` on one-GPU arrays (or a lower value
   while other GPU jobs are active). Choose `rows_per_job` from per-worker
   memory and runtime; never enlarge chunks merely to reduce array concurrency.
-- Do not call `sbatch`, `srun`, or `salloc` manually; Pipelines/Submitit owns
+- Do not call `sbatch`, `srun`, or `salloc` manually; Chaperone/Submitit owns
   submission through the guard.
 
 ## Submission

@@ -1,5 +1,5 @@
 
-# Benchmark suite for pipelines
+# Benchmark suite for Chaperone
 Contains numerous examples of benchmarks that are useful for design.
 
 ## 1) Code-level features

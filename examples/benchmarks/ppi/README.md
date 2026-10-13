@@ -54,12 +54,12 @@ Legacy-only additional prerequisite:
 
 ```bash
 # All-foundry:
-PIPELINES_COMPUTE_BACKEND=modal \
+CHAPERONE_COMPUTE_BACKEND=modal \
 FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
 ./examples/benchmarks/ppi/pipeline_foundry.py --config=tests/test_overrides.yaml
 
 # Legacy mpnn:
-PIPELINES_COMPUTE_BACKEND=modal \
+CHAPERONE_COMPUTE_BACKEND=modal \
 FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
 MPNN_WEIGHTS_DIR=/abs/path/to/mpnn/weights \
 ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --config=tests/test_overrides.yaml
@@ -87,7 +87,7 @@ Weights upload once to `/weights/foundry/checkpoints` and
 
 - `baker-laboratory/fused_mpnn` is a private repo; cloud builds of
   `modelhub_cloud` require git credentials with access on whoever's
-  running `pipelines install` or the first cloud job.
+  running `chaperone install` or the first cloud job.
 - See `docs/cloud.md` for the full cloud-readiness matrix and setup
   guide, and `tests/test_cloud_smoke.py` for per-block Modal smoke
   tests (`test_foundry_mpnn_modal_smoke`, `test_legacy_mpnn_modal_smoke`,

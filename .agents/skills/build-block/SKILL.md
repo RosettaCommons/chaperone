@@ -6,7 +6,7 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit", "WebFetch", "Ag
 
 # Build Block Skill
 
-End-to-end guide for creating a new pipelines block from a tool's documentation or repository URL.
+End-to-end guide for creating a new Chaperone block from a tool's documentation or repository URL.
 
 ## Overview
 
@@ -119,7 +119,7 @@ Try building the container (selects apptainer or docker in the background):
 
 ```bash
 source .venv/bin/activate
-pipelines install <tool_name>
+chaperone install <tool_name>
 ```
 
 ### 2c. Test the Container
@@ -131,7 +131,7 @@ Run an example command from the tool's documentation inside the container:
 apptainer exec --nv /tmp/{tool_name}.sif {tool_entry_point} --help
 
 # Docker
-docker run --gpus all pipelines/{tool_name}:latest {tool_entry_point} --help
+docker run --gpus all chaperone/{tool_name}:latest {tool_entry_point} --help
 ```
 
 Verify the tool runs and responds correctly. If it fails, debug and fix the container definition.

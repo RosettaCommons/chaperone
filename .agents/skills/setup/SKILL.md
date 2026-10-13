@@ -1,16 +1,16 @@
 ---
 name: setup
-description: Setup skill for installing and checking pipelines functionality.
+description: Setup skill for installing and checking Chaperone functionality.
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit"]
 ---
 
 # Setup Skill
 
-Guide new users through pipelines environment configuration.
+Guide new users through Chaperone environment configuration.
 
 ## Trigger
 
-When the user asks to "setup pipelines", "configure environment", "get started", or "install pipelines".
+When the user asks to "setup Chaperone", "configure environment", "get started", or "install Chaperone".
 
 ## Steps
 
@@ -22,10 +22,10 @@ First check whether uv is installed (`which uv`). If not, use `AskUserQuestion` 
 
 Do not proceed until `uv` is available.
 
-Then check if the venv exists and pipelines is importable:
+Then check if the venv exists and Chaperone is importable:
 ```bash
 source .venv/bin/activate
-python -c "import chaperone; print('pipelines OK')"
+python -c "import chaperone; print('chaperone OK')"
 ```
 
 If the venv doesn't exist or the import fails, create and install:
@@ -82,7 +82,7 @@ Use `AskUserQuestion` with `multiSelect: true` to ask the user which compute res
 - **Local** — Run directly on this machine (detected: {local GPU status})
 - **Cluster (detected: {SLURM status})** — Submit jobs to SLURM
 
-After the user selects, write their preference to `.env.local` (gitignored, user-specific overrides). If multiple backends are selected, join them with `/` as a priority list (e.g. `PIPELINES_COMPUTE_BACKEND=local/slurm`). Use `PIPELINES_`-prefixed variable names.
+After the user selects, write their preference to `.env.local` (gitignored, user-specific overrides). If multiple backends are selected, join them with `/` as a priority list (e.g. `CHAPERONE_COMPUTE_BACKEND=local/slurm`). Use `CHAPERONE_`-prefixed variable names.
 
 **Important: `.env` file structure:**
 - `.env` — generic defaults, checked into git (do NOT write user-specific values here)
@@ -92,19 +92,19 @@ After the user selects, write their preference to `.env.local` (gitignored, user
 To update or add a setting in `.env.local`:
 ```bash
 # Replace existing line or append if not present
-if grep -q '^PIPELINES_COMPUTE_BACKEND=' .env.local 2>/dev/null; then
-    sed -i 's/^PIPELINES_COMPUTE_BACKEND=.*/PIPELINES_COMPUTE_BACKEND=local/' .env.local
+if grep -q '^CHAPERONE_COMPUTE_BACKEND=' .env.local 2>/dev/null; then
+    sed -i 's/^CHAPERONE_COMPUTE_BACKEND=.*/CHAPERONE_COMPUTE_BACKEND=local/' .env.local
 else
-    echo 'PIPELINES_COMPUTE_BACKEND=local' >> .env.local
+    echo 'CHAPERONE_COMPUTE_BACKEND=local' >> .env.local
 fi
 ```
 
 Similarly for container backend overrides:
 ```bash
-if grep -q '^PIPELINES_CONTAINER_BACKEND=' .env.local 2>/dev/null; then
-    sed -i 's/^PIPELINES_CONTAINER_BACKEND=.*/PIPELINES_CONTAINER_BACKEND=docker/' .env.local
+if grep -q '^CHAPERONE_CONTAINER_BACKEND=' .env.local 2>/dev/null; then
+    sed -i 's/^CHAPERONE_CONTAINER_BACKEND=.*/CHAPERONE_CONTAINER_BACKEND=docker/' .env.local
 else
-    echo 'PIPELINES_CONTAINER_BACKEND=docker' >> .env.local
+    echo 'CHAPERONE_CONTAINER_BACKEND=docker' >> .env.local
 fi
 ```
 
@@ -147,11 +147,11 @@ Present the results as a table showing what's set and what's missing. Then use `
 **For `CCD_MIRROR_PATH`** (needed for ligand-aware operations):
 - **Download CCD now** — Download from RCSB (~2.5 GB compressed):
   ```bash
-  mkdir -p ~/.pipelines/ccd
-  curl -L "https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz" -o ~/.pipelines/ccd/components.cif.gz
-  gunzip ~/.pipelines/ccd/components.cif.gz
+  mkdir -p ~/.chaperone/ccd
+  curl -L "https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz" -o ~/.chaperone/ccd/components.cif.gz
+  gunzip ~/.chaperone/ccd/components.cif.gz
   ```
-  Then write `CCD_MIRROR_PATH=$HOME/.pipelines/ccd` to `.env.local`.
+  Then write `CCD_MIRROR_PATH=$HOME/.chaperone/ccd` to `.env.local`.
 - **I have a local copy** — Ask for the path, write to `.env.local`.
 - **Skip** — Only needed for ligand-aware operations.
 
@@ -188,7 +188,7 @@ fi
 
 ```bash
 source .venv/bin/activate
-pipelines list-blocks
+chaperone list-blocks
 ```
 
 Show the user which blocks are available and which containers are installed vs missing.
@@ -200,15 +200,15 @@ Use `AskUserQuestion` to ask the user which blocks they want to install containe
 Run installation:
 ```bash
 source .venv/bin/activate
-pipelines install <selected_names>
+chaperone install <selected_names>
 ```
 
 ### 8. Optional Extras
 
 Use a single `AskUserQuestion` with `multiSelect: true` to ask which optional extras to install:
 - **Install pre-commit hooks (recommended)** — Runs ruff format + ruff check automatically before each commit (uses the `pre-commit` package)
-- **Open documentation when finished** — Build and open the pipelines docs site in the browser
-- **Register Jupyter kernel** — Makes the pipelines venv available as a Jupyter kernel named "Pipelines"
+- **Open documentation when finished** — Build and open the Chaperone docs site in the browser
+- **Register Jupyter kernel** — Makes the Chaperone venv available as a Jupyter kernel named "Chaperone"
 
 Then execute the selected options:
 
@@ -230,14 +230,14 @@ sleep 1 && open http://127.0.0.1:8000
 **Jupyter kernel:**
 ```bash
 source .venv/bin/activate
-python -m ipykernel install --user --name pipelines --display-name "Pipelines"
+python -m ipykernel install --user --name chaperone --display-name "Chaperone"
 ```
 
 ### 9. Summary
 Summarize to the user the available tools:
 ```bash
 source .venv/bin/activate
-pipelines list-blocks
+chaperone list-blocks
 ```
 
 Then present what's possible, grouped into two categories:

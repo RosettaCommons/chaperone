@@ -1,6 +1,6 @@
-# Pipelines agent guide
+# Chaperone agent guide
 
-Pipelines connects structural-biology design, sequence, prediction, analysis,
+Chaperone connects structural-biology design, sequence, prediction, analysis,
 selection, caching, lineage, storage, and Slurm execution as reproducible
 dataframe-in/dataframe-out blocks. Act as a scientific design assistant: make
 the objective measurable, test the smallest informative experiment, learn from
@@ -26,8 +26,8 @@ missing, implement a focused helper or block with tests.
 ## Scientific work
 
 Evaluation and auto-research work starts from either user-provided thresholds
-or an existing Pipelines-compatible `score.py`/`scorer.py`. Turn thresholds into
-one tested `score.py`, using Pipelines blocks and scorer helpers, before
+or an existing Chaperone-compatible `score.py`/`scorer.py`. Turn thresholds into
+one tested `score.py`, using Chaperone blocks and scorer helpers, before
 iterating. Use that scorer unchanged for baselines and candidate arms. Keep hard
 thresholds separate from optional ranking signals and treat missing values as
 failures.
@@ -68,11 +68,11 @@ as ordinary run artifacts. Do not add a parallel bookkeeping format.
 Use engine chunking, caching, arrays, concurrency caps, dependencies, and
 compatible step chaining. GPU, CPU, and wall limits are ceilings, not targets.
 
-Use the available Pipelines monitor MCP for campaign monitoring. When the runtime
+Use the available Chaperone monitor MCP for campaign monitoring. When the runtime
 provides it, its tools are exposed as `campaign-monitor.*`; a standalone
-`pipelines monitor-mcp` server normally exposes them as `pipelines-monitor.*`.
+`chaperone monitor-mcp` server normally exposes them as `chaperone-monitor.*`.
 
-After Pipelines submits a standalone Slurm job, call the monitor's `wait` tool
+After Chaperone submits a standalone Slurm job, call the monitor's `wait` tool
 directly once; never wrap it in code, shell, or terminal tools and never monitor
 engine-managed inner jobs. Pass its Slurm job ID. Marker-only waits are also
 supported.
@@ -80,13 +80,13 @@ supported.
 For a long-running campaign driver, do not improvise `nohup`, `setsid`, shell
 backgrounding, or a terminal-managed process. Call the monitor's
 `launch_and_wait` tool once with an argv array, the driver cwd, and at least one
-completion marker. The Pipelines monitor launches without a shell, confines the
+completion marker. The Chaperone monitor launches without a shell, confines the
 cwd, logs, and marker paths to the workspace, and returns only on completion,
 failure, process exit, or an explicit timeout. Both monitor tools sleep outside
 the model loop and create no registrations, receipts, cursors, threads, or
 monitor files. Never poll.
 
-The first argv entry must be the active Pipelines Python/CLI or a workspace
+The first argv entry must be the active Chaperone Python/CLI or a workspace
 executable; wrappers such as `/usr/bin/env` are rejected. Put campaign stage or
 scale selection in ordinary driver arguments/defaults rather than prefixing
 environment assignments to the launch command.
@@ -99,7 +99,7 @@ for per-step row counts, or `candidates` for passing design IDs. The candidate
 view returns only IDs and verdicts unless `rank_by` names a permitted public
 metric column; set `direction` to `min` or `max` for that metric. Use
 `max_items` between 1 and 20 to request only the records needed for the current
-decision. The tool reads ordinary Pipelines artifacts, creates no campaign
+decision. The tool reads ordinary Chaperone artifacts, creates no campaign
 state, and is not a polling mechanism.
 
 Use CatCIF and engine cleanup for large structure sets. Remove only replaceable

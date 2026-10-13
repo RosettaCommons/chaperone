@@ -79,10 +79,10 @@ Common pattern: `apo_filter` gates sequence selection (apo fold stability) but `
 
 ### Step 2: Extract ordered sequences
 
-Extract protein sequences from the final filter's output to build the "ordered" set. Run via Bash using the pipelines venv:
+Extract protein sequences from the final filter's output to build the "ordered" set. Run via Bash using the Chaperone venv:
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import json, os, sys
 from chaperone.data.handler import PipelineDataHandler
 
@@ -129,7 +129,7 @@ For each remaining prediction step, read its output parquet to get the **selecte
 | OpenFold3 | `*_confidences_aggregated.json` |
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import os, re, json, yaml
 import polars as pl
 
@@ -261,7 +261,7 @@ Report the archive size to the user.
 Main process reads parquets (metrics + paths in memory), then `Pool.map` dispatches sequence extraction to workers.
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import json, os, csv, yaml
 from multiprocessing import Pool
 import polars as pl
@@ -399,7 +399,7 @@ print(f'  Ordered: {n_ordered} / {len(rows)}, failed: {n_failed}')
 After the main `reference.csv` is written, emit the ordered subset: one row / CIF per **unique protein sequence** that passed the order gate. Dedup is required because the same AA sequence can appear in multiple holo-final rows (e.g. two MPNN siblings from different RFD3 backbones converging on the same sequence).
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import os, csv, shutil, polars as pl
 
 rundir = '{rundir}'
@@ -490,7 +490,7 @@ Build a human-readable markdown summary. Collect information from multiple sourc
 Read each step's output parquet row count:
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import json, os
 import polars as pl
 
@@ -514,7 +514,7 @@ for step in manifest['steps']:
 Check if `{rundir}/.pipeline/conf.yaml` exists. If not, generate it:
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 from chaperone import ExecutionEngine
 e = ExecutionEngine(rundir='{rundir}', reinit=False)
 e.to_yaml()
@@ -538,7 +538,7 @@ Extract filter definitions from **all filter steps** so the campaign can be exac
 Read the script with the Read tool and extract every `MetricFilter(...)` instance along with the filter key it's assigned to. Format as a structured table per filter step:
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import ast, re, json, os, yaml
 
 # Read conf.filter.yaml for the last filter step
@@ -578,7 +578,7 @@ Include ALL filters in the summary under a dedicated "## Filter Thresholds" sect
 Extract from manifest execution summaries:
 
 ```bash
-source {pipelines_repo}/.venv/bin/activate && python3 -c "
+source {chaperone_repo}/.venv/bin/activate && python3 -c "
 import json, os
 
 rundir = '{rundir}'

@@ -1,6 +1,6 @@
 ---
 name: blocks-reference
-description: Choose and compare Pipelines blocks by scientific task, modality, speed, cost, evidence quality, and known limitations. Use when an agent needs a tool recommendation, a design-funnel block, an oracle or metric choice, an alternative to a slow block, or a quick inventory of available design, sequence, prediction, analysis, energy, and workflow blocks.
+description: Choose and compare Chaperone blocks by scientific task, modality, speed, cost, evidence quality, and known limitations. Use when an agent needs a tool recommendation, a design-funnel block, an oracle or metric choice, an alternative to a slow block, or a quick inventory of available design, sequence, prediction, analysis, energy, and workflow blocks.
 ---
 
 # Blocks Reference

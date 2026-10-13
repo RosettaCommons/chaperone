@@ -10,7 +10,7 @@ the calibration data are held out in the private tree.
 
 In Harbor runs the scorer receives `trial/controller/run_meta.json`, generated
 after the agent-side guarded Slurm registry closes. It contains actual
-allocation time reconciled from `sacct` (with Pipelines `.execution` records as
+allocation time reconciled from `sacct` (with Chaperone `.execution` records as
 a fallback), so held-out scoring jobs are excluded. Submission-provided cost,
 lineage, terminal-report, and public-score files are ignored. Missing transcript
 or incomplete accounting is recorded as an audit warning and never suppresses

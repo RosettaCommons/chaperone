@@ -16,7 +16,7 @@ scoring/                 submission contract, gates and reporting shared by scor
 evals_task/<task>/       prompt.md and inputs/ (what the agent receives), score/
                          (held-out scorer) and example/ (reference submission)
 evals_task/audit_hints.json   fingerprints the sanitizer must never find in a bundle
-pyproject.toml           depends on the checkout's `pipelines` package by path and
+pyproject.toml           depends on the checkout's `chaperone` package by path and
                          adds the controller's dependencies
 ```
 
@@ -67,7 +67,7 @@ tree first.
 
 The controller lives inside the Chaperone checkout it evaluates and shares its
 environment. Bootstrap installs this folder's project, which brings in the
-checkout's `pipelines` package (editable) and the controller's dependencies, on top
+checkout's `chaperone` package (editable) and the controller's dependencies, on top
 of what is already in the checkout's `.venv`, and links the controller to it.
 
 ```bash
@@ -77,7 +77,7 @@ export OPENAI_API_KEY=...       # or use an existing `codex login`
 ```
 
 The submission host needs `uv`, Apptainer, `sbatch`, `squeue` and `sacct`.
-Set `PIPELINES_REPO` to evaluate a different Chaperone checkout than the one
+Set `CHAPERONE_REPO` to evaluate a different Chaperone checkout than the one
 containing this directory.
 
 ## Run an evaluation
@@ -88,7 +88,7 @@ cd src/chaperone-evals/harbor-controller
 # harness arm: the agent gets this checkout
 ./run_eval.py biotin_binder_design \
   --arm harness \
-  --pipelines-path /absolute/path/to/chaperone \
+  --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
   --run-name biotin-harness-smoke

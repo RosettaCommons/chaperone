@@ -1,12 +1,12 @@
 ---
 name: design
-description: Comprehensive planning agent for converting any input, user specification or otherwise into clean, tested, reproducible and pipelines code. Use this skill whenever a user mentions creating a pipeline, or designing a protein. For example; converting an existing notebook into a comprehensive pipeline plan, for interactively asking questions about an existing design specification, or for "How can I design this protein?"
+description: Comprehensive planning agent for converting any input, user specification or otherwise into clean, tested, reproducible and Chaperone code. Use this skill whenever a user mentions creating a pipeline, or designing a protein. For example; converting an existing notebook into a comprehensive pipeline plan, for interactively asking questions about an existing design specification, or for "How can I design this protein?"
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Task", "Edit"]
 ---
 
 # Pipeline Builder Skill
 
-Comprehensive planning agent for converting any input, user specification or otherwise into clean, tested, reproducible and pipelines code.
+Comprehensive planning agent for converting any input, user specification or otherwise into clean, tested, reproducible and Chaperone code.
 
 This skill is divided into two stages:
 - Planning phase: interactively asking the user relevant questions about their task
@@ -63,14 +63,14 @@ The standard recommended Hybrid setup:
 ```
 
 **Question 4 — Conversion exactness** (header: "Conversion", only ask if a notebook/existing code is being converted):
-- `Modernize` — Port to standard pipelines blocks and patterns (Recommended)
+- `Modernize` — Port to standard Chaperone blocks and patterns (Recommended)
 - `Preserve` — Keep custom logic as close to original as possible
 
 ## Recommendations for 1. - Implementing code.
 
 **Notebook conversion recommendations:**
 - Use the `/notebook-editing` skill to effectively read the notebooks (using `jupytext`)
-- Use Bash(`pipelines list-blocks`) to see available blocks you can use
+- Use Bash(`chaperone list-blocks`) to see available blocks you can use
 - Document which parameters from the messy notebook map to block parameters
 - Create an analysis table to map each cell or cell group to it's function (see below)
 
@@ -88,7 +88,7 @@ The standard recommended Hybrid setup:
 | ...           | ...  | ...       | ...           |
 
 **Subagent use:** You should specify in your plan whether and where to spin off subagents. 
-If the user inputs / notebook has multiple pieces of custom software to convert into pipelines blocks and test, you should plan to spin off a subagent for each block.
+If the user inputs / notebook has multiple pieces of custom software to convert into chaperone blocks and test, you should plan to spin off a subagent for each block.
 For example, if the user's pipeline has / requires "RPXDock" and "BoltzGen" - both of which have complicated input and output streams, and will require testing, you can plan to implement both in the background in parallel with 2 subagents working on the output pipeline.
 This will speed things up significantly.
 

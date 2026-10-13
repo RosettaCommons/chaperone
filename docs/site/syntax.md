@@ -1,6 +1,6 @@
-# Pipelines Syntax Reference
+# Chaperone Syntax Reference
 
-This document provides detailed syntax and usage patterns for the pipelines library.
+This document provides detailed syntax and usage patterns for the Chaperone library.
 
 ## ExecutionEngine
 
@@ -25,7 +25,7 @@ ExecutionEngine(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `rundir` | str \| Path \| None | `None` | Output directory. Falls back to `PIPELINES_RUNDIR` env var / `.env` file; relative paths resolve under `PIPELINES_ROOT` (default `/net/scratch/{user}/pipelines`) |
+| `rundir` | str \| Path \| None | `None` | Output directory. Falls back to `CHAPERONE_RUNDIR` env var / `.env` file; relative paths resolve under `CHAPERONE_ROOT` (default `/net/scratch/{user}/chaperone`) |
 | `reinit` | bool | `True` | `True` = fresh manifest (disk-cached parquets still reused); `False` = load existing manifest to resume/extend a run |
 | `run_args_default` | RuntimeArgs \| dict \| None | `None` | Fallback `RuntimeArgs` when `run()` is called without `run_args` |
 | `job_args_default` | JobArgs \| dict \| None | `None` | Fallback `JobArgs` when `run()` is called without `job_args` |
@@ -78,7 +78,7 @@ engine.run(
 
 ### Compute Backend & Mode Resolution
 
-The `PIPELINES_COMPUTE_BACKEND` setting determines the default execution mode when `RuntimeArgs.mode` is not explicitly provided:
+The `CHAPERONE_COMPUTE_BACKEND` setting determines the default execution mode when `RuntimeArgs.mode` is not explicitly provided:
 
 | Backend | Default Mode | Description |
 |---------|-------------|-------------|
@@ -197,7 +197,7 @@ run_args = RuntimeArgs(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `mode` | str | `"cluster_compiled"` | Execution mode (see below). When not set explicitly, resolved from `PIPELINES_COMPUTE_BACKEND` |
+| `mode` | str | `"cluster_compiled"` | Execution mode (see below). When not set explicitly, resolved from `CHAPERONE_COMPUTE_BACKEND` |
 | `recompile` | bool | `False` | Force recompilation even if outputs exist (forces `mode="local"`) |
 | `allow_errors` | bool | `False` | Continue execution if some chunks fail |
 | `force_exec` | bool | `False` | Force full re-execution (prepare, execute, compile), bypassing all step and chunk caches. Unlike `recompile`, preserves the current execution mode |
@@ -503,10 +503,10 @@ CLI flags (--rfd3.n_batches=50)  >  script kwargs (n_batches=10)  >  block Pydan
 Scripts can use this shebang to run without manually activating the venv:
 
 ```python
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 from chaperone import init_cli, ExecutionEngine
 init_cli()
 ...
 ```
 
-Set `PIPELINES_REPO` in your shell profile to point to the pipelines repository root, or run from the repo directory.
+Set `CHAPERONE_REPO` in your shell profile to point to the Chaperone repository root, or run from the repo directory.

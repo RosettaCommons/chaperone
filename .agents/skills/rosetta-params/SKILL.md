@@ -27,7 +27,7 @@ A `.params` file tells Rosetta how to understand a non-standard residue (ligand)
 
 For each ligand, you technically only need **one params file** unless the ligand undergoes conformational changes that significantly alter charge/proton distribution.
 
-### Pipelines Integration
+### Chaperone Integration
 
 Params files used with the `ligand_ddg` block are stored in `src/blocks/utils/params/` and auto-discovered at runtime. To add a new ligand:
 
@@ -35,7 +35,7 @@ Params files used with the `ligand_ddg` block are stored in `src/blocks/utils/pa
 2. Place it in `src/blocks/utils/params/<LIGAND_CODE>.params`
 3. It will be automatically available via `ligand_name="<LIGAND_CODE>"`
 
-Override the params directory with `PIPELINES_LIGAND_PARAMS_DIR` env var.
+Override the params directory with `CHAPERONE_LIGAND_PARAMS_DIR` env var.
 
 ---
 
