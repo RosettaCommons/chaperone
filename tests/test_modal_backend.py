@@ -300,11 +300,23 @@ def test_live_modal_copy_and_cache(tmp_path, inputs, gpu):
     os.environ.get("CHAPERONE_RUN_MODAL_MPNN") != "1",
     reason="Opt-in Modal MPNN image build/inference",
 )
-def test_live_modal_public_mpnn(tmp_path, monkeypatch):
+@pytest.mark.parametrize("gpu", [False, True], ids=["cpu", "gpu"])
+def test_live_modal_public_mpnn(tmp_path, monkeypatch, gpu):
     from biotite.structure import Atom, array
     from blocks.networks import mpnn
     from chaperone.data.schema import get_sequences_from_row
     from chaperone.io import write_pdb
+
+    class CheckedGPUMPNN(mpnn.ClassicMPNNBlock):
+        def create_command(self, handler, sandbox_dir, chunk_id):
+            command = super().create_command(handler, sandbox_dir, chunk_id)
+            probe = (
+                "import torch; from pathlib import Path; "
+                "assert torch.cuda.is_available(); "
+                "assert torch.ones(1, device='cuda').sum().item() == 1; "
+                f"Path({str(sandbox_dir / 'gpu.txt')!r}).write_text(torch.cuda.get_device_name())"
+            )
+            return ["python", "-c", probe, "&&", *command]
 
     atoms = []
     for residue in range(1, 9):
@@ -330,13 +342,21 @@ def test_live_modal_public_mpnn(tmp_path, monkeypatch):
     engine = ExecutionEngine(
         tmp_path / "run", run_args_default={"mode": "modal", "max_retries": 0}
     )
-    block = mpnn.ClassicMPNNBlock(device="cpu", num_seq_per_pdb=2)
+    block_type = CheckedGPUMPNN if gpu else mpnn.ClassicMPNNBlock
+    block = block_type(device=None if gpu else "cpu", num_seq_per_pdb=2)
     data = PipelineDataHandler.from_paths([path], name="input")
-    result = engine.run(block, data=data)
+    resources = {"gres": "gpu:1"} if gpu else {}
+    result = engine.run(block, data=data, job_args=resources)
     assert len(result) == 2
     for row in result._df.to_dicts():
         sequences = get_sequences_from_row(row)
         assert set(sequences) == {"Z"}
         assert len(sequences["Z"]) == 8
         assert set(sequences["Z"]) <= set("ACDEFGHIKLMNPQRSTVWY")
-    assert len(engine.run(block, data=data)) == 2
+    assert len(engine.run(block, data=data, job_args=resources)) == 2
+    (record,) = load_execution_records(tmp_path / "run" / "mpnn")
+    assert record.backend == "modal"
+    assert record.allocated_gpus == int(gpu)
+    assert record.status == "succeeded"
+    if gpu:
+        assert next((tmp_path / "run").rglob("gpu.txt")).read_text().strip()

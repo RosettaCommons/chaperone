@@ -101,8 +101,9 @@ the current Chaperone block lifecycle and Modal's Sandbox filesystem API.
 
 On 2026-10-13, a live CPU run in the Baker Laboratory workspace passed input
 upload, remote file copying, output download, lineage and disk-cache replay.
-The GPU test reached Modal, which rejected allocation because the workspace
-required a payment method. This is not a passing GPU validation.
+GPU allocation initially required a payment method. After workspace billing
+was enabled, the A10G smoke passed remote execution, output download and cache
+replay, and reported an NVIDIA A10G.
 
 The public ProteinMPNN image also built and ran successfully on a Modal CPU
 Sandbox. It generated two eight-residue sequences, preserved the input chain
@@ -111,6 +112,11 @@ Dockerfile `RUN` serialization. Runtime and container regression tests passed
 (89 checks), as did the strict documentation build. Execution records identify
 the Modal Sandbox and count its allocation, rather than inheriting GPU counts
 or Slurm job IDs from the controller.
+
+The public MPNN GPU smoke subsequently passed on A10G, including a CUDA tensor
+operation in the model image, two eight-residue sequences from its default
+LigandMPNN checkpoint, preserved chain ID and cache replay. This validates the
+Modal GPU execution path; Foundry RFD3/RF3 GPU inference on Modal remains untested.
 
 The ordinary regression suite performs no cloud submissions. Live tests are
 opt-in and may incur Modal charges:
@@ -121,5 +127,5 @@ CHAPERONE_RUN_MODAL_MPNN=1 pytest tests/test_modal_backend.py -m cloud -k public
 ```
 
 The first command tests CPU and GPU copies; the second builds the public MPNN
-image and checks two CPU-generated sequences and cache replay. Synthetic inputs
+image and checks CPU and GPU sequence generation and cache replay. Synthetic inputs
 exercise pipeline functionality, not protein design quality.
