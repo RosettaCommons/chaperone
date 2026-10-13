@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+import numpy as np
+
 from atomworks.io.utils.chain import create_chain_id_generator
 from pydantic import BaseModel, Field, model_validator
 
@@ -849,8 +851,17 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"{stem}.pdb"
         pdb = PDBFile()
+        staged = rename.rename(atoms)
+        # CIF readers represent absent optional columns as NaN. PDB cannot
+        # encode NaN; use the writer's absent-column defaults on this staging
+        # copy only. Coordinates and supplied finite annotations stay untouched.
+        for annotation, default in (("b_factor", 0.0), ("occupancy", 1.0)):
+            if annotation in staged.get_annotation_categories():
+                values = staged.get_annotation(annotation).copy()
+                values[np.isnan(values)] = default
+                staged.set_annotation(annotation, values)
         try:
-            pdb.set_structure(rename.rename(atoms))
+            pdb.set_structure(staged)
         except Exception as error:
             raise ValueError(
                 f"Portable MPNN requires PDB-representable inputs: {input_path}. "

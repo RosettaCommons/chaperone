@@ -42,6 +42,81 @@ file with that permission; the counts above include the passing rerun. On macOS,
 canonical temporary directory such as `TMPDIR=/private/tmp` to avoid `/var` versus
 `/private/var` path differences in test fixtures.
 
+## CoreWeave clean-install check — 2026-10-13
+
+A separate checkout and new Python 3.12.10 virtual environment were installed
+with `uv pip install -e '.[all]' --override overrides.txt`, without inheriting
+system packages. All 197 dependencies installed and `uv pip check` passed.
+The driver resolved AtomWorks 3.0.1, Biotite 1.6.0, Torch 2.14.1 and Submitit
+1.5.4. The scientific container has its own dependency set. After the two repairs
+below, the full framework suite passed: **647 passed, 6 skipped**. Ruff checks
+on changed Python files and the strict MkDocs build also passed.
+
+Two clean-install regressions were repaired: MPNN PDB staging now supplies
+PDB defaults for missing optional CIF B-factor/occupancy values on a copy, and
+partial runtime dictionaries preserve the engine's configured execution mode
+and retry/concurrency policy. Explicit `RuntimeArgs` objects continue to replace
+the full runtime configuration. A cache-only override previously triggered an
+unintended Slurm submission when running on a host with Slurm installed.
+
+The CPU functional smoke passed locally and through Slurm, including real
+copy/RMSD execution, strict missing-metric rejection, required-structure
+selection, CatCIF round trips, native sequences and cache replay. Requests used
+one CPU, 4 GB RAM, five minutes and no GPU; Slurm selected its default `hpc-mid`
+partition. Copy and archive-copy records report zero allocated GPUs. No IPD site
+file, `cpu` partition, GPU feature constraint or GRES size alias was needed.
+
+The tested cluster exposes `gpu:h200:8` with `select/cons_tres`; a generic
+`--gres=gpu:1` request allocated one H200 (driver 595.71.05). These observations
+are not defaults for every CoreWeave installation. Inspect a new site's
+partitions/GRES and choose its shared paths:
+
+```bash
+sinfo -o '%P %G %l'
+export CHAPERONE_SITE=portable
+export CHAPERONE_CONTAINER_BACKEND=apptainer
+export CHAPERONE_CONTAINER_DIRS=/shared/chaperone/containers
+export CHAPERONE_MPNN_CONTAINER=public
+# Optional when the Slurm default is unsuitable:
+# export CHAPERONE_GPU_PARTITION=your-gpu-partition
+# export CHAPERONE_GRES_MAP='{"default":"gpu:h200:1"}'
+```
+
+Portable GPU jobs omit the partition and request `gpu:1` unless configured
+otherwise. Explicit site mappings remain available for heterogeneous hardware;
+we did not introduce a CoreWeave preset or infer resource policy from GPU names.
+
+The login node rejected Apptainer `%post` with a mount-propagation permission
+error. Run container installation inside an approved compute allocation on this
+cluster, using the same shared image directory. The fresh public LigandMPNN
+build there completed with Torch 2.11.0/CUDA 12.8 and passed package
+compatibility, six checksum/load gates and imports.
+
+To test public packing without Foundry or external checkpoint directories, first
+run the CPU smoke above, then use its two copied structures:
+
+```bash
+# Omit --local: one engine-managed Slurm GPU job, capped at 15 minutes.
+python tests/public_mpnn_packing_smoke.py \
+  --inputs=/absolute/path/to/cpu-smoke/pipeline/copy/output.parquet \
+  --test --rundir=/absolute/path/to/new-packing-smoke
+```
+
+This helper requests the configured GPU partition and large-class GRES explicitly
+because classic MPNN otherwise defaults to CPU. It checks eight packed structures,
+fixed residues, restored multi-character chains, parent lineage, finite coordinates,
+one allocated GPU and cache replay. `--local` instead uses an existing allocation.
+
+The fresh-image Slurm packing check **passed**: two 24-residue inputs × two
+sequences × two packs produced all eight structures, with fixed residues and
+`X1` chain IDs preserved, valid lineage and finite coordinates. Execution
+recorded **11.2 GPU seconds** on one H200; reopening the engine replayed disk
+cache without another submission or changed output timestamps. The CPU and GPU
+checks used normal block algorithms and retained ordinary pipeline artifacts.
+This is execution/data-integrity evidence, not a design-quality benchmark.
+Foundry remains on its prior tested container revision and AtomWorks 2.2.1 pin;
+the separate upstream AtomWorks 3 port is not claimed as validated by this run.
+
 ## GPU and build matrix
 
 The results below cover a subset of the scientific runtimes and two eval
@@ -53,7 +128,7 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. Six official checkpoints passed checksums and load checks. Public side-chain packing has local contract tests but no completed GPU check. No equivalence claim versus other backends. |
+| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. Six official checkpoints passed checksums and load checks. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
 | Legacy MPNN (`modelhub_portable`) | Passed with authorized private-source access | Complete PPI example executed: RFD3 → initial filter (1/1) → fresh MPNN → RF3 → RMSD → final filter (0/1). The final design failed both ipTM and RMSD gates. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
 | Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with public MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
@@ -123,12 +198,15 @@ Do not interpret a CPU substitution as successful GPU validation.
 ## Repeat the CPU functional smoke
 
 This check uses actual installed framework blocks, one CPU worker, 24 residues
-from a bundled structure and three short sequences. It launches no Slurm jobs
-and performs no model inference. Run with the installed framework Python and a
+from a bundled structure and three short sequences. By default it runs locally;
+`--mode=slurm` runs compiled blocks as engine-managed CPU jobs. It performs no
+model inference. Run with the installed framework Python and a
 new, empty output directory (the repository is needed only for the script/input):
 
 ```bash
 python tests/cpu_functional_smoke.py --repo . --rundir /absolute/path/to/cpu-smoke
+# Shared Python installation; CPU partition comes from site settings or Slurm.
+python tests/cpu_functional_smoke.py --mode=slurm --repo . --rundir /absolute/path/to/cpu-slurm-smoke
 ```
 
 The local run passed: real copy execution, disk resume with unchanged cache

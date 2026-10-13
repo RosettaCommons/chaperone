@@ -1,6 +1,9 @@
-"""Exercise installed Chaperone on real CPU inputs, without mocks or schedulers.
+"""Exercise installed Chaperone on real CPU inputs, without mocks or model containers.
 
     python tests/cpu_functional_smoke.py --repo . --rundir /new/empty/smoke-dir
+
+Add --mode=slurm to validate a shared installation on compute nodes. Resource
+requests use the configured CPU partition, or the cluster default when unset.
 
 Uses 24 residues from a bundled structure, two copies and three short sequences.
 Preserves ordinary engine manifests, execution records, structures and tables.
@@ -18,6 +21,7 @@ from biotite.structure.io.pdb import PDBFile
 from blocks import Blocks
 from chaperone import ExecutionEngine, PipelineDataHandler, get_settings
 from chaperone.data.schema import SELECTIONS
+from chaperone.execution_tracking import load_execution_records
 from chaperone.io import parse_to_atom_array
 
 
@@ -34,6 +38,7 @@ def main():
         "--repo", type=Path, default=Path(__file__).resolve().parents[1]
     )
     parser.add_argument("--rundir", required=True, type=Path)
+    parser.add_argument("--mode", choices=("local", "slurm"), default="local")
     args = parser.parse_args()
     root = args.rundir.resolve()
     if root.exists() and any(root.iterdir()):
@@ -52,13 +57,14 @@ def main():
     pdb.write(input_path)
     inputs = PipelineDataHandler.from_paths([str(input_path)], name="reference")
 
-    # Explicit mode and resources prevent site defaults from launching a job.
-    get_settings().CHAPERONE_COMPUTE_BACKEND = "local"
-    runtime = dict(mode="local", max_workers=1, max_retries=0, use_local_gpus=False)
+    # Explicit mode prevents accidental submission; Slurm uses site CPU defaults.
+    get_settings().CHAPERONE_COMPUTE_BACKEND = args.mode
+    runtime = dict(mode=args.mode, max_workers=1, max_retries=0, use_local_gpus=False)
+    resources = dict(cpus_per_task=1, mem_gb=4, time_limit="00:05:00")
     engine = ExecutionEngine(
         rundir=root / "pipeline",
         run_args_default=runtime,
-        job_args_default=dict(cpus_per_task=1, partition="cpu", gres=""),
+        job_args_default=resources,
     )
     copied = engine.run(Blocks["copy"](n_multiply=2), data=inputs)
     assert len(copied) == 2
@@ -69,13 +75,17 @@ def main():
     summary = asdict(engine.manifest.execution_totals())
     assert summary["successful_records"] > 0
     assert summary["failed_records"] == summary["gpu_seconds"] == 0
+    records = load_execution_records(engine.rundir / "copy")
+    assert records and all(record.backend == args.mode for record in records)
+    if args.mode == "slurm":
+        assert all(record.job_id and record.allocated_gpus == 0 for record in records)
 
     # Resume from disk in another engine; a real cache hit preserves artifacts
     # and execution accounting rather than rerunning a fast copy unnoticed.
     resumed = ExecutionEngine(
         rundir=engine.rundir,
         run_args_default=runtime,
-        job_args_default=dict(cpus_per_task=1, partition="cpu", gres=""),
+        job_args_default=resources,
     )
     assert len(resumed.manifest) == len(engine.manifest)
     cached = resumed.run(Blocks["copy"](n_multiply=2), data=inputs)
@@ -86,7 +96,7 @@ def main():
         copied.unpack(all=True, to_pandas=False)
     )
     print(
-        "PASS real local execution, disk resume and unchanged cache accounting",
+        f"PASS real {args.mode} execution, disk resume and unchanged cache accounting",
         flush=True,
     )
 

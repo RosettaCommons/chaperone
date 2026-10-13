@@ -175,3 +175,28 @@ def test_public_rejects_ambiguous_residue_bias_before_execution(tmp_path):
     block = mpnn.ClassicMPNNBlock(args={"bias_AA_per_residue": str(bias)})
     with pytest.raises(ValueError, match="single-character input chain IDs"):
         block.create_command(input_handler(tmp_path), tmp_path / "chunk", 0)
+
+
+def test_portable_pdb_missing_optional_fields_preserves_source_and_finite_values(tmp_path):
+    import numpy as np
+    from biotite.structure.io.pdb import PDBFile
+
+    source = next(input_handler(tmp_path).get_data(load=True)).atom_array
+    source.set_annotation("b_factor", np.array([np.nan, 12.5] * (len(source) // 2)))
+    source.set_annotation("occupancy", np.array([0.5, np.nan] * (len(source) // 2)))
+    before = source.copy()
+    path = mpnn.ClassicMPNNBlock._write_portable_pdb(
+        "source.cif", source, mpnn.ChainRename.for_atoms(source), tmp_path / "staged",
+    )
+    written = PDBFile.read(path).get_structure(model=1, extra_fields=["b_factor", "occupancy"])
+    np.testing.assert_allclose(written.coord, source.coord, atol=1e-3)
+    np.testing.assert_allclose(written.b_factor, [0.0, 12.5] * (len(source) // 2))
+    np.testing.assert_allclose(written.occupancy, [0.5, 1.0] * (len(source) // 2))
+    np.testing.assert_array_equal(source.b_factor, before.b_factor)
+    np.testing.assert_array_equal(source.occupancy, before.occupancy)
+    np.testing.assert_array_equal(source.chain_id, before.chain_id)
+    source.coord[0, 0] = np.nan
+    with pytest.raises(ValueError, match="PDB-representable"):
+        mpnn.ClassicMPNNBlock._write_portable_pdb(
+            "invalid.cif", source, mpnn.ChainRename.for_atoms(source), tmp_path / "invalid",
+        )
