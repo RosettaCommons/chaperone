@@ -43,7 +43,7 @@ been built or exercised. Validate one small workload on your cluster before scal
 | Recipes | Installation notes |
 |---|---|
 | `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to legacy MPNN is not established here. |
-| `ligandmpnn_public` | Public MIT-licensed `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with six bundled, checksum-verified public checkpoints. The default backend outside a legacy site profile; source build/GPU validation is still in progress. |
+| `ligandmpnn_public` | Public MIT-licensed `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with six bundled, checksum-verified public checkpoints. The default backend outside a legacy site profile; see the [validation record](release-validation.md) for completed build/GPU checks. |
 | `modelhub_portable` | The legacy backend depends on private `baker-laboratory/fused_mpnn`. Authorized repository access is required to rebuild it. Select `portable` explicitly or retain a supplied legacy site weights profile. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
@@ -57,6 +57,14 @@ Docker builds use an isolated build context containing the recipe's declared
 scripts and source checkouts. Apptainer builds use the same declared inputs.
 Missing institutional default mounts are omitted for portable recipes; explicit
 input mounts and mounts on supplied existing images remain required.
+
+Build on a host that permits Apptainer's build namespaces. A cluster login node
+can permit Slurm submission while rejecting `%post` with `Failed to set mount
+propagation: Permission denied`. On the tested CoreWeave cluster, the same
+`chaperone install` command succeeded past this stage inside a compute allocation.
+Use your site's approved build host or compute allocation and a shared
+`CHAPERONE_CONTAINER_DIRS` directory. Changing GPU model names or adding CPU
+resources does not repair a login-node namespace restriction.
 
 Runs mount their active run directory and the working directory where the engine
 was created. Launch from the project root, or set

@@ -186,9 +186,17 @@ class ExecutionEngine:
         return "\n".join(lines)
 
     def _apply_defaults(self, run_args, job_args):
-        """Apply engine-level defaults when caller didn't provide explicit args."""
+        """Apply defaults, retaining runtime policy under partial dict overrides."""
         if run_args is None and self.run_args_default is not None:
             run_args = self.run_args_default
+        elif isinstance(run_args, dict) and self.run_args_default is not None:
+            defaults = self.run_args_default
+            if dataclasses.is_dataclass(defaults):
+                defaults = {
+                    field.name: getattr(defaults, field.name)
+                    for field in dataclasses.fields(defaults)
+                }
+            run_args = {**defaults, **run_args}
         if job_args is None and self.job_args_default is not None:
             job_args = self.job_args_default
         return run_args, job_args
