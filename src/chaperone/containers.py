@@ -54,6 +54,36 @@ _UNSAFE_RUNDIR_BINDS = frozenset(
     )
 )
 
+_RESOLVER_PATHS = (
+    # Prefer upstream nameservers over systemd-resolved's loopback stub.
+    Path("/run/systemd/resolve/resolv.conf"),
+    Path("/etc/resolv.conf"),
+)
+
+
+def _runtime_resolver_bind(binds: list[tuple[str, str]]) -> tuple[str, str] | None:
+    """Keep DNS available in contained Apptainer tools with one read-only file.
+
+    This also preserves the resolver already assigned to an outer evaluation
+    container. It grants no directory or scientific-asset access. An explicit
+    mount at the resolver (or an enclosing directory) owns that configuration.
+    """
+    target = Path("/etc/resolv.conf")
+    for _, destination in binds:
+        destination_path = Path(str(destination).split(":", 1)[0])
+        if destination_path.is_absolute() and target.is_relative_to(destination_path):
+            return None
+    for candidate in _RESOLVER_PATHS:
+        try:
+            if candidate.is_file() and candidate.stat().st_size > 0:
+                return str(candidate.resolve(strict=True)), str(target) + ":ro"
+        except OSError:
+            # Optional host paths can be missing, inaccessible or unmounted.
+            # Offline tools still work without a resolver; do not bind a
+            # nonexistent source or substitute an unrelated host directory.
+            continue
+    return None
+
 
 @cache
 def _supports_private_mount_namespace() -> bool:
@@ -183,18 +213,23 @@ def _runtime_script_binds(settings: object, args: tuple[str, ...]) -> list[tuple
     if os.environ.get("HARBOR_HOST_WORKSPACE") or _runtime_setting(settings, "_HARBOR_HOST_WORKSPACE"):
         return []
     covered = [
-        Path(bind[0]).resolve()
+        Path(destination)
         for bind in (_runtime_rundir_bind(settings), _runtime_workspace_bind(settings))
         if bind is not None
+        for _, destination in _runtime_bind_aliases(bind)
     ]
     mounts = []
     for argument in args:
         script = Path(argument)
         if script.is_absolute() and script.suffix in {".py", ".sh"} and script.is_file():
             directory = _checked_runtime_path(script.parent, label="script directory")
-            if any(directory.resolve().is_relative_to(root) for root in covered):
-                # A read-only bind of the same directory would shadow the
-                # writable workspace or run bind already present.
+            if any(directory.resolve().is_relative_to(root.resolve()) for root in covered):
+                if not any(directory.is_relative_to(root) for root in covered):
+                    # The workspace may have been captured from a resolved cwd
+                    # (/mnt/net) while the wrapper retains /net. Expose that
+                    # exact alias with the workspace's existing writable access.
+                    mounts.append((str(directory), str(directory)))
+                # Never add a read-only resolved alias over a writable workspace.
                 continue
             for source, destination in _runtime_bind_aliases((str(directory), str(directory))):
                 mounts.append((source, destination + ":ro"))
@@ -436,6 +471,9 @@ class Image:
                 cmd.extend(["-e", f"{key}={val}"])
             cmd.append(image_ref)
         else:
+            resolver_bind = _runtime_resolver_bind(all_binds)
+            if resolver_bind is not None:
+                all_binds.append(resolver_bind)
             private_namespace = _supports_private_mount_namespace()
             apptainer_cmd = [
                 "apptainer",

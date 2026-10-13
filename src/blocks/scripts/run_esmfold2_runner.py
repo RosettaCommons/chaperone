@@ -136,11 +136,13 @@ def main() -> int:
     print(f"[setup] model ready in {time.time() - t0:.0f}s", flush=True)
 
     rows = []
+    failed = 0
     for k, spec_file in enumerate(spec_files, 1):
-        spec = json.loads(spec_file.read_text())
-        name = spec.get("name", spec_file.stem)
-        length = _seq_length(spec)
+        name = spec_file.stem
         try:
+            spec = json.loads(spec_file.read_text())
+            name = spec.get("name", name)
+            length = _seq_length(spec)
             spi = _build_input(spec, builder_types)
             t = time.time()
             result = builder.fold(
@@ -175,6 +177,7 @@ def main() -> int:
                 flush=True,
             )
         except Exception as e:  # noqa: BLE001 - record failure row, keep going
+            failed += 1
             print(f"[{k}/{len(spec_files)}] {name}: FAILED -> {e!r}", flush=True)
             rows.append((name, -1, float("nan"), float("nan"), float("nan")))
 
@@ -187,6 +190,9 @@ def main() -> int:
 
     n_ok = len([r for r in rows if r[1] > 0])
     print(f"[done] wrote {n_ok} structures + {summary}")
+    if failed:
+        print(f"ERROR: {failed}/{len(spec_files)} predictions failed", file=sys.stderr)
+        return 1
     return 0
 
 

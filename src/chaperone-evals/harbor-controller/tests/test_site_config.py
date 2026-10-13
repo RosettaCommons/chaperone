@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from types import SimpleNamespace
 
 import pytest
 from site_config import get_site, configure_site, policy_instructions
@@ -154,6 +155,57 @@ def test_wrapper_uses_external_python_assets_and_settings(monkeypatch, tmp_path)
     assert "/projects/ml/" not in text and "/opt/pipelines/" not in text
 
 
+@pytest.mark.parametrize("profile", ["portable", "digs"])
+def test_trial_uses_same_writable_af3_cache_in_agent_and_worker(monkeypatch, tmp_path, profile):
+    """A site cache under read-only assets must not shadow the writable trial."""
+    image = tmp_path / "agent.sif"
+    image.touch()
+    assets = tmp_path / "readonly-assets"
+    assets.mkdir()
+    shared_cache = assets / "af3-cache"
+    shared_cache.mkdir()
+    configure(monkeypatch, tmp_path, worker_image=str(image),
+              runtime_binds=[str(assets)],
+              environment={"AF3_JAX_CACHE_DIR": str(shared_cache)})
+    monkeypatch.setenv("CHAPERONE_EVAL_SITE", profile)
+    captured = {}
+
+    def initialize_base(self, *args, **kwargs):
+        captured.update(kwargs)
+
+    def prepare_workspace(workspace, seed, inputs):
+        (workspace / "chaperone" / "src").mkdir(parents=True)
+        # The worker must override even a checkout default after sourcing it.
+        (workspace / "chaperone" / ".env").write_text(f"AF3_JAX_CACHE_DIR={shared_cache}\n")
+
+    monkeypatch.setattr("environments.apptainer.SingularityEnvironment.__init__", initialize_base)
+    monkeypatch.setattr(ApptainerEnvironment, "_prepare_workspace", staticmethod(prepare_workspace))
+    monkeypatch.setattr(ApptainerEnvironment, "_find_codex_vendor", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr(ApptainerEnvironment, "_find_resolver_config", staticmethod(lambda: tmp_path / "resolv.conf"))
+    monkeypatch.setattr("environments.apptainer.SlurmBrokerProcess",
+                        lambda **kwargs: SimpleNamespace(socket_dir=tmp_path / "broker"))
+    trial = tmp_path / "trial"
+    ApptainerEnvironment(
+        environment_dir=tmp_path,
+        environment_name="nested-smoke",
+        session_id="nested-smoke",
+        trial_paths=SimpleNamespace(trial_dir=trial),
+        task_env_config=SimpleNamespace(docker_image=str(image)),
+        workspace_seed=tmp_path / "seed", task_inputs=tmp_path / "inputs",
+        persistent_env={"AF3_JAX_CACHE_DIR": "/untrusted/override"},
+    )
+    workspace = (trial / "workspace").resolve()
+    cache = workspace / ".cache" / "af3_jax"
+    assert cache.is_dir()
+    assert captured["persistent_env"]["AF3_JAX_CACHE_DIR"] == str(cache)
+    script = (trial / ".runtime" / "slurm-python").read_text()
+    assert f"export AF3_JAX_CACHE_DIR={cache}" in script
+    assert script.index("export AF3_JAX_CACHE_DIR=") > script.index("source ")
+    assert f"export AF3_JAX_CACHE_DIR={shared_cache}" not in script
+    assert any(mount["source"] == str(assets) and mount["read_only"]
+               for mount in captured["mounts"])
+
+
 def test_supplied_env_file_is_allowlisted(monkeypatch, tmp_path):
     env = tmp_path / ".env.ipd"
     env.write_text("HBPLUS_COPY=/custom/hbplus\nOPENAI_API_KEY=secret\n")
@@ -162,7 +214,7 @@ def test_supplied_env_file_is_allowlisted(monkeypatch, tmp_path):
     assert "OPENAI_API_KEY" not in site["environment"]
 
 
-@pytest.mark.parametrize("selector", ["auto", "portable", "legacy"])
+@pytest.mark.parametrize("selector", ["auto", "public", "portable", "legacy"])
 @pytest.mark.parametrize("source", ["json", "env_file"])
 def test_mpnn_selector_reaches_scientific_environment(
     monkeypatch, tmp_path, selector, source

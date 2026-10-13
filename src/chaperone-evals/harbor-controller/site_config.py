@@ -178,9 +178,9 @@ def get_site() -> dict:
             **overrides.get("environment", {}),
         }
     if site["environment"].get("CHAPERONE_MPNN_CONTAINER", "auto") not in {
-        "auto", "portable", "legacy"
+        "auto", "public", "portable", "legacy"
     }:
-        raise ValueError("CHAPERONE_MPNN_CONTAINER must be auto, portable or legacy")
+        raise ValueError("CHAPERONE_MPNN_CONTAINER must be auto, public, portable or legacy")
     site["gpu_partition"] = site["gpu_partition"] or site["cpu_partition"]
     # The scheduler mapping and broker must agree even when the snapshot has no dotenv files.
     gres = "gpu:" + (site["gpu_type"] + ":" if site["gpu_type"] else "") + "1"

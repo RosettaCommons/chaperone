@@ -173,9 +173,23 @@ class ApptainerEnvironment(SingularityEnvironment):
             image_cache_dir.mkdir(parents=True, exist_ok=True)
             kwargs.setdefault("singularity_image_cache_dir", image_cache_dir)
             self._prepare_runtime_identity(runtime_dir, self._host_workspace)
+            # Scientific assets are mounted read-only. Compilation caches
+            # must instead live in the writable trial, even when the selected
+            # site profile points AF3 at a shared weights/cache directory.
+            # Use the same value when constructing blocks in the agent and
+            # when executing their serialized commands in Slurm workers.
+            af3_jax_cache = self._host_workspace / ".cache" / "af3_jax"
+            af3_jax_cache.mkdir(parents=True, exist_ok=True)
+            trial_site_environment = {
+                **get_site()["environment"],
+                "AF3_JAX_CACHE_DIR": str(af3_jax_cache),
+            }
             slurm_python = runtime_dir / "slurm-python"
             self._prepare_slurm_python(
-                slurm_python, self._host_workspace, self._slurm_worker_image
+                slurm_python,
+                self._host_workspace,
+                self._slurm_worker_image,
+                site_environment=trial_site_environment,
             )
             self._slurm_python = slurm_python.resolve()
             codex_vendor = self._find_codex_vendor()
@@ -210,7 +224,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                     "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION": str(
                         get_site()["max_requested_gpus_per_submission"]
                     ),
-                    **get_site()["environment"],
+                    **trial_site_environment,
                 }
             )
             resolved_mounts.extend(

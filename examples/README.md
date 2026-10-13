@@ -87,12 +87,20 @@ for each run so a smoke test cannot reuse a production output directory.
 | Script (prefix with `python examples/`) | Smoke work before scientific filters | Required tools/assets |
 |---|---|---|
 | `benchmarks/ppi/pipeline_foundry.py --test` | One RFD3 backbone, one FoundryMPNN sequence, one RF3 sample | Foundry container and checkpoints |
-| `benchmarks/ppi/pipeline_legacy_mpnn.py --test` | One backbone, one legacy MPNN sequence, one RF3 sample | Foundry and private-access fused_mpnn/modelhub runtime and weights |
+| `benchmarks/ppi/pipeline_legacy_mpnn.py --test` | One backbone, one `mpnn` sequence, one RF3 sample | Foundry and the selected MPNN runtime; a legacy selection additionally requires private-source access and weights |
 | `benchmarks/disco/pipeline.py --test` | One DISCO heme-binder design at the fast preset, one AF3 sample | DISCO weights/container and licensed AF3 weights/container |
-| `benchmarks/ame/pipeline.py --test` | One `M0024_1nzy` and one `dera_aldolase` backbone, one sequence and AF3 sample each | Foundry, legacy MPNN, AF3, Dunbrack library |
+| `benchmarks/ame/pipeline.py --test` | One `M0024_1nzy` and one `dera_aldolase` backbone, one sequence and AF3 sample each | Foundry, selected MPNN runtime, AF3, Dunbrack library |
 | `benchmarks/ame/pipeline_full.py --test` | One `M0024_1nzy` backbone, one sequence, one AF3 sample | Same AME dependencies |
-| `fgfr2-binder/pipeline.py --test` | One backbone, one sequence, one templated AF3 sample | Foundry, legacy MPNN, AF3; enough GPU memory for the full receptor |
-| `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, legacy MPNN, AF3; explicit flags re-enable the storage behavior under test |
+| `fgfr2-binder/pipeline.py --test` | One backbone, one sequence, one templated AF3 sample | Foundry, selected MPNN runtime, AF3; enough GPU memory for the full receptor |
+| `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, selected MPNN runtime, AF3; explicit flags re-enable the storage behavior under test |
+
+The `mpnn` block uses public LigandMPNN by default without a legacy site weights
+profile. `CHAPERONE_MPNN_CONTAINER=public` selects it explicitly; `portable` or
+`legacy` selects the private fused_mpnn runtime. The filename
+`pipeline_legacy_mpnn.py` distinguishes the `mpnn` block from `foundry_mpnn`; it
+does not override this site/backend setting. Earlier recorded GPU example runs
+used the legacy runtime. Public-backend example validation and scientific
+equivalence remain separate checks.
 
 For example:
 

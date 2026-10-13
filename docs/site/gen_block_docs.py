@@ -343,7 +343,7 @@ def _render_block(name: str, cls) -> list[str]:
         ])
     if name == "mpnn":
         lines.extend([
-            "**Installation access:** This wrapper uses the private `baker-laboratory/fused_mpnn` repository and requires upstream access to rebuild. `foundry_mpnn` is a separate public implementation; it is not silently substituted, and scientific equivalence has not been established here.",
+            "**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `portable` and `legacy` select its runtimes explicitly. See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.",
             "",
         ])
     if name in METRIC_NOTES:
@@ -363,7 +363,9 @@ def _render_block(name: str, cls) -> list[str]:
     fields = [
         (fname, f)
         for fname, f in cls.model_fields.items()
-        if fname != "name" and fname not in STANDARD_FIELDS
+        if fname != "name"
+        and fname not in STANDARD_FIELDS
+        and not (isinstance(f.json_schema_extra, dict) and f.json_schema_extra.get("internal"))
     ]
     primary = [(n, f) for n, f in fields if get_tier(f) == TIER_PRIMARY]
     secondary = [(n, f) for n, f in fields if get_tier(f) != TIER_PRIMARY]

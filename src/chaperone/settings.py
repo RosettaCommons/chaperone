@@ -343,12 +343,14 @@ class ChaperoneSettings(BaseSettings):
             "request access from DeepMind)."
         ),
     )
-    CHAPERONE_MPNN_CONTAINER: Literal["auto", "portable", "legacy"] = Field(
+    CHAPERONE_MPNN_CONTAINER: Literal["auto", "public", "portable", "legacy"] = Field(
         default="auto",
         description=(
-            "Legacy MPNN runtime selection. Auto prefers an installed "
-            "modelhub_portable.sif, then the existing IPD image; Docker uses "
-            "the portable recipe. Portable forces the rebuildable image; "
+            "MPNN runtime selection. Auto uses the public MIT LigandMPNN image "
+            "unless MPNN_WEIGHTS_DIR supplies a legacy site profile, in which case "
+            "it prefers modelhub_portable.sif, then the existing IPD image. "
+            "Public forces public source and bundled public checkpoints; "
+            "portable forces the rebuildable private fused_mpnn image; "
             "legacy explicitly selects the existing IPD Apptainer image. "
             "Set before importing blocks."
         ),

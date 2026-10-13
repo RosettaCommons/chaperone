@@ -707,6 +707,52 @@ class ExecutionEngine:
             and payload.get("fingerprint") == fingerprint
         )
 
+    def _invalidate_chain_cache(self, step_dirs, handler_in) -> None:
+        """Discard this chain's intermediate results before staging new inputs.
+
+        Validate the entire deletion set first: names cannot escape the run,
+        and a caller cannot overwrite a step whose files are its current input.
+        """
+        from chaperone.data.catcif import is_catcif_path, split_catcif_path
+
+        root = self.rundir.resolve()
+        resolved = {directory.resolve() for directory in step_dirs}
+        for directory in resolved:
+            if directory == root or not directory.is_relative_to(root):
+                raise ValueError(f"Cache step directory must be inside {root}: {directory}")
+        for directory in step_dirs:
+            if directory.is_symlink():
+                raise ValueError(f"Cannot invalidate a symlinked cache step: {directory}")
+        for step in self.manifest.steps:
+            directory = (self.rundir / step.name).resolve()
+            if directory not in resolved and any(
+                directory.is_relative_to(parent) for parent in resolved
+            ):
+                raise ValueError(
+                    f"Cannot invalidate cache containing another step: {step.name}. "
+                    "Use non-overlapping block names."
+                )
+        if handler_in is not None:
+            for row in handler_in._df.iter_rows(named=True):
+                for structure in row.get("structures") or []:
+                    for key in ("path", "store_path"):
+                        value = structure.get(key)
+                        if not value:
+                            continue
+                        physical = str(value)
+                        if is_catcif_path(physical):
+                            physical, _ = split_catcif_path(physical)
+                        path = Path(physical).resolve()
+                        if any(path.is_relative_to(directory) for directory in resolved):
+                            raise ValueError(
+                                f"Cannot invalidate cache containing input artifact {path}. "
+                                "Use a different block name or run directory."
+                            )
+        for directory in step_dirs:
+            if directory.exists():
+                shutil.rmtree(directory)
+            self._input_cache.pop(directory / "output.parquet", None)
+
     def _check_cache(
         self,
         blocks,
@@ -722,16 +768,20 @@ class ExecutionEngine:
         handler's metrics column — blocks write metrics under ``self.name``.
         """
         block = blocks[-1]
-        if run_args.recompile or run_args.skip_cache or run_args.force_exec:
+        if run_args.recompile or run_args.force_exec:
             return None
 
-        has_chunk_candidate = block._chunked and any(
-            output_parquet.parent.glob("chunk_*/output.parquet")
-        )
+        step_dirs = [self.rundir / item.name for item in blocks]
         # Fingerprint files guard disk caches. An update metric already carried
         # by the supplied handler is part of that handler's content, not a disk
         # cache owned by this rundir, and remains an intentional passthrough.
-        has_disk_cache_candidate = output_parquet.exists() or has_chunk_candidate
+        # A failed chain may have completed intermediate chunks but no tail
+        # output. Those positional caches are guarded by the same fingerprint.
+        has_disk_cache_candidate = any(
+            (directory / "output.parquet").exists()
+            or any(directory.glob("chunk_*/output.parquet"))
+            for directory in step_dirs
+        )
         if has_disk_cache_candidate and not self._cache_fingerprint_matches(
             output_parquet, cache_fingerprint
         ):
@@ -740,10 +790,10 @@ class ExecutionEngine:
                 "or has no fingerprint metadata.",
                 block.name,
             )
-            step_dir = output_parquet.parent
-            if step_dir.exists():
-                shutil.rmtree(step_dir)
-            self._input_cache.pop(output_parquet, None)
+            self._invalidate_chain_cache(step_dirs, handler_in)
+            return None
+
+        if run_args.skip_cache:
             return None
 
         # Metric-based cache for update blocks

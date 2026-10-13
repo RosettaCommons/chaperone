@@ -823,8 +823,17 @@ class AlphaFold3Block(AF3LikePredictionBlock):
         description=(
             "AF3 input preparation mode. The default 'mmcif' serializes the complete "
             "AtomArray and uses AF3's native Input.from_mmcif converter. Use 'json' "
-            "for legacy JSON-only options, or 'auto' to select JSON when one is set."
+            "for legacy JSON-only options, or 'auto' to select JSON when one is set. "
+            "Native sequence artifacts always use JSON, including those carrying "
+            "a pre-design backbone as context, so the designed sequence is authoritative."
         ),
+    )
+    input_preparation_version: Literal[2] = Field(
+        2,
+        frozen=True,
+        repr=False,
+        json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision for sequence-authoritative inputs and multi-seed manifests; not a user option.",
     )
     # ── Benchmarking against the input structures ───────────────────────
     #
@@ -1168,11 +1177,15 @@ class AlphaFold3Block(AF3LikePredictionBlock):
             inputs = handler.get_data(which=self.which, load=True)
         inputs = list(inputs)
 
-        # mmCIF serializes a structure; a sequence-only row has none, so those
-        # inputs can only go through the JSON path.
+        # A native sequence artifact may carry the pre-design backbone as
+        # context. Serializing that structure would silently predict its old
+        # sequence instead of the authoritative MPNN sequence.
         use_mmcif = self._use_mmcif_input()
-        if use_mmcif and any(loaded.atom_array is None for loaded in inputs):
-            logger.info("Sequence-only AF3 input has no structure; using JSON input")
+        if use_mmcif and (
+            getattr(handler, "has_sequence_data", False)
+            or any(loaded.atom_array is None for loaded in inputs)
+        ):
+            logger.info("Native sequence artifacts require AF3 JSON sequence input")
             use_mmcif = False
 
         if use_mmcif:
@@ -1185,7 +1198,9 @@ class AlphaFold3Block(AF3LikePredictionBlock):
                     loaded.atom_array,
                     loaded.basename,
                     remove_ligands=self.remove_ligands,
+                    seed=self.model_seeds[0],
                 )
+                payload["seeds"] = list(self.model_seeds)
                 if self.use_local_msas:
                     unpaired_msas, msa_depths = self._mmcif_chain_msas(
                         loaded.atom_array,

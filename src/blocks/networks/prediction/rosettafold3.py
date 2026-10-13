@@ -81,12 +81,12 @@ def _write_rf3_input_manifest(sandbox_dir, records) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
-def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
-    """Resolve an RF3 output back to its staged input manifest record."""
+def _rf3_input_name_for_output(path: str, manifest: dict) -> str | None:
+    """Resolve an RF3 output back to its staged input manifest key."""
     output = Path(path)
     for parent in output.parents:
         if parent.name in manifest:
-            return manifest[parent.name]
+            return parent.name
     stem = output.name
     for extension in (".cif.gz", ".cif", ".pdb"):
         if stem.endswith(extension):
@@ -94,8 +94,12 @@ def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
             break
     matches = [name for name in manifest if stem == name or stem.startswith(name + "_")]
     if len(matches) == 1:
-        return manifest[matches[0]]
-    return {}
+        return matches[0]
+    return None
+
+
+def _rf3_input_record_for_output(path: str, manifest: dict) -> dict:
+    return manifest.get(_rf3_input_name_for_output(path, manifest), {})
 
 
 ###########################################################################
@@ -118,6 +122,11 @@ class RosettaFold3Block(AF3LikePredictionBlock):
     _name = "rf3"
     _display_name = "RosettaFold3"
     _description = "RosettaFold3 structure prediction"
+    output_lineage_version: Literal[2] = Field(
+        2, frozen=True, repr=False, json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision for complete outputs and explicit sequence lineage.",
+    )
+
     _script_spec = ScriptSpec(
         command=["rf3", "fold"],
         image=FOUNDRY_CONTAINER,
@@ -562,11 +571,13 @@ class RosettaFold3Block(AF3LikePredictionBlock):
             name=self.name,
             compile_as_metric=self.compile_as_metric,
             read_most_confident_model=self.read_most_confident_model,
+            expected_seeds=self.model_seeds,
         )
 
 
 def compile_rf3(
-    sandbox_dir, name="rf3", compile_as_metric=False, read_most_confident_model=True
+    sandbox_dir, name="rf3", compile_as_metric=False, read_most_confident_model=True,
+    expected_seeds=None,
 ):
     """Compile RF3 outputs into a PipelineDataHandler."""
     outputdir = os.path.join(sandbox_dir, "outputs")
@@ -633,6 +644,21 @@ def compile_rf3(
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         manifest = {}
 
+    if manifest:
+        for seed in expected_seeds or [None]:
+            seed_root = Path(search_dir) / f"seed_{seed}"
+            selected = paths if seed is None else [
+                path for path in paths if Path(path).is_relative_to(seed_root)
+            ]
+            completed = {_rf3_input_name_for_output(path, manifest) for path in selected}
+            missing = set(manifest) - completed
+            if missing:
+                raise RuntimeError(
+                    "RF3 did not produce outputs for required inputs: "
+                    + ", ".join(sorted(missing))
+                    + (f" (seed {seed})" if seed is not None else "")
+                )
+
     rows = []
     for path in paths:
         path_dir = os.path.dirname(path)
@@ -692,9 +718,9 @@ def compile_rf3(
                 metadata={},
                 metrics={name: metrics},
                 path_handle=path_handle,
-                parent_design_id=(
-                    source.get("parent_design_id") if path_handle is None else None
-                ),
+                # Native MPNN siblings share a backbone path; keep their exact
+                # logical parent as well as the legacy structure backlink.
+                parent_design_id=source.get("parent_design_id"),
                 as_metric=compile_as_metric,
             )
         )

@@ -49,6 +49,9 @@ def settings(monkeypatch):
     values = SimpleNamespace(CHAPERONE_CONTAINER_BACKEND="apptainer")
     monkeypatch.setattr(chaperone, "get_settings", lambda: values)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: True)
+    # Exact image-selection commands should not depend on the test host's DNS;
+    # resolver mounting and policy are covered by test_container_dns.py.
+    monkeypatch.setattr(containers, "_RESOLVER_PATHS", ())
     monkeypatch.setattr(getpass, "getuser", lambda: "tester")
     return values
 

@@ -242,9 +242,12 @@ def test_existing_modelhub_image_uses_exec_not_runscript():
     assert command[-1].endswith("/fused_mpnn/v1.1.1/run.py")
 
 
+@pytest.mark.parametrize("backend,expected", [("legacy", ["A1", "A7"]), ("public", "A1 A7")])
 def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
-    tmp_path,
+    tmp_path, monkeypatch, backend, expected,
 ):
+    import blocks.networks.mpnn as mpnn
+    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.LIGANDMPNN_PUBLIC_CONTAINER if backend == "public" else mpnn._MODELHUB_SIF_CONTAINER)
     structure = tmp_path / "input.pdb"
     structure.write_text(
         "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\n"
@@ -264,7 +267,7 @@ def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
         (tmp_path / "chunk_0" / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     assert constraints.endswith("pdb_position_fixed_chunk0.json")
-    assert next(iter(payload.values())) == ["A1", "A7"]
+    assert next(iter(payload.values())) == expected
 
 
 # test_protein_hunter.py

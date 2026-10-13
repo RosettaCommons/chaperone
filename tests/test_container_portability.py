@@ -459,6 +459,48 @@ def test_script_bind_does_not_shadow_writable_workspace(monkeypatch, tmp_path):
     assert _runtime_script_binds(settings, (str(wrapper),)) == [(str(outside), str(outside) + ":ro")]
 
 
+def test_wrapper_alias_survives_resolved_cwd_and_serialized_worker(monkeypatch, tmp_path):
+    import cloudpickle
+    from chaperone import ExecutionEngine, PipelineDataHandler
+    from chaperone.block_config.compiled import CompiledBlockFunction, ScriptSpec
+    from chaperone.containers import _runtime_script_binds
+    real = tmp_path / "mnt-net" / "workspace"
+    scripts = real / "src" / "blocks" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "runner.py").write_text("pass\n")
+    alias = tmp_path / "net"
+    alias.symlink_to(real.parent, target_is_directory=True)
+    wrapper = alias / "workspace" / "src" / "blocks" / "scripts" / "runner.py"
+    class AliasWrapperBlock(CompiledBlockFunction):
+        _name = "alias_wrapper_probe"
+        _script_spec = ScriptSpec(command=["python", str(wrapper)], image=Image("alias_wrapper_probe"))
+        def create_command(self, handler, sandbox_dir, chunk_id):
+            return list(self.command_template)
+        def compile(self, sandbox_dir):
+            return PipelineDataHandler([])
+    settings = get_settings()
+    monkeypatch.delenv("HARBOR_HOST_WORKSPACE", raising=False)
+    monkeypatch.setattr(settings, "CHAPERONE_CONTAINER_BACKEND", "apptainer")
+    monkeypatch.setattr(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", True)
+    monkeypatch.setattr(settings, "CHAPERONE_CONTAINER_WORKSPACE", None)
+    monkeypatch.setattr(settings, "RUNDIR", None)
+    monkeypatch.chdir(real)
+    engine = ExecutionEngine(rundir=real / "run")
+    block = AliasWrapperBlock(store="none")
+    engine._configure_container_binds([block])
+    restored = cloudpickle.loads(cloudpickle.dumps(block))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(restored, "_resolve_command", lambda command: command)
+    command = restored.create_manifest(None, real / "run/chunk_0", 0, write=False).command
+    assert str(wrapper) in command
+    assert f"{real}:{real}" in command
+    assert f"{wrapper.parent}:{wrapper.parent}" in command
+    assert f"{scripts}:{scripts}:ro" not in command
+    assert f"{wrapper.parent}:{wrapper.parent}:ro" not in command
+    monkeypatch.setenv("HARBOR_HOST_WORKSPACE", str(real))
+    assert _runtime_script_binds(settings, (str(wrapper),)) == []
+
+
 def test_engine_resolves_container_template_before_cache_fingerprint(monkeypatch, tmp_path):
     from chaperone import ExecutionEngine, PipelineDataHandler
     from chaperone.block_config.compiled import CompiledBlockFunction, ScriptSpec
@@ -496,6 +538,8 @@ def test_mpnn_runtime_selection_preserves_explicit_legacy_and_docker(monkeypatch
     legacy = tmp_path / "legacy.sif"
     legacy.touch()
     monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(legacy))
+    assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
+    options["MPNN_WEIGHTS_DIR"] = str(tmp_path / "site-profile-weights")
     assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
     (tmp_path / "modelhub_portable.sif").touch()
     assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_PORTABLE_CONTAINER
@@ -506,6 +550,8 @@ def test_mpnn_runtime_selection_preserves_explicit_legacy_and_docker(monkeypatch
         mpnn._pick_modelhub_container()
     options["CHAPERONE_MPNN_CONTAINER"] = "auto"
     assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_PORTABLE_CONTAINER
+    options.pop("MPNN_WEIGHTS_DIR")
+    assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
 
 
 def test_disco_blackwell_recipe_resolves_torch_from_cuda128():

@@ -15,7 +15,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
@@ -134,6 +134,13 @@ class ESMFold2Block(AF3LikePredictionBlock):
     # diffusion_batch_size (→ num_diffusion_samples) and num_diffusion_steps
     # (→ num_sampling_steps) inherited from AF3LikePredictionBlock.
 
+    output_validation_version: Literal[2] = Field(
+        2,
+        frozen=True,
+        repr=False,
+        json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision requiring every prediction in a chunk to succeed; not a user option.",
+    )
     num_loops: int = Field(
         3,
         json_schema_extra={"tier": TIER_PRIMARY},

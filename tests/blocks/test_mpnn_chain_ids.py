@@ -289,6 +289,7 @@ def test_container_selection_preference(
 
     monkeypatch.setattr(get_settings(), "CHAPERONE_MPNN_CONTAINER", preference)
     monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", backend)
+    monkeypatch.setattr(get_settings(), "MPNN_WEIGHTS_DIR", str(tmp_path / "site-profile-weights"))
     monkeypatch.setattr(module, "get_container_dirs", lambda: [tmp_path])
     legacy = tmp_path / "legacy.sif"
     monkeypatch.setattr(module, "_ONPREM_MODELHUB_SIF", str(legacy))

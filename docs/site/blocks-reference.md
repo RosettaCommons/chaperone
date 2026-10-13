@@ -734,9 +734,9 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 > Dauparas et al. (2023) — Atomic context-conditioned protein sequence design using LigandMPNN
 > [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/dauparas/LigandMPNN) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/mpnn.py)
 
-**Installation access:** This wrapper uses the private `baker-laboratory/fused_mpnn` repository and requires upstream access to rebuild. `foundry_mpnn` is a separate public implementation; it is not silently substituted, and scientific equivalence has not been established here.
+**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `portable` and `legacy` select its runtimes explicitly. See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.
 
-Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `modelhub_portable`
+Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|

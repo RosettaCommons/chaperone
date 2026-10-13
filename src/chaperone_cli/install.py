@@ -9,6 +9,7 @@ Usage:
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from absl import app, flags
 import logging
@@ -28,9 +29,9 @@ def get_writable_container_dir() -> Path:
     for d in dirs:
         if d.exists() and d.is_dir():
             try:
-                test_file = d / ".write_test"
-                test_file.touch()
-                test_file.unlink()
+                # Concurrent installers must not remove one another's probe.
+                with tempfile.NamedTemporaryFile(dir=d, prefix=".chaperone-write-test-"):
+                    pass
                 return d
             except (PermissionError, OSError) as e:
                 logger.warning(
@@ -287,6 +288,14 @@ def install(names: list[str]):
     """Install containers by name."""
     from blocks import get_container
 
+    requested = [(name, get_container(name)) for name in names]
+    unknown = [name for name, spec in requested if spec is None]
+    if unknown:
+        raise app.UsageError(
+            f"Unknown container: {', '.join(unknown)}. "
+            f"Available: {sorted(get_all_containers())}"
+        )
+
     if FLAGS.dry_run:
         from chaperone.containers import get_container_dirs
         output_dir = get_container_dirs()[0]
@@ -294,14 +303,7 @@ def install(names: list[str]):
         output_dir = get_writable_container_dir()
     print(f"\nContainer directory: {output_dir}\n")
 
-    for name in names:
-        spec = get_container(name)
-        if spec is None:
-            all_containers = get_all_containers()
-            print(f"Unknown container: {name}")
-            print(f"Available: {sorted(all_containers.keys())}")
-            continue
-
+    for name, spec in requested:
         print(f"Installing {name}...")
         build_container(
             spec, spec.name, output_dir, force=FLAGS.force, dry_run=FLAGS.dry_run

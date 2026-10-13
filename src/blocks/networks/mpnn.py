@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -32,9 +33,43 @@ from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
-# The public-facing recipe still needs authorized access to this private fork.
+# The legacy portable recipe needs authorized access to this private fork.
 # Its main runner accepts PDB inputs; CIF support on IPD is a separate revision.
 _PORTABLE_MPNN_REVISION = "fd01540ea1ed9868b95839bd7a8ac54a7570a95e"
+_PUBLIC_MPNN_REVISION = "26ec57ac976ade5379920dbd43c7f97a91cf82de"
+_PUBLIC_MPNN_ROOT = "/opt/ligandmpnn"
+_PUBLIC_MPNN_CHECKPOINTS = {
+    "protein_mpnn": ("proteinmpnn_v_48_020.pt", "c9cb4a671d79604111231f8dbfc7c590e06f1197453b7a6854ac6661a642f5bd"),
+    "ligand_mpnn": ("ligandmpnn_v_32_010_25.pt", "161cd264061fda9680cbb940255522ae42f2966c552d045d87913d9452a80970"),
+    "soluble_mpnn": ("solublempnn_v_48_020.pt", "7af52d090172c230c7f0e9d21e02203f6b3a38b16db58d3c7a3960e0a9a6e31a"),
+    "per_residue_label_membrane_mpnn": ("per_residue_label_membrane_mpnn_v_48_020.pt", "1e62e193bee12f1b64fff87ae3ca9da95b0f60b15839ae3cbe48e4983ef055ba"),
+    "global_label_membrane_mpnn": ("global_label_membrane_mpnn_v_48_020.pt", "89ef0abddbfb956c4c7c02dcba6523c0b5152733055f7509292365eaecc38b21"),
+    "path_sc": ("ligandmpnn_sc_v_32_002_16.pt", "799a9de6c1c72bb0c7ceb37998391a6fd0e3e21cb42928ee31a28313a3b1b46a"),
+}
+
+
+def _public_checkpoint(kind: str) -> str:
+    return f"{_PUBLIC_MPNN_ROOT}/model_params/{_PUBLIC_MPNN_CHECKPOINTS[kind][0]}"
+
+
+# These removed NumPy aliases were aliases of the corresponding Python types.
+# Pin expected replacements so an upstream source change fails the build gate.
+_PUBLIC_MPNN_NUMPY_COMPATIBILITY_PATCH = f"""
+from pathlib import Path
+import re
+root = Path({_PUBLIC_MPNN_ROOT!r}) / "openfold"
+for filename, alias, expected in [
+    ("np/residue_constants.py", "int", 3),
+    ("data/templates.py", "object", 2),
+    ("np/relax/utils.py", "bool", 1),
+]:
+    path = root / filename
+    source = path.read_text()
+    patched, count = re.subn(r"\\bnp\\." + alias + r"\\b", alias, source)
+    if count != expected:
+        raise RuntimeError(f"Unexpected NumPy alias count in {{path}}: {{count}}, expected {{expected}}")
+    path.write_text(patched)
+"""
 
 
 def _configured_mpnn_weights_dir() -> str | None:
@@ -287,18 +322,58 @@ _MODELHUB_PORTABLE_CONTAINER = (
 )
 
 
+_PUBLIC_MPNN_CONTAINER = (
+    Image("ligandmpnn_public")
+    .base_image("ubuntu:24.04")
+    .packages("build-essential", "git", "wget", "ca-certificates", "python3.12", "python3.12-dev", "python3.12-venv")
+    .run(
+        "python3.12 -m venv /opt/mpnn-env",
+        "/opt/mpnn-env/bin/pip install --upgrade pip setuptools wheel",
+        "/opt/mpnn-env/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
+        "/opt/mpnn-env/bin/pip install numpy==1.26.4 prody==2.6.1 scipy biopython ml-collections dm-tree",
+    )
+    .git_clone("https://github.com/dauparas/LigandMPNN", _PUBLIC_MPNN_ROOT)
+    .run(
+        f"git -C {_PUBLIC_MPNN_ROOT} checkout {_PUBLIC_MPNN_REVISION}",
+        "/opt/mpnn-env/bin/python -c " + shlex.quote(_PUBLIC_MPNN_NUMPY_COMPATIBILITY_PATCH),
+        f"mkdir -p {_PUBLIC_MPNN_ROOT}/model_params",
+        *[
+            f"wget -q https://files.ipd.uw.edu/pub/ligandmpnn/{filename} "
+            f"-O {_PUBLIC_MPNN_ROOT}/model_params/{filename} && "
+            f"echo '{checksum}  {_PUBLIC_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -"
+            for filename, checksum in _PUBLIC_MPNN_CHECKPOINTS.values()
+        ],
+        "/opt/mpnn-env/bin/pip check",
+        f"cd {_PUBLIC_MPNN_ROOT} && /opt/mpnn-env/bin/python -c "
+        "'import run, data_utils, model_utils, sc_utils; import pathlib, torch; "
+        "[torch.load(p, map_location=\"cpu\", weights_only=True)[\"model_state_dict\"] "
+        "for p in pathlib.Path(\"model_params\").glob(\"*.pt\")]'",
+        f"/opt/mpnn-env/bin/python {_PUBLIC_MPNN_ROOT}/run.py --help >/dev/null",
+        "apt-get clean && rm -rf /var/lib/apt/lists/*",
+    )
+    .env(PATH="/opt/mpnn-env/bin:$PATH", VIRTUAL_ENV="/opt/mpnn-env", PYTHONPATH=_PUBLIC_MPNN_ROOT)
+    .label(Version=f"LigandMPNN-{_PUBLIC_MPNN_REVISION}", License="MIT", CUDA="12.8")
+    .runscript('"$@"')
+    .template_command(exec_mode="exec")
+)
+
+
 def _pick_modelhub_container() -> Image:
-    """Prefer a rebuilt runtime when supplied, preserving legacy IPD defaults."""
+    """Use public source by default; an explicit site weights profile keeps IPD selection."""
     preference = get_setting_field("CHAPERONE_MPNN_CONTAINER", "auto")
     backend = get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer")
     if preference == "legacy":
         if backend == "docker":
             raise ValueError(
                 "CHAPERONE_MPNN_CONTAINER=legacy requires Apptainer; "
-                "use portable or auto with Docker."
+                "use public or portable with Docker."
             )
         return _MODELHUB_SIF_CONTAINER
-    if preference == "portable" or backend == "docker":
+    if preference == "portable":
+        return _MODELHUB_PORTABLE_CONTAINER
+    if preference == "public" or not get_setting_field("MPNN_WEIGHTS_DIR", None):
+        return _PUBLIC_MPNN_CONTAINER
+    if backend == "docker":
         return _MODELHUB_PORTABLE_CONTAINER
     if any((directory / "modelhub_portable.sif").is_file() for directory in get_container_dirs()):
         return _MODELHUB_PORTABLE_CONTAINER
@@ -309,6 +384,7 @@ def _pick_modelhub_container() -> Image:
 
 MODELHUB_CONTAINER = _pick_modelhub_container()
 MODELHUB_PORTABLE_CONTAINER = _MODELHUB_PORTABLE_CONTAINER
+LIGANDMPNN_PUBLIC_CONTAINER = _PUBLIC_MPNN_CONTAINER
 
 
 class MPNNArgs(BaseModel):
@@ -411,15 +487,18 @@ class MPNNArgs(BaseModel):
     )
     checkpoint_path_sc: str = Field(
         default_factory=lambda: (
+            _public_checkpoint("path_sc")
+            if MODELHUB_CONTAINER is _PUBLIC_MPNN_CONTAINER
+            else
             f"{wd.rstrip('/')}/packer_weights/s_300756.pt"
             if (wd := _configured_mpnn_weights_dir())
             else "/databases/mpnn/packer_weights/s_300756.pt"
         ),
         description=(
-            "Path to side chain packer model weights. "
-            "Defaults to MPNN_WEIGHTS_DIR/packer_weights/s_300756.pt when "
-            "MPNN_WEIGHTS_DIR is set; otherwise to "
-            "the on-prem path /databases/mpnn/packer_weights/s_300756.pt."
+            "Path to side chain packer weights. Public LigandMPNN uses its bundled "
+            "MIT checkpoint. Legacy backends use MPNN_WEIGHTS_DIR/packer_weights/"
+            "s_300756.pt when configured, otherwise /databases/mpnn/packer_weights/"
+            "s_300756.pt."
         ),
     )
     number_of_packs_per_design: int = Field(
@@ -519,8 +598,10 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         return MODELHUB_CONTAINER
 
     def get_command_template(self) -> list[str]:
-        """Build the MPNN command template, routing around the on-prem SIF
-        vs the portable buildable container.
+        """Build the command for public LigandMPNN or a selected legacy runtime.
+
+        Public: pinned official code and MIT checkpoints are baked into the image.
+        Legacy MPNN_WEIGHTS_DIR settings are deliberately not used by this backend.
 
         On-prem: the SIF exposes run.py via a bind mount at
         ``/net/software/lab/fused_mpnn/v1.1.1/run.py`` and weights at
@@ -530,6 +611,21 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         Portable: run.py is baked into the image at ``/opt/fused_mpnn/run.py``
         and weight paths come from ``MPNN_WEIGHTS_DIR``.
         """
+        if self._get_image() is _PUBLIC_MPNN_CONTAINER:
+            if self.lddt_enhanced:
+                raise ValueError("The public LigandMPNN backend does not support lddt_enhanced; select an authorized legacy runtime for that model.")
+            binds = []
+            packer = self.args.checkpoint_path_sc
+            if packer != _public_checkpoint("path_sc") and self.output_mode == "structures":
+                path = Path(packer).expanduser().absolute()
+                if not path.is_file():
+                    raise FileNotFoundError(f"Public MPNN custom packer checkpoint does not exist: {path}")
+                binds.append((str(path), f"{path}:ro"))
+            cmd = self._get_image().build_command("python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds)
+            for kind in _PUBLIC_MPNN_CHECKPOINTS:
+                if kind != "path_sc":
+                    cmd += [f"--checkpoint_{kind}", _public_checkpoint(kind)]
+            return cmd
         is_portable_container = self._get_image() is _MODELHUB_PORTABLE_CONTAINER
         configured_weights = _configured_mpnn_weights_dir()
         if configured_weights and not Path(configured_weights).is_dir():
@@ -755,7 +851,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             pdb.set_structure(rename.rename(atoms))
         except Exception as error:
             raise ValueError(
-                f"Portable fused_mpnn requires PDB-representable inputs: {input_path}. "
+                f"Portable MPNN requires PDB-representable inputs: {input_path}. "
                 "Check chain/residue identifiers and ligand component names."
             ) from error
         pdb.write(str(out_path))
@@ -824,9 +920,11 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         needs_load = (
             self.hbond_fix or self.aromatic_fix or self.output_mode == "sequences"
         )
-        portable = self._get_image() is _MODELHUB_PORTABLE_CONTAINER
+        public = self._get_image() is _PUBLIC_MPNN_CONTAINER
+        portable = public or self._get_image() is _MODELHUB_PORTABLE_CONTAINER
         manifest = {}
         renames: dict[str, dict[str, str]] = {}  # input stem -> chain rename
+        public_options: dict[str, str] = {}
         for data in handler.get_data(which="last", load=needs_load):
             # get path and design_metadata - contains motif, interface, hbond, aromatics_near_ligand.
             # Materialize archived structures; ordinary local paths pass through.
@@ -862,6 +960,35 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             if portable or self.output_mode != "sequences":
                 atoms = self._atoms_of(data)
                 rename = ChainRename.for_atoms(atoms)
+                selected_chains = None
+                if public:
+                    original_chains = set(map(str, atoms.chain_id))
+                    options = {}
+                    for option in ("chains_to_design", "parse_these_chains_only"):
+                        value = getattr(self.args, option)
+                        if not value:
+                            continue
+                        chains = value.split(",")
+                        if option == "parse_these_chains_only" and "," not in value and value not in original_chains:
+                            chains = list(value)  # accept the old concatenated single-letter spelling
+                        if not set(chains) <= original_chains:
+                            raise ValueError(f"{option} refers to missing chains: {set(chains) - original_chains}")
+                        options[option] = ",".join(rename.mapping.get(chain, chain) for chain in chains)
+                        if option == "parse_these_chains_only":
+                            selected_chains = set(chains)
+                    for option in ("redesigned_residues", "symmetry_residues", "transmembrane_buried", "transmembrane_interface"):
+                        value = getattr(self.args, option)
+                        if value:
+                            options[option] = "".join(
+                                part if re.fullmatch(r"[\s,|]+", part) else rename.apply(part)
+                                for part in re.split(r"([\s,|]+)", value)
+                            )
+                    if rename and self.args.bias_AA_per_residue:
+                        raise ValueError("Public MPNN residue bias with renamed chains is unsupported; supply single-character input chain IDs for bias_AA_per_residue.")
+                    for option, value in options.items():
+                        if option in public_options and public_options[option] != value:
+                            raise ValueError(f"Public MPNN {option} needs different chain mappings across inputs; run those inputs in separate chunks.")
+                        public_options[option] = value
                 if portable:
                     input_path = self._write_portable_pdb(
                         input_path, atoms, rename, inputdir / "portable_pdb"
@@ -870,7 +997,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                         # Upstream writes FASTA chains in sorted PDB-chain order.
                         # Keep original identifiers in that same order for compile.
                         chain_ids = sorted(
-                            chain_sequences,
+                            (chain for chain in chain_sequences if selected_chains is None or chain in selected_chains),
                             key=lambda chain: rename.mapping.get(chain, chain),
                         )
                         manifest[input_name]["chain_ids"] = chain_ids
@@ -946,7 +1073,11 @@ class ClassicMPNNBlock(CompiledBlockFunction):
 
         # Write JSON file
         with open(fix_pos_json, "w") as f:
-            json.dump(fixed_position_dict, f)
+            json.dump(
+                {path: " ".join(positions) for path, positions in fixed_position_dict.items()}
+                if public else fixed_position_dict,
+                f,
+            )
             f.write("\n")
 
         logger.info(f"Fixed position json file is saved at {fix_pos_json}")
@@ -970,6 +1101,13 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         if self.device == "cpu":
             cmd = ["env", "CUDA_VISIBLE_DEVICES="] + cmd
         cli_args = self.args.to_cli_dict()
+        if public:
+            cli_args.update(public_options)
+            cli_args["fasta_seq_separation"] = "/"
+            cli_args["number_of_packs_per_design"] = self.args.number_of_packs_per_design
+            cli_args["pack_with_ligand_context"] = self.args.pack_with_ligand_context
+            if self.args.checkpoint_path_sc != _public_checkpoint("path_sc"):
+                cli_args["checkpoint_path_sc"] = str(Path(self.args.checkpoint_path_sc).expanduser().absolute())
         cli_args["pack_side_chains"] = 0 if self.output_mode == "sequences" else 1
         bias_path = cli_args.get("bias_AA_per_residue")
         if bias_path:

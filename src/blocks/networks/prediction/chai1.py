@@ -275,11 +275,6 @@ class Chai1Block(AF3LikePredictionBlock):
             # Design name is the parent directory (outputs/<design>/pred.model_idx_N.cif)
             design_name = os.path.basename(os.path.dirname(path))
             model_idx = os.path.splitext(os.path.basename(path))[0]  # pred.model_idx_N
-            row_name = (
-                f"{design_name}_{model_idx}"
-                if not self.read_most_confident_model
-                else design_name
-            )
 
             # Symlink output CIF with design name so merge can match
             # pred.model_idx_0.cif -> <design>_model.cif (or <design>_model_idx_N.cif)
@@ -322,7 +317,7 @@ class Chai1Block(AF3LikePredictionBlock):
 
             rows.append(
                 make_row(
-                    name=row_name,
+                    name=self.name,
                     path=str(linked_path),
                     metadata={},
                     metrics={self.name: metrics},
