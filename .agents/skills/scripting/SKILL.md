@@ -121,7 +121,9 @@ Requires GNU coreutils `env` with `-S` support. Portable fallback: `#!/usr/bin/e
 | `--nouse_local_gpus` | Force SLURM even if local GPUs exist |
 | `--pickup` | Pick up parquet from existing run directory |
 
-**Global flags:** `--rundir`, `--recompile`, `--force_exec`, `--local`, `--nouse_local_gpus`, `--partition`, `--gres`. Run any pipeline script with `--help` for the full flag list.
+**Global flags:** `--rundir`, `--recompile`, `--force_exec`, `--local`, `--nouse_local_gpus`, `--partition`, `--gres`, `--account`, `--qos`, `--extra_sbatch`. Run any pipeline script with `--help` for the full flag list.
+
+**Slurm resources.** Blocks ask for a CPU or GPU job and, for GPU blocks, a size class (`small` / `large`). The site settings `CHAPERONE_DEFAULT_PARTITION`, `CHAPERONE_GPU_PARTITION` and `CHAPERONE_GRES_MAP` turn that into a real partition and `--gres`; unset, jobs get no `--partition` and `--gres=gpu:1`. Don't hard-code partition or GPU names in scripts you share. To change them for one run use `--partition` / `--gres`, or `job_args` (`{"gpu_class": "large"}` is portable). CLI flags beat `job_args`, which beat the block default, which beats the site setting. See the `slurm-background` skill for the full list. On IPD, `.env.ipd` supplies the mapping.
 
 ### Block-specific flags
 
@@ -169,8 +171,8 @@ for cycle_engine in engine.cycle("opt", 5):
 
 In general, adopt a three-stage build-process:
 1. Test the script on a minimal compute task (one design for everything) to ensure everything looks good. Ideally the user has provided you a GPU (and use `--use_local_gpus`), and you use a temporary directory (`--rundir=/tmp/test_fad`).
-2. Pilot the script to probe pass rates. Pilot runs are often on partition `gpu` or `gpu-bf` depending on urgency.
-3. Production scale design: taking pilot example further or scaling the raw number of designs generated to get better hits. Production runs are almost always on partition `gpu-bf`
+2. Pilot the script to probe pass rates. At IPD, pilot runs are often on partition `gpu` or `gpu-bf` depending on urgency.
+3. Production scale design: taking pilot example further or scaling the raw number of designs generated to get better hits. At IPD, production runs are almost always on partition `gpu-bf` (`--partition=gpu-bf`). Elsewhere, use the partition your site recommends for large preemptible or backfill work, if it has one.
 
 Steps 2. and 3. can sometimes be merged depending on user requests and constraints.
 

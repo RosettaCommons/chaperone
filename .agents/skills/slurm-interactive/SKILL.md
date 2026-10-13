@@ -6,6 +6,8 @@ allowed-tools: ["Bash", "Read", "AskUserQuestion"]
 
 # SLURM Interactive Session
 
+> **IPD-specific commands.** `qlogin`, the `gpu` / `cpu` partitions and the `gpu:small` / `gpu:large` GRES types below are the Baker-lab / IPD cluster. On another cluster, substitute your site's equivalent (`salloc`, or `srun --pty bash -l`) and look up its partitions and GPU types with `sinfo -o "%P %G"`. If you are unsure, `--gres=gpu:1` is accepted nearly everywhere and needs no partition name.
+
 Hold a persistent **interactive** allocation on a GPU or CPU node and drive it from Claude Code via `tmux` + `qlogin`. **Every command runs inside the SAME shell on the allocated node** — like an SSH session — under **one** allocation (one job step total), not a new job per command.
 
 ## When to use interactive (vs background)
@@ -44,7 +46,7 @@ tmux kill-session -t slurm_sess 2>/dev/null   # clear any stale session
 tmux new-session -d -s slurm_sess \
   "qlogin -p gpu --gres=gpu:small:1 --mem=16G -t 2:00:00 -J claude_sess"
 ```
-- **gres = size class, not model name.** This cluster registers `gpu:small:N` / `gpu:large:N`. Model names like `gpu:a4000:1` are **invalid** and the allocation dies instantly. Confirm with `sinfo -p gpu -o "%G" -h`. Use `gpu:large:1` for a bigger card.
+- **gres types are per-cluster.** IPD registers size classes, `gpu:small:N` and `gpu:large:N` (`sinfo -p gpu -o "%G" -h` shows only those), so model names like `gpu:a4000:1` are rejected there and the allocation dies instantly. Most other clusters register model names (`gpu:a100:1`) or accept only `gpu:1`. Chaperone does not check the type: whatever `gres` string you give reaches `sbatch` unchanged, so the cluster decides. Use `gpu:large:1` for a bigger card at IPD.
 - Avoid `--partition=gpu-bf` for interactive — backfill jobs get preempted.
 
 ### CPU node
@@ -110,7 +112,7 @@ Always release when done, or when the user ends the conversation / no longer nee
 
 | Problem | Fix |
 |---------|-----|
-| Allocation dies instantly / `Invalid generic resource (gres) specification` | You used a model name (`gpu:a4000:1`). Use `gpu:small:1` / `gpu:large:1`; check `sinfo -p gpu -o "%G" -h`. |
+| Allocation dies instantly / `Invalid generic resource (gres) specification` | The GPU type is not registered on this cluster. At IPD, model names (`gpu:a4000:1`) are invalid: use `gpu:small:1` / `gpu:large:1`. Elsewhere, check `sinfo -o "%P %G"` for the valid types, or use `gpu:1`. |
 | `slurm_run` hangs forever | Markers on node-local `/tmp`. Use `$HOME/.slurm_run` (shared NFS) as above. |
 | `slurm_run` returns empty | The qlogin shell died. `squeue -u $USER -n claude_sess`; re-allocate if gone. |
 | Job stays `PENDING` | Try `--gres=gpu:1` (any), a shorter `-t`, or check `sinfo -p gpu`. |

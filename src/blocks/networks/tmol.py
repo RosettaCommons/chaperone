@@ -101,8 +101,10 @@ class _TmolBaseBlock(CompiledBlockFunction):
     typed is skipped per-row with a logged warning (the chunk keeps going).
 
     Runs on CPU by default (per-structure scoring/min is fast on CPU). For large
-    batches override to GPU via ``--{block}.gres=gpu:small:1`` (Ampere/Hopper)
-    or ``--{block}.gres=gpu:b4000:1`` (Blackwell, sm_120 supported in cu132 wheel).
+    batches pass ``job_args={"partition": <your GPU partition>, "gres": <your gres>}``
+    (at IPD, ``{"partition": "gpu", "gres": "gpu:small:1"}``). The cu132 wheel
+    covers Ampere through Blackwell (sm_120); see the build notes at the top of
+    this file.
     """
 
     _mode: str = "interface"  # overridden by subclasses

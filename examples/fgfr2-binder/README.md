@@ -64,11 +64,12 @@ The script is target-agnostic; everything specific to FGFR2/FGF is in `files/`:
 #    submits GPU jobs to the cluster. Output is tee'd to <rundir>/run.log.
 ./examples/fgfr2-binder/run.sh           # test  → examples/fgfr2-binder/runs/test/
 ./examples/fgfr2-binder/run.sh pilot     # ~200 backbones → runs/pilot/
-./examples/fgfr2-binder/run.sh prod      # full scale on gpu-bf → runs/prod/
+./examples/fgfr2-binder/run.sh prod      # full scale → runs/prod/ (IPD: add PARTITION=gpu-bf for backfill)
 
 # Override base directory (e.g. for /net/scratch on a different cluster):
 RUNS_BASE=/net/scratch/$USER/fgfr2 ./examples/fgfr2-binder/run.sh
 
-# Override GPU type or partition per-cluster:
+# Retarget GPU type or partition (names are your cluster's; see `sinfo -o "%P %G"`).
+# Better: set CHAPERONE_GPU_PARTITION / CHAPERONE_GRES_MAP once in .env.local.
 GRES=gpu:a100:1 PARTITION=gpu ./examples/fgfr2-binder/run.sh
 ```

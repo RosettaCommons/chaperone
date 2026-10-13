@@ -42,7 +42,7 @@ from chaperone import ExecutionEngine, JobArgs
 
 engine = ExecutionEngine(
     rundir="runs/val-af3",
-    job_args_default=JobArgs(partition="gpu", gres="gpu:large:1", mem_gb=64),
+    job_args_default=JobArgs(gpu_class="large", mem_gb=64),
 )
 
 h = engine.run(

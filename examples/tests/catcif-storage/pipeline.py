@@ -25,7 +25,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 FILES_DIR = SCRIPT_DIR / "files"
 RUNDIR = SCRIPT_DIR / "rundir"
 
-GPU = dict(partition="gpu-bf", gres="gpu:1", time_limit="1:00:00")
+# Partition and GPU type come from the blocks and the CHAPERONE_* site settings.
+# On IPD, run this on backfill with ``--partition=gpu-bf``.
+GPU = dict(time_limit="1:00:00")
 
 RFD3, MPNN, AF3, RMSD = Blocks.getall("rfd3", "mpnn", "af3", "rmsd")
 

@@ -45,7 +45,7 @@ engine.run(
     "rfd3",
     inputs="input.json",
     n_batches=4,
-    job_args=JobArgs(partition="gpu", gres="gpu:1", mem_gb=16),
+    job_args=JobArgs(gpu_class="small", mem_gb=16),
     run_args=RuntimeArgs(mode="local"),
 )
 
@@ -91,7 +91,7 @@ An explicit `mode` in `RuntimeArgs` always takes precedence over the backend set
 
 ### GPU Auto-Detection
 
-When a block requires a GPU partition and local CUDA GPUs are detected, the engine automatically routes to local execution instead of SLURM (controlled by `use_local_gpus=True`, the default). To force SLURM submission even when local GPUs are available (e.g., when you have a GPU via `salloc` but want to submit batch jobs), set `use_local_gpus=False`:
+When a block requests a GPU and local CUDA GPUs are detected, the engine automatically routes to local execution instead of SLURM (controlled by `use_local_gpus=True`, the default). To force SLURM submission even when local GPUs are available (e.g., when you have a GPU via `salloc` but want to submit batch jobs), set `use_local_gpus=False`:
 
 ```python
 engine.run("rfd3", run_args=RuntimeArgs(use_local_gpus=False))
@@ -150,10 +150,10 @@ SLURM job configuration for submitting to the cluster.
 from chaperone import JobArgs
 
 job_args = JobArgs(
-    partition="gpu",      # SLURM partition
-    mem_gb=16,            # Memory per job in GB (default: 4)
-    time_limit="04:00:00", # Time limit HH:MM:SS (default: "01:00:00")
-    gres="gpu:a100:1",    # GPU specification (e.g., "gpu:1", "gpu:a100:1")
+    gpu_class="large",    # GPU size; the site maps it to a gres (see below)
+    mem_gb=16,            # Memory per job in GB (default: 8)
+    time_limit="04:00:00", # Time limit HH:MM:SS (default: "5:00:00")
+    account="myaccount",  # --account (default: CHAPERONE_DEFAULT_ACCOUNT)
     cpus_per_task=4,      # CPU cores allocated per task
     job_name="my_job",    # Custom SLURM job name
     rows_per_job=10,      # Rows per job (overrides block default)
@@ -163,18 +163,40 @@ job_args = JobArgs(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `partition` | str | `"cpu"` | SLURM partition or `"local"` for local execution |
-| `mem_gb` | int | `4` | Memory per job in GB |
-| `time_limit` | str | `"01:00:00"` | Time limit in HH:MM:SS format |
-| `gres` | str \| None | `None` | SLURM gres (e.g., `"gpu:a100:1"`) |
+| `partition` | str \| None | `None` | SLURM partition name, passed to `sbatch` as-is, or `"local"` for local execution. `None` uses `CHAPERONE_DEFAULT_PARTITION`, else the cluster default |
+| `mem_gb` | int | `8` | Memory per job in GB |
+| `time_limit` | str | `"5:00:00"` | Time limit in HH:MM:SS format |
+| `gpu_class` | str \| None | `None` | Portable GPU size (`"small"`, `"large"`). The site maps it to a gres through `CHAPERONE_GRES_MAP`, else `gpu:1`. Ignored when `gres` is set |
+| `gres` | str \| None | `None` | SLURM gres, passed to `sbatch` unchecked (e.g., `"gpu:1"`). Valid GPU types depend on the cluster |
+| `account` | str \| None | `None` | SLURM `--account`. `None` uses `CHAPERONE_DEFAULT_ACCOUNT` |
+| `qos` | str \| None | `None` | SLURM `--qos`. `None` uses `CHAPERONE_DEFAULT_QOS` |
+| `extra_sbatch` | list[str] \| None | `None` | Extra long `sbatch` options, e.g. `["--reservation=mine"]`. `None` uses `CHAPERONE_DEFAULT_EXTRA_SBATCH`; a list replaces it |
 | `cpus_per_task` | int | `1` | CPU cores allocated per task/job |
 | `job_name` | str \| None | `None` | Custom SLURM job name |
 | `rows_per_job` | int \| None | `None` | Rows per job (overrides block default) |
 | `exclude_nodes` | str \| None | `None` | Comma-separated nodes to exclude |
 
+### Slurm Site Configuration
+
+A block does not name cluster resources. Its `_resources` says `partition="gpu"` or `"cpu"` (a resource *class*, not a partition name) and, for GPU blocks, `gpu_class="small"` or `"large"`. The site settings turn those into a real partition and `--gres`. Set them in `.env.local`, or `.env.ipd` at IPD:
+
+| Setting | Meaning |
+|---------|---------|
+| `CHAPERONE_DEFAULT_PARTITION` | Partition for CPU blocks and for any job that names none |
+| `CHAPERONE_GPU_PARTITION` | Partition for GPU blocks (falls back to `CHAPERONE_DEFAULT_PARTITION`) |
+| `CHAPERONE_GRES_MAP` | JSON map from size class to `--gres`, e.g. `'{"small": "gpu:a4000:1", "large": "gpu:a6000:1"}'`. The key `default` covers other classes |
+| `CHAPERONE_DEFAULT_ACCOUNT` / `CHAPERONE_DEFAULT_QOS` | Default `--account` / `--qos` |
+| `CHAPERONE_DEFAULT_EXTRA_SBATCH` | Extra long `sbatch` options, shell-split, e.g. `'--reservation=mine --mail-type=END'` |
+
+With none set, a GPU block submits with `--gres=gpu:1` and no `--partition`, and a CPU block with neither. That is valid when the cluster's default partition has the GPUs; if it does not, set `CHAPERONE_GPU_PARTITION`. List a cluster's partitions and GPU types with `sinfo -o "%P %G"`.
+
+Chaperone does not check GPU types. Whatever `gres` reaches `sbatch` unchanged, so the cluster decides what is valid: IPD registers size classes (`gpu:small:1`, `gpu:large:1`) and rejects model names such as `gpu:a4000:1`, while most other clusters register model names or accept only `gpu:1`. A map given in the environment is merged key by key with one in a `.env*` file.
+
+At IPD, `.env.ipd` sets `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu` and the map `small` -> `gpu:small:1`, `large` -> `gpu:large:1`, so blocks request exactly what they always did.
+
 ### JobArgs Resolution
 
-Final `JobArgs` are resolved by merging two layers: `block._resources` as the base, then the effective user `JobArgs` on top (only fields that differ from `JobArgs()` defaults override). The effective user `JobArgs` is: `job_args` passed to `run()`, falling back to `job_args_default` from the engine constructor if `job_args` is `None`. Note that `job_args_default` and `job_args` are **not** merged with each other — `job_args` fully replaces `job_args_default` when provided.
+Final `JobArgs` are resolved by merging layers. Highest priority first: CLI flags (`--partition`, `--gres`, `--account`, `--qos`, `--extra_sbatch`), then the user `JobArgs`, then `block._resources`, then the site settings above. Class names in `block._resources` (`"cpu"`, `"gpu"`, `gpu_class`) are mapped by the site; values you pass in `job_args` or on the CLI are used verbatim. Between the user and block layers, only user fields that differ from `JobArgs()` defaults override. The effective user `JobArgs` is: `job_args` passed to `run()`, falling back to `job_args_default` from the engine constructor if `job_args` is `None`. Note that `job_args_default` and `job_args` are **not** merged with each other — `job_args` fully replaces `job_args_default` when provided.
 
 ## RuntimeArgs
 
@@ -410,7 +432,7 @@ else:
     RUNDIR = SCRIPT_DIR / "out_pilot"
     RUN_ARGS = RuntimeArgs(mode="local")
 
-GPU_JOB = JobArgs(partition="gpu", gres="gpu:a4000:1", mem_gb=32, time_limit="08:00:00")
+GPU_JOB = JobArgs(gpu_class="small", mem_gb=32, time_limit="08:00:00")
 
 # ── Block setup ────────────────────────────────────────────────────────────
 RFD3Block = Blocks.get("rfd3")
@@ -475,7 +497,7 @@ engine.run("rfd3", n_batches=10)  # --rfd3.n_batches=50 overrides this
 
 ```bash
 python script.py --rfd3.n_batches=50 --recompile --rundir=/tmp/test
-python script.py --partition=gpu --gres=gpu:a100:1  # override SLURM defaults for all blocks
+python script.py --partition=gpu --gres=gpu:a100:1  # retarget all GPU blocks (use your cluster's names)
 python script.py --help  # prints all available flags
 ```
 
@@ -495,8 +517,10 @@ CLI flags (--rfd3.n_batches=50)  >  script kwargs (n_batches=10)  >  block Pydan
 | `--local` | Use local execution instead of SLURM |
 | `--nouse_local_gpus` | Force SLURM submission even when local GPUs are available |
 | `--pickup` | Pick up parquet from existing run directory |
-| `--partition=<str>` | Override default SLURM partition for all blocks (e.g. `gpu`, `gpu-bf`, `local`). If unset, uses each block's own default |
-| `--gres=<str>` | Override default SLURM gres for all blocks (e.g. `gpu:a4000:1`, `gpu:a100:1`). If unset, uses each block's own default |
+| `--partition=<str>` | SLURM partition for all GPU blocks, or `local` (CPU blocks are unaffected). If unset, uses the site's GPU partition (`CHAPERONE_GPU_PARTITION`), then `CHAPERONE_DEFAULT_PARTITION`, then the cluster default. Overriding it drops the GPU type from the block's gres (`gpu:a100:1` becomes `gpu:1`) unless `--gres` is also given. IPD example: `gpu-bf` |
+| `--gres=<str>` | SLURM `--gres` for all GPU blocks, passed to `sbatch` as-is (e.g. `gpu:1`, `gpu:a100:1`). Valid GPU types depend on the cluster. If unset, uses each block's size class mapped through `CHAPERONE_GRES_MAP`, else `gpu:1` |
+| `--account=<str>`, `--qos=<str>` | SLURM `--account` / `--qos` for all blocks. If unset, `CHAPERONE_DEFAULT_ACCOUNT` / `CHAPERONE_DEFAULT_QOS` |
+| `--extra_sbatch=<str>` | Extra long `sbatch` options for all blocks, space-separated and quoted, e.g. `--extra_sbatch='--reservation=mine --mail-type=END'` |
 
 ### Shebang for Auto-Activation
 
