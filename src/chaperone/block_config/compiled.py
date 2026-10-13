@@ -85,6 +85,8 @@ class CompiledBlockFunction(BlockFunction):
     _script_spec: ClassVar[ScriptSpec | None] = None  # Script metadata
 
     command_template: Optional[List[str]] = None
+    cloud: bool = False
+    _modal_job_args: object = PrivateAttr(default=None)
     _generated_command_template: Optional[List[str]] = PrivateAttr(default=None)
     _container_bind_settings: Optional[dict] = PrivateAttr(default=None)
 
@@ -145,6 +147,10 @@ class CompiledBlockFunction(BlockFunction):
                 dest.write_text(catcif_tools.get_structure(src))
             return dest
 
+        if self.cloud and sandbox_dir:
+            from chaperone.orchestration.modal_backend import stage_file
+
+            return stage_file(src, Path(sandbox_dir) / subdir)
         return Path(src)
 
     def stage_or_copy(self, src: str | Path, dst: str | Path) -> None:
@@ -170,7 +176,13 @@ class CompiledBlockFunction(BlockFunction):
         src, dst = Path(src), Path(dst)
         if dst.exists():
             return
-        os.symlink(str(src.resolve()), str(dst))
+        if self.cloud:
+            import shutil
+
+            mkdir_p(dst.parent)
+            shutil.copy2(src, dst)
+        else:
+            os.symlink(str(src.resolve()), str(dst))
 
     @classmethod
     def _get_image(cls) -> "Image | None":
@@ -323,7 +335,12 @@ class CompiledBlockFunction(BlockFunction):
 
         if not recompile:
             # Generate command & manifest
-            manifest = self.create_manifest(handler, sandbox_dir, chunk_id, write=True)
+            if self.cloud:
+                from chaperone.orchestration.modal_backend import prepare_modal
+
+                manifest, cloud_context = prepare_modal(self, handler, sandbox_dir, chunk_id)
+            else:
+                manifest = self.create_manifest(handler, sandbox_dir, chunk_id, write=True)
             step_dir = (
                 sandbox_dir.parent
                 if sandbox_dir.name.startswith("chunk_")
@@ -337,10 +354,16 @@ class CompiledBlockFunction(BlockFunction):
                 source="compiled_block",
                 chunk_id=chunk_id,
                 command=manifest.command_str or manifest.command,
+                allocation=cloud_context.allocation if self.cloud else None,
             ):
                 # A stale artifact must never turn a failed command into a
                 # successful compile or execution-accounting record.
-                Manifest.exec(sandbox_dir).check_returncode()
+                if self.cloud:
+                    from chaperone.orchestration.modal_backend import execute_modal
+
+                    execute_modal(manifest, cloud_context, self._modal_job_args or self.get_resources())
+                else:
+                    Manifest.exec(sandbox_dir).check_returncode()
 
         # Compile results, optionally store, and backlink
         output: PipelineDataHandler = self.compile(str(sandbox_dir))

@@ -418,6 +418,12 @@ class Image:
         """
         from chaperone import get_settings
 
+        from chaperone.orchestration.modal_backend import current_command_context
+
+        cloud_context = current_command_context()
+        if cloud_context is not None:
+            return cloud_context.build_command(self, args, env, binds, exec_mode)
+
         config = self._command_config or {}
         eff_exec_mode = exec_mode or config.get("exec_mode", "run")
         default_binds = config.get("binds", [])
@@ -601,7 +607,13 @@ class Image:
             stage += shell(commands=[clone_cmd])
 
         for cmd_group in self._commands:
-            stage += shell(commands=cmd_group)
+            if docker and any("\n" in command for command in cmd_group):
+                # A quoted Python/shell program may contain literal newlines.
+                # Docker still treats those as instruction boundaries in the
+                # shell form; JSON form preserves them inside a single RUN.
+                stage += raw(docker="RUN " + json.dumps(["/bin/sh", "-c", " && ".join(cmd_group)]))
+            else:
+                stage += shell(commands=cmd_group)
 
         if self._env_vars:
             stage += environment(variables=self._env_vars)

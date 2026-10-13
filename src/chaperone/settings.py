@@ -195,9 +195,21 @@ class ChaperoneSettings(BaseSettings):
         description="Disable rich formatting in console output.",
     )
 
-    CHAPERONE_COMPUTE_BACKEND: Literal["auto", "slurm", "local"] = Field(
+    CHAPERONE_COMPUTE_BACKEND: Literal["auto", "slurm", "local", "modal", "cloud"] = Field(
         default="auto",
         description="Default compute backend. 'auto' detects local GPU → SLURM → local fallback.",
+    )
+    CHAPERONE_MODAL_GPU: str = "A10G"
+    CHAPERONE_MODAL_GPU_MAP: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional GPU-class to Modal GPU type mapping (e.g. large -> A100-80GB).",
+    )
+    CHAPERONE_MODAL_TIMEOUT: int = Field(default=1800, ge=1)
+    CHAPERONE_MODAL_MAX_WORKERS: int = Field(default=2, ge=1)
+    CHAPERONE_MODAL_APP: str = "chaperone"
+    CHAPERONE_MODAL_VOLUMES: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map absolute container mount paths to existing Modal volume names (e.g. checkpoints).",
     )
     CHAPERONE_SLURM_PYTHON: Optional[str] = Field(
         default=None,

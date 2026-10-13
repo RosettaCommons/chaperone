@@ -16,7 +16,7 @@ Key `CHAPERONE_` settings:
 - `CHAPERONE_CONTAINER_BACKEND` — `apptainer/docker` (auto-resolves to first available)
 - `CHAPERONE_CONTAINER_DIRS` — colon-separated container image search paths
 - `CHAPERONE_DISABLE_RICH` — disable rich console formatting
-- `CHAPERONE_CLOUD_MODE` — when True (auto-enabled for modal/cloud backend), blocks stage all external files into hermetic chunk directories
+- `CHAPERONE_COMPUTE_BACKEND=modal` — compiled blocks copy staged inputs into hermetic chunk directories; see [Modal setup](../site/cloud.md)
 
 ## Configuration
 

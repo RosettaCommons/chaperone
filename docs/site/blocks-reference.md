@@ -1997,4 +1997,4 @@ The following parameters are shared across most blocks and are omitted from the 
 |-----------|-------------|
 | `store` | Store structure file contents in a Delta Lake table for portable/archival runs. Default: `False`. Available on all blocks. |
 | `command_template` | Override the container/binary command template. Pass a list of strings to run against a local install instead of the default container. Available on compiled blocks. |
-| `cloud` | Cloud execution configuration for running on Modal. Default: `None` (local/SLURM). Available on compiled blocks. |
+| `cloud` | Set `True` to request Modal execution for a compiled block. Default: `False`; the engine backend can also select Modal. See [cloud setup](cloud.md). |

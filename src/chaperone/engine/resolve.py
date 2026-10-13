@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 console = get_console()
 
 
-ExecutionMode = Literal["local", "slurm"]
+ExecutionMode = Literal["local", "slurm", "modal", "cloud"]
 
 
 @dataclass
@@ -53,6 +53,10 @@ class RuntimeArgs:
         """Apply global settings overrides and handle deprecation."""
         from chaperone import get_settings
 
+        if self.mode == "cloud":
+            self.mode = "modal"
+        if self.mode not in ("local", "slurm", "modal"):
+            raise ValueError(f"Unknown execution mode: {self.mode}")
         if get_settings().ENGINE_RECOMPILE:
             self.recompile = True
         if self.recompile and self.mode != "local":
@@ -282,6 +286,10 @@ def _resolve_default_mode(backend: str, use_local_gpus: bool = True) -> Executio
         return "local"
     if backend == "slurm":
         return "slurm"
+    if backend in ("modal", "cloud"):
+        return "modal"
+    if backend != "auto":
+        raise ValueError(f"Unknown compute backend: {backend}")
     if use_local_gpus:
         from chaperone.orchestration.gpu_local_taskrunner import detect_cuda_gpus
 
@@ -463,6 +471,9 @@ def _resolve_job_args(
     if resolved.rows_per_job is None:
         resolved.rows_per_job = block._rows_per_job
 
+    if run_args.mode == "modal":
+        return resolved
+
     if (resolved.partition or "").lower() == "local":
         if run_args.mode != "local":
             logger.info("partition='local' — forcing mode='local'")
@@ -510,6 +521,12 @@ def _create_runner(run_args: RuntimeArgs, log_folder: str):
     """
     from chaperone.orchestration.thread_runner import ThreadPoolRunner
 
+    if run_args.mode == "modal":
+        from chaperone import get_settings
+
+        return ThreadPoolRunner(
+            max_workers=run_args.max_workers or get_settings().CHAPERONE_MODAL_MAX_WORKERS
+        )
     if run_args.mode == "local":
         if run_args.use_local_gpus:
             from chaperone.orchestration.gpu_local_taskrunner import (
