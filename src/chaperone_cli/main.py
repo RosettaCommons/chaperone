@@ -164,6 +164,7 @@ Commands:
     list-installed    List currently installed containers
     list-blocks       List all blocks and their container status
     install           Install containers for tools
+    weights           Download model weights (chaperone weights install rfd2)
     shell             Enter an interactive shell in a container
     artifact          Read a bounded log/artifact excerpt with a continuation cursor
     wait              Sleep until a Slurm job, process, or marker finishes
@@ -212,6 +213,11 @@ def main():
         from absl import app
 
         app.run(install_main)
+    elif command == "weights":
+        _initialize_runtime()
+        from chaperone_cli.weights import main as weights_main
+
+        sys.exit(weights_main(sys.argv[2:]))
     elif command == "shell":
         if len(sys.argv) < 3:
             print("Usage: chaperone shell <container_name>")

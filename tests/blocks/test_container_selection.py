@@ -370,3 +370,42 @@ def test_mpnn_onprem_command_is_unchanged(monkeypatch, settings, tmp_path):
     assert "--checkpoint_protein_mpnn" not in command
     assert f"{tmp_path}:{tmp_path}" not in command
     assert "/net/software:/net/software" in command
+
+
+# ── chaperone weights install ───────────────────────────────────────────
+
+
+def test_weights_install_downloads_the_default_checkpoint(monkeypatch, tmp_path):
+    from chaperone_cli import weights
+
+    monkeypatch.setattr(
+        chaperone,
+        "get_settings",
+        lambda: SimpleNamespace(RFD2_WEIGHTS_DIR=str(tmp_path)),
+    )
+    fetched = []
+    monkeypatch.setattr(
+        weights.urllib.request,
+        "urlretrieve",
+        lambda url, dest: (fetched.append(url), open(dest, "wb").close()),
+    )
+
+    assert weights.main(["install", "rfd2"]) == 0
+    assert (tmp_path / "RFD_173.pt").is_file()
+    assert fetched == [
+        "https://files.ipd.uw.edu/pub/rfdiffusion2/model_weights/RFD_173.pt"
+    ]
+
+    assert weights.main(["install", "rfd2"]) == 0  # present: not fetched again
+    assert len(fetched) == 1
+
+
+def test_weights_install_needs_the_setting(monkeypatch):
+    from chaperone_cli import weights
+
+    monkeypatch.setattr(
+        chaperone, "get_settings", lambda: SimpleNamespace(RFD2_WEIGHTS_DIR=None)
+    )
+
+    with pytest.raises(SystemExit, match="RFD2_WEIGHTS_DIR"):
+        weights.main(["install", "rfd2"])

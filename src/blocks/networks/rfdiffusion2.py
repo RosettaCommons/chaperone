@@ -41,8 +41,9 @@ logger = logging.getLogger(__name__)
 #   2. A portable buildable variant (`chaperone install rfdiffusion2_portable`)
 #      that follows the upstream spec (RosettaCommons/RFdiffusion2,
 #      rf_diffusion/exec/rf_diffusion_aa.spec) and clones the public repo into
-#      /opt/RFdiffusion2 at build time. Checkpoints are not baked in: point the
-#      RFD2_WEIGHTS_DIR setting at the directory that upstream's setup.py fills.
+#      /opt/RFdiffusion2 at build time. Checkpoints are not baked in: run
+#      `chaperone weights install rfd2` to download RFD_173.pt into the
+#      directory named by the RFD2_WEIGHTS_DIR setting.
 #
 # We auto-select at import time: if the on-prem SIF exists on disk, prefer it
 # (so IPD runs stay byte-identical to the past); otherwise fall back to the
@@ -372,10 +373,9 @@ class RFD2Block(CompiledBlockFunction):
             self.ckpt_path
         ):
             raise FileNotFoundError(
-                f"RFdiffusion2 checkpoint not found: {self.ckpt_path}. Set the "
-                "RFD2_WEIGHTS_DIR setting to the directory holding RFD_173.pt "
-                "(fetched by `python setup.py` in RosettaCommons/RFdiffusion2) "
-                "or pass ckpt_path."
+                f"RFdiffusion2 checkpoint not found: {self.ckpt_path}. Run "
+                "`chaperone weights install rfd2` to download RFD_173.pt into "
+                "the RFD2_WEIGHTS_DIR directory, or pass ckpt_path."
             )
         cfgs = self.inputs if isinstance(self.inputs, list) else self.inputs.split(",")
         cmds = []
