@@ -214,6 +214,51 @@ class ChaperoneSettings(BaseSettings):
             "JobArgs.slurm_array_parallelism overrides this value."
         ),
     )
+    # Site mapping for Slurm resources. Blocks declare an abstract need (a CPU or
+    # GPU job and a GPU size class); these settings turn it into the concrete
+    # partition and --gres string for this cluster. Unset means "portable":
+    # no --partition (the cluster default applies) and --gres=gpu:1.
+    CHAPERONE_DEFAULT_PARTITION: Optional[str] = Field(
+        default=None,
+        description=(
+            "Slurm partition for jobs that do not name one: CPU blocks, bare "
+            "JobArgs(), and GPU blocks when CHAPERONE_GPU_PARTITION is unset. "
+            "Unset omits --partition so the cluster default applies."
+        ),
+    )
+    CHAPERONE_GPU_PARTITION: Optional[str] = Field(
+        default=None,
+        description=(
+            "Slurm partition for GPU blocks. Falls back to "
+            "CHAPERONE_DEFAULT_PARTITION."
+        ),
+    )
+    CHAPERONE_GRES_MAP: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "JSON map from a block's GPU size class (JobArgs.gpu_class, e.g. "
+            '"small", "large") to the --gres string for this cluster, e.g. '
+            '\'{"small": "gpu:a4000:1", "large": "gpu:a6000:1"}\'. The key '
+            '"default" covers classes that are not listed. Anything not mapped '
+            "requests one generic GPU (gpu:1)."
+        ),
+    )
+    CHAPERONE_DEFAULT_ACCOUNT: Optional[str] = Field(
+        default=None,
+        description="Slurm --account for jobs that do not set JobArgs.account.",
+    )
+    CHAPERONE_DEFAULT_QOS: Optional[str] = Field(
+        default=None,
+        description="Slurm --qos for jobs that do not set JobArgs.qos.",
+    )
+    CHAPERONE_DEFAULT_EXTRA_SBATCH: Optional[str] = Field(
+        default=None,
+        description=(
+            "Extra sbatch long options for jobs that do not set "
+            "JobArgs.extra_sbatch, shell-split, e.g. "
+            "'--reservation=gpu_mine --mail-type=END'."
+        ),
+    )
 
     # ---------------------------
     # Tool / Weight Paths

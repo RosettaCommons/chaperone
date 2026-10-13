@@ -276,11 +276,12 @@ compiled designs.
 
 ## GPU sizing
 
-The block defaults to the `gpu` partition with `gpu:small:1` because typical
-RNA design jobs are small. On the current cluster, the small class includes
-A4000/A5000/B4000/4000 Ada-class devices. Large or known memory-intensive
-designs should explicitly request `gpu:large:1`; the current large class
-includes A6000/L40/L40S/A100/H200-class devices.
+The block requests a GPU of the `small` size class because typical RNA design
+jobs are small. Each site maps the class to a concrete `--gres` through
+`CHAPERONE_GRES_MAP`; unmapped, it requests `gpu:1`. At IPD the small class
+(`gpu:small:1`) includes A4000/A5000/B4000/4000 Ada-class devices. Large or
+known memory-intensive designs should request the `large` class; at IPD that
+is `gpu:large:1`, which includes A6000/L40/L40S/A100/H200-class devices.
 
 RFD3NA does not publish a supported sequence-length cutoff between these size
 classes. Peak memory depends on total polymer tokens, `diffusion_batch_size`,
@@ -292,7 +293,7 @@ Callers can opt into a large GPU through Chaperone job arguments:
 ```python
 engine.run(
     RFD3NA(inputs="inputs.json", batch_size=4),
-    job_args={"partition": "gpu", "gres": "gpu:large:1"},
+    job_args={"gpu_class": "large"},
 )
 ```
 

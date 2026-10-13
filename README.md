@@ -237,8 +237,8 @@ You can also just talk to the agent in natural language ("design a peptide binde
 |-------|-------------|
 | `/order-designs` | Generate DNA eblock orders from design PDBs |
 | `/rosetta-params` | Generate and debug Rosetta `.params` files for ligands |
-| `/slurm-interactive` | Persistent interactive SLURM session (GPU/CPU) via qlogin for live, iterative work |
-| `/slurm-background` | Submit detached SLURM jobs (engine `job_args`, sbatch, nohup) for pilots/production |
+| `/slurm-interactive` | Persistent interactive SLURM session (GPU/CPU) for live, iterative work (written for IPD's `qlogin`; adapt elsewhere) |
+| `/slurm-background` | Submit detached SLURM jobs (engine `job_args`, sbatch, nohup) for pilots/production; covers the site settings for partitions and GPU types |
 | `/notebook-editing` | Edit, create, or execute Jupyter notebooks |
 | `/visualize` | Inspect structures in PyMOL |
 | `/order-collection` | Package a campaign's structures, metrics and summary into a handoff bundle |
@@ -252,7 +252,7 @@ The example below is how one might add an MD-based tool to the repo:
 > Read through /projects/ml/pipelines/software/{your-repo-name} and create a block using the `/build-block` skill. You should add this to the end of the test-pipeline under ./examples/benchmarks/ame on the af3 outputs with the ligand.
 ```
 
-You can ask Claude out of the box to do this, but it'll be much faster if you either also tell claude "You have a local gpu" (after running `qlogin --gres=gpu`) - that is, before opening `claude` on the terminal, or tell it to use `/slurm-interactive` - which will tell it to grab a gpu (or cpu) node via a qlogin tmux session (bit less clean but works!)
+You can ask Claude out of the box to do this, but it'll be much faster if you either also tell claude "You have a local gpu" (after getting a GPU node, e.g. `qlogin --gres=gpu` at IPD or `salloc --gres=gpu:1` elsewhere) - that is, before opening `claude` on the terminal, or tell it to use `/slurm-interactive` - which will tell it to grab a gpu (or cpu) node via a qlogin tmux session (bit less clean but works!)
 
 ## Example 2: Creating a design plan / spec
 

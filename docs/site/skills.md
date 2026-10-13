@@ -28,7 +28,7 @@ General skills for protein design workflows and peripheral tooling.
 | [`/order-designs`](#order-designs) | Generate DNA eblock orders from design PDBs | "order these designs", "generate eblocks" |
 | [`/order-collection`](#order-collection) | Package a campaign into a handoff bundle | "collect orders", "bundle designs", "prepare handoff" |
 | [`/visualize`](#visualize) | Send structures and commands to PyMOL via XML-RPC | "visualize", "show in PyMOL", "view structure" |
-| [`/slurm-interactive`](#slurm-interactive) | Persistent interactive SLURM session (GPU/CPU) via qlogin | "get me a gpu", "allocate a gpu/cpu", "gpu session", "qlogin" |
+| [`/slurm-interactive`](#slurm-interactive) | Persistent interactive SLURM session (GPU/CPU) via qlogin (IPD) | "get me a gpu", "allocate a gpu/cpu", "gpu session", "qlogin" |
 | [`/slurm-background`](#slurm-background) | Submit detached SLURM jobs for pilots/production/campaigns | "submit a job", "run in background", "production run", "sbatch" |
 | [`/notebook-editing`](#notebook-editing) | Edit, create, and execute Jupyter notebooks | any `.ipynb` interaction |
 
@@ -84,7 +84,7 @@ Sends structures (CIF, PDB, pickle) and PyMOL commands to a running PyMOL sessio
 
 ### `/slurm-interactive`
 
-Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` inside a `tmux` session, so Claude runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
+Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` (IPD's wrapper; adapt the allocation command on other clusters) inside a `tmux` session, so Claude runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
 
 ### `/slurm-background`
 

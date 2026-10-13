@@ -164,6 +164,7 @@ class BlockFunction(BaseModel, ABC):
             return self._resources.rows_per_job
         if self._resources is not None and (
             self._resources.partition == "gpu"
+            or self._resources.gpu_class is not None
             or (self._resources.gres or "").startswith("gpu:")
         ):
             return 200

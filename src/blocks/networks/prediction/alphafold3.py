@@ -806,7 +806,7 @@ class AlphaFold3Block(AF3LikePredictionBlock):
 
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:small:1",
+        gpu_class="small",
         mem_gb=32,
         rows_per_job=200,
     )

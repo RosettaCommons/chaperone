@@ -26,24 +26,46 @@ Use **interactive** (`slurm-interactive` skill) when you're iterating command-by
 
 ### 1. Chaperone ExecutionEngine (the primary path)
 
-The engine submits each block to SLURM via submitit, auto-chunking rows across jobs. Pass `job_args` as a **dict** (a dict lets defaults apply; `JobArgs()` would not):
+The engine submits each block to SLURM via submitit, auto-chunking rows across jobs. Pass `job_args` as a dict or a `JobArgs`; only the fields you set override the block's defaults:
 
 ```python
 engine = ExecutionEngine(rundir="/net/scratch/$USER/run")
-engine.run(blocks, job_args={"partition": "gpu-bf", "gres": "gpu:small:1",
-                             "mem_gb": 32, "time_limit": "24:00:00",
+engine.run(blocks, job_args={"mem_gb": 32, "time_limit": "24:00:00",
                              "rows_per_job": 10})
 ```
 
+Leave `partition` and `gres` out unless you need to change them: the block's CPU/GPU class and the site settings (below) already give a valid request on your cluster.
+
 | `job_args` field | Default | Notes |
 |---|---|---|
-| `partition` | `cpu` | `gpu` (priority — tests/pilots) vs `gpu-bf` (backfill — production) |
-| `gres` | block default | `gpu:small:1` / `gpu:large:1` (size class, **NOT** model names); `None` for CPU |
-| `mem_gb` | 4 | per job |
-| `time_limit` | `24:00:00` | HH:MM:SS |
+| `partition` | block's class, mapped by the site | A real partition name, passed to `sbatch` as-is. `None` means `CHAPERONE_DEFAULT_PARTITION`, else the cluster default. At IPD: `gpu` (priority, tests/pilots), `gpu-bf` (backfill, production). |
+| `gpu_class` | block default | Portable GPU size, `small` or `large`. The site maps it to a `gres` (`CHAPERONE_GRES_MAP`); unmapped it is `gpu:1`. |
+| `gres` | from `gpu_class` | A literal `--gres` string, passed to `sbatch` unchecked, so valid GPU types are whatever your cluster registers. Beats `gpu_class`. |
+| `account` / `qos` | site default | `--account` / `--qos`. Defaults: `CHAPERONE_DEFAULT_ACCOUNT` / `CHAPERONE_DEFAULT_QOS`. |
+| `extra_sbatch` | site default | List of extra long `sbatch` options, e.g. `["--reservation=mine"]`. Replaces `CHAPERONE_DEFAULT_EXTRA_SBATCH`. |
+| `mem_gb` | block default (8) | per job |
+| `time_limit` | block default (`5:00:00`) | HH:MM:SS |
 | `rows_per_job` / `num_chunks` | block default | parallel granularity |
 | `cpus_per_task` | 1 | |
 | `exclude` | None | comma-separated nodes to avoid |
+
+Precedence, highest first: CLI flags (`--partition`, `--gres`, `--account`, `--qos`, `--extra_sbatch`), `job_args`, the block's `_resources`, the site settings. `--partition` and `--gres` only affect GPU blocks. A `--partition` override drops the GPU type from the block's `gres` (`gpu:a100:1` becomes `gpu:1`), so pass `--gres` too if your cluster requires a type.
+
+### Site configuration
+
+A site sets these once, in `.env.local` (or `.env.ipd` for IPD). With none set, nothing cluster-specific is submitted: no `--partition`, and `--gres=gpu:1` for GPU blocks.
+
+| Setting | Meaning |
+|---|---|
+| `CHAPERONE_DEFAULT_PARTITION` | Partition for CPU blocks, bare `JobArgs()`, and GPU blocks without a GPU partition |
+| `CHAPERONE_GPU_PARTITION` | Partition for GPU blocks |
+| `CHAPERONE_GRES_MAP` | JSON map from size class to `--gres`, e.g. `'{"small": "gpu:a4000:1", "large": "gpu:a6000:1"}'`. Key `default` covers unlisted classes. |
+| `CHAPERONE_DEFAULT_ACCOUNT`, `CHAPERONE_DEFAULT_QOS` | Default `--account`, `--qos` |
+| `CHAPERONE_DEFAULT_EXTRA_SBATCH` | Extra long `sbatch` options, shell-split |
+
+Find your cluster's values with `sinfo -o "%P %G %l"`. A map set in the environment is merged key by key with one in a `.env*` file.
+
+**IPD values** (from `.env.ipd`, loaded automatically at IPD): `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu`, `CHAPERONE_GRES_MAP={"small": "gpu:small:1", "large": "gpu:large:1"}`. IPD registers size classes only, so a model name such as `gpu:a4000:1` is rejected there.
 
 - **Parallel metric overlays:** `engine.run_parallel(...)` runs independent update blocks concurrently. Sequential design pipelines use `engine.run([...])` with a list of blocks.
 - `engine.run` **blocks until the cluster jobs finish** (it is orchestrating them). To run the *driver itself* outside the model loop, use the Chaperone monitor's `launch_and_wait` tool (see #3).
@@ -54,7 +76,7 @@ engine.run(blocks, job_args={"partition": "gpu-bf", "gres": "gpu:small:1",
 > Use this only for non-Chaperone scripts, and only where manual submission is allowed. When a task prompt or harness instruction says Chaperone/Submitit owns job submission, do not call `sbatch`, `srun` or `salloc` yourself; use the engine (section 1).
 
 ```bash
-sbatch --partition=gpu-bf --gres=gpu:small:1 --mem=32G --time=24:00:00 \
+sbatch --partition=<gpu-partition> --gres=gpu:1 --mem=32G --time=24:00:00 \
        -J myjob -o logs/%x_%j.out --wrap "source .venv/bin/activate && ./run.sh"
 ```
 Or a script with `#SBATCH` directives + `sbatch script.sh`. Returns a job id immediately; the job runs detached. Use a **job array** (`--array=0-99`) for many independent tasks.
@@ -91,7 +113,9 @@ valid. The waiter keeps no registration or monitor state and returns only on
 completion, failure, or an explicit timeout. Never implement a reasoning-loop
 polling cadence.
 
-## Partitions (this cluster)
+## Partitions (IPD cluster)
+
+These are IPD's. Other clusters differ: list yours with `sinfo -o "%P %G %l"`.
 
 | Partition | Time limit | Use |
 |---|---|---|

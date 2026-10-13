@@ -87,9 +87,12 @@ RFD3, MPNN, MpnnScore, AF3, RMSD, IpSAE, ContactMS, Peppr, Filter = Blocks.getal
 )
 
 # Resources for the bundled chunk (rfd3 → mpnn → af3 → rmsd → ipsae → filter).
-# A6000 (48 GB) gives the most headroom for templated AF3 + variable-length binders;
-# swap to a4000/a5000/b4000 here if your queue is contended.
-JOB_ARGS = {"partition": "gpu", "gres": "gpu:a6000:1", "mem_gb": 16}
+# Templated AF3 with variable-length binders wants the headroom of a large GPU
+# (~48 GB); GPU blocks get one, CPU blocks (mpnn, metrics) get none. The site maps
+# the "large" class to a real --gres through CHAPERONE_GRES_MAP (at IPD, gpu:large:1),
+# and to a partition through CHAPERONE_GPU_PARTITION. Use "small" if your queue is
+# contended and the model fits.
+JOB_ARGS = {"gpu_class": "large", "mem_gb": 16}
 
 # ── Pipeline blocks ─────────────────────────────────────────────────────────────────────
 # 4 RFD3 designs × 8 MPNN sequences (hbond_fix + aromatic_fix preserve H-bond

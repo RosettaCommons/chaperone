@@ -12,6 +12,7 @@ All env vars are managed through `ChaperoneSettings` in `settings.py`. **Never**
 
 Key `CHAPERONE_` settings:
 - `CHAPERONE_COMPUTE_BACKEND` — `auto` (default: local GPU → SLURM → local fallback), `slurm`, `local`, `modal`/`cloud`, `sge`/`pbs` (not yet implemented)
+- `CHAPERONE_DEFAULT_PARTITION`, `CHAPERONE_GPU_PARTITION`, `CHAPERONE_GRES_MAP`, `CHAPERONE_DEFAULT_ACCOUNT`, `CHAPERONE_DEFAULT_QOS`, `CHAPERONE_DEFAULT_EXTRA_SBATCH` — site mapping for Slurm resources. Blocks request an abstract CPU/GPU class; these name the real partition, `--gres`, account, QOS and extra `sbatch` options. Unset means no `--partition` and `--gres=gpu:1`. `.env.ipd` carries the IPD values. See "Slurm Site Configuration" in `docs/site/syntax.md`
 - `CHAPERONE_CONTAINER_BACKEND` — `apptainer/docker` (auto-resolves to first available)
 - `CHAPERONE_CONTAINER_DIRS` — colon-separated container image search paths
 - `CHAPERONE_DISABLE_RICH` — disable rich console formatting
@@ -67,7 +68,7 @@ chaperone install bindcraft
 The image embeds BindCraft, its CUDA 12 JAX environment, and the public
 AlphaFold2 parameters. It is large and requires substantial temporary build
 space. At runtime, use an NVIDIA GPU with at least 32 GB VRAM; the block
-requests `gpu:large` by default. PyRosetta in the image is licensed for
+requests the `large` GPU size class by default (`gpu:large:1` at IPD). PyRosetta in the image is licensed for
 academic/non-commercial use by default, and AlphaFold2 parameters are CC BY
 4.0. Keep the SIF access-controlled and verify dependency licensing before
 redistributing it or using it commercially.

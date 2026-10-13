@@ -45,5 +45,5 @@ Full scale:
 Override block parameters:
 
 ```bash
-./examples/{EXAMPLE}/pipeline.py --rfd3.n_batches=50 --rfd3.batch_size=20 --partition=gpu-bf
+./examples/{EXAMPLE}/pipeline.py --rfd3.n_batches=50 --rfd3.batch_size=20 --partition=<your-gpu-partition>
 ```

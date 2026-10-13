@@ -168,7 +168,7 @@ class BindCraftBlock(CompiledBlockFunction):
     )
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:large:1",
+        gpu_class="large",
         mem_gb=48,
         time_limit="24:00:00",
         rows_per_job=1,

@@ -181,8 +181,8 @@ class {ToolName}Block(CompiledBlockFunction):
     _description = "{Short description}"
     _image = {TOOL}_CONTAINER
     _resources = JobArgs(
-        partition="gpu",        # or "cpu"
-        gres="gpu:a4000:1",    # omit for CPU-only
+        partition="gpu",        # resource class: "gpu" or "cpu", never a real partition name
+        gpu_class="small",     # GPU blocks only: "small" or "large"; omit for CPU-only
         mem_gb=16,
         time_limit="04:00:00",
         rows_per_job=100,

@@ -6,11 +6,14 @@
 # Usage:
 #   ./examples/fgfr2-binder/run.sh                    # test  (1 design end-to-end, 1 batch * 1 size)
 #   ./examples/fgfr2-binder/run.sh small              # 10 backbones (no test overrides — uses script defaults)
-#   ./examples/fgfr2-binder/run.sh pilot              # ~200 backbones on gpu
-#   ./examples/fgfr2-binder/run.sh prod               # full default scale on gpu-bf
+#   ./examples/fgfr2-binder/run.sh pilot              # ~200 backbones
+#   ./examples/fgfr2-binder/run.sh prod               # full default scale
 #
 # Knobs (env vars):
 #   GRES=gpu:a100:1   PARTITION=gpu   ORCH_TIME=2:00:00   ORCH_MEM=8G
+#   ORCH_PARTITION=cpu                  # partition for the orchestrator job;
+#                                       # default: $CHAPERONE_DEFAULT_PARTITION, else
+#                                       # the cluster default
 #   RUNDIR=/path/to/custom/dir         # override default runs/<mode> location
 #   BG=1                                # detach (sbatch); script returns the job id
 #                                       # and you can close your terminal
@@ -22,17 +25,21 @@ MODE="${1:-test}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Don't pass --partition or --gres globally by default. Each block's _resources
-# already declares the right partition+gres (RFD3/AF3 → gpu:a4000:1, MPNN →
-# cpu with no gres). Two known gotchas if you DO pass them:
-#   1. A global --partition strips the GPU type from each block's default gres
-#      (e.g. gpu:a4000:1 → gpu:1) — clusters that require an explicit type reject this.
-#   2. A global --gres is bolted onto MPNN's cpu submission, producing an
-#      invalid partition=cpu + gres=gpu:a4000:1 combo.
-# Set PARTITION/GRES env vars only when you genuinely need to retarget
-# (e.g. PARTITION=gpu-bf for prod), and accept that you may need per-block tuning.
+# Don't pass --partition or --gres globally by default. Each block asks for a CPU
+# or GPU job (RFD3/AF3 a GPU, MPNN none) and the site settings (CHAPERONE_GPU_PARTITION,
+# CHAPERONE_GRES_MAP, ...) turn that into this cluster's partition and gres.
+# If you DO pass them:
+#   1. A global --partition applies to GPU blocks only and strips the GPU type from
+#      their gres (e.g. gpu:large:1 → gpu:1). If your cluster requires a type, also
+#      pass GRES. (IPD backfill: PARTITION=gpu-bf GRES=gpu:large:1.)
+#   2. A global --gres applies to GPU blocks only; CPU blocks like MPNN keep none.
 PARTITION="${PARTITION:-}"
 GRES="${GRES:-}"
+ORCH_PARTITION="${ORCH_PARTITION-${CHAPERONE_DEFAULT_PARTITION:-}}"
+ORCH_PARTITION_FLAG=()
+if [ -n "$ORCH_PARTITION" ]; then
+    ORCH_PARTITION_FLAG=(--partition="$ORCH_PARTITION")
+fi
 ORCH_TIME="${ORCH_TIME:-2:00:00}"
 ORCH_MEM="${ORCH_MEM:-8G}"
 
@@ -56,11 +63,9 @@ case "$MODE" in
         ;;
     prod)
         RUNDIR="${RUNDIR:-$RUNS_BASE/prod}"
-        # NOTE: gpu-bf would be ideal here, but a global --partition strips
-        # block-default GPU types and clusters that require an explicit type
-        # reject the resulting gpu:1. Keep block defaults for now; if you need
-        # gpu-bf, set both PARTITION=gpu-bf and GRES=gpu:a4000:1 (this re-
-        # introduces the MPNN-leak issue — work around with per-block job_args).
+        # NOTE: a backfill partition (IPD: gpu-bf) suits production, but a
+        # global --partition strips the GPU type from each block's gres. Set both,
+        # e.g. PARTITION=gpu-bf GRES=gpu:large:1, if your cluster needs a type.
         ORCH_TIME="${ORCH_TIME:-12:00:00}"
         EXTRA_ARGS=()
         ;;
@@ -77,13 +82,13 @@ cat <<EOF
 Mode:       $MODE
 Rundir:     $RUNDIR
 Log:        $LOG
-Orch alloc: cpu  $ORCH_TIME  $ORCH_MEM
-Job target: ${PARTITION:-(per-block partition)}  ${GRES:-(per-block gres)}
+Orch alloc: ${ORCH_PARTITION:-(cluster default)}  $ORCH_TIME  $ORCH_MEM
+Job target: ${PARTITION:-(site/per-block partition)}  ${GRES:-(site/per-block gres)}
 ---
 EOF
 
 # Only forward --partition / --gres when explicitly set so we don't override
-# the per-block defaults that this cluster needs.
+# the per-block defaults and site settings.
 PIPELINE_ARGS=("${EXTRA_ARGS[@]}" --rundir="$RUNDIR")
 if [ -n "$PARTITION" ]; then
     PIPELINE_ARGS+=(--partition="$PARTITION")
@@ -100,7 +105,7 @@ if [ -n "${BG:-}" ]; then
     SBATCH_SCRIPT="$RUNDIR/orchestrator.sbatch"
     cat > "$SBATCH_SCRIPT" <<EOF
 #!/bin/bash
-#SBATCH --partition=cpu
+${ORCH_PARTITION:+#SBATCH --partition=$ORCH_PARTITION}
 #SBATCH --time=$ORCH_TIME
 #SBATCH --mem=$ORCH_MEM
 #SBATCH --cpus-per-task=4
@@ -119,7 +124,7 @@ EOF
     exit 0
 fi
 
-srun --partition=cpu --time="$ORCH_TIME" --mem="$ORCH_MEM" --cpus-per-task=4 \
+srun ${ORCH_PARTITION_FLAG[@]+"${ORCH_PARTITION_FLAG[@]}"} --time="$ORCH_TIME" --mem="$ORCH_MEM" --cpus-per-task=4 \
     ./examples/fgfr2-binder/pipeline.py \
     "${PIPELINE_ARGS[@]}" \
     2>&1 | tee "$LOG"

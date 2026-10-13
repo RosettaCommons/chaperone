@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass, field, replace
 
 
@@ -27,14 +28,71 @@ def _create_slurm_executor(folder: str):
         ) from exc
 
 
+# ── site mapping ─────────────────────────────────────────────────────────────
+#
+# Blocks do not name cluster-specific resources. A block's ``_resources`` says
+# ``partition="gpu"`` or ``"cpu"`` (a resource *class*, not a partition name) and,
+# for GPU blocks, ``gpu_class="small"`` / ``"large"``. The site settings below
+# turn those into the concrete partition and ``--gres``. Values a caller passes
+# explicitly (``job_args``, ``--partition``/``--gres``) are never mapped.
+
+
+def site_partition(gpu: bool) -> str | None:
+    """Partition for a CPU or GPU job from the site settings, or None to omit."""
+    from chaperone import get_setting_field
+
+    if gpu:
+        gpu_partition = get_setting_field("CHAPERONE_GPU_PARTITION", None)
+        if gpu_partition:
+            return gpu_partition
+    return get_setting_field("CHAPERONE_DEFAULT_PARTITION", None) or None
+
+
+def site_gres(gpu_class: str | None) -> str:
+    """``--gres`` for a GPU size class: ``CHAPERONE_GRES_MAP``, else ``gpu:1``."""
+    from chaperone import get_setting_field
+
+    mapping = get_setting_field("CHAPERONE_GRES_MAP", None) or {}
+    return mapping.get(gpu_class or "") or mapping.get("default") or "gpu:1"
+
+
+def parse_sbatch_args(args: list[str]) -> dict[str, str | bool]:
+    """Turn long sbatch options into submitit ``additional_parameters``.
+
+    Accepts ``--key=value``, ``--key value`` and bare ``--flag``. Short options
+    (``-w``) are rejected: write the long form.
+    """
+    parsed: dict[str, str | bool] = {}
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if not token.startswith("--") or token == "--":
+            raise ValueError(
+                f"extra_sbatch takes long sbatch options (--key=value or --flag), got {token!r}"
+            )
+        key, has_value, value = token[2:].partition("=")
+        if has_value:
+            parsed[key] = value
+        elif i + 1 < len(args) and not args[i + 1].startswith("-"):
+            parsed[key] = args[i + 1]
+            i += 1
+        else:
+            parsed[key] = True
+        i += 1
+    return parsed
+
+
 @dataclass
 class JobArgs:
     """SLURM job configuration. Use partition='local' for local execution."""
 
-    partition: str = field(
-        default="cpu",
+    partition: str | None = field(
+        default=None,
         metadata={
-            "description": "SLURM partition ('cpu', 'gpu', etc.) or 'local' for local execution"
+            "description": "SLURM partition name, or 'local' for local execution. "
+            "Passed to sbatch as-is. None uses CHAPERONE_DEFAULT_PARTITION "
+            "(or the cluster default). In a block's _resources, 'cpu' and 'gpu' "
+            "are resource classes resolved through the site settings."
         },
     )
     mem_gb: int = field(
@@ -52,7 +110,36 @@ class JobArgs:
     gres: str | None = field(
         default=None,
         metadata={
-            "description": "SLURM gres specification (e.g., 'gpu:a100:1', 'gpu:1')"
+            "description": "SLURM gres specification, passed to sbatch as-is "
+            "(e.g., 'gpu:1'). Valid types are cluster-specific; prefer gpu_class."
+        },
+    )
+    gpu_class: str | None = field(
+        default=None,
+        metadata={
+            "description": "Abstract GPU size class ('small', 'large'). The site "
+            "maps it to a gres through CHAPERONE_GRES_MAP, else 'gpu:1'. "
+            "Ignored when gres is set."
+        },
+    )
+    account: str | None = field(
+        default=None,
+        metadata={
+            "description": "SLURM account (--account). None uses CHAPERONE_DEFAULT_ACCOUNT."
+        },
+    )
+    qos: str | None = field(
+        default=None,
+        metadata={
+            "description": "SLURM quality of service (--qos). None uses CHAPERONE_DEFAULT_QOS."
+        },
+    )
+    extra_sbatch: list[str] | None = field(
+        default=None,
+        metadata={
+            "description": "Extra sbatch long options, e.g. ['--reservation=mine', "
+            "'--mail-type=END']. None uses CHAPERONE_DEFAULT_EXTRA_SBATCH. "
+            "Replaces the default list rather than adding to it."
         },
     )
     constraint: str | None = field(
@@ -117,6 +204,10 @@ class JobArgs:
     )
 
     def __post_init__(self):
+        if isinstance(self.extra_sbatch, str):
+            self.extra_sbatch = shlex.split(self.extra_sbatch)
+        if self.extra_sbatch:
+            parse_sbatch_args(self.extra_sbatch)  # fail now, not at submission
         if (
             self.slurm_array_parallelism is not None
             and self.slurm_array_parallelism < 1
@@ -133,6 +224,47 @@ class JobArgs:
             self.exclude_nodes = self.exclude
 
     # ── helpers ──────────────────────────────────────────────────────────
+
+    @property
+    def wants_gpu(self) -> bool:
+        """True when this job asks for a GPU (size class, gres, or GPU partition)."""
+        return (
+            bool(self.gpu_class)
+            or "gpu" in (self.gres or "").lower()
+            or "gpu" in (self.partition or "").lower()
+        )
+
+    def effective_gres(self) -> str | None:
+        """The ``--gres`` to submit: explicit, else the site's mapping of gpu_class."""
+        if self.gres:
+            return self.gres
+        return site_gres(self.gpu_class) if self.gpu_class else None
+
+    def effective_partition(self) -> str | None:
+        """The partition to submit to: explicit, else the site default, else None."""
+        return self.partition or site_partition(self.wants_gpu)
+
+    def add_site_sbatch_params(self, params: dict) -> None:
+        """Add account, qos and extra sbatch options to submitit ``params``.
+
+        Each falls back to its ``CHAPERONE_DEFAULT_*`` setting when unset here.
+        """
+        from chaperone import get_setting_field
+
+        account = self.account or get_setting_field("CHAPERONE_DEFAULT_ACCOUNT", None)
+        if account:
+            params["slurm_account"] = account
+        qos = self.qos or get_setting_field("CHAPERONE_DEFAULT_QOS", None)
+        if qos:
+            params["slurm_qos"] = qos
+        extra = self.extra_sbatch
+        if extra is None:
+            default = get_setting_field("CHAPERONE_DEFAULT_EXTRA_SBATCH", None)
+            extra = shlex.split(default) if default else []
+        if extra:
+            params.setdefault("slurm_additional_parameters", {}).update(
+                parse_sbatch_args(extra)
+            )
 
     def effective_rows_per_job(
         self, total_rows: int, default: int | None = None
@@ -216,16 +348,18 @@ class JobArgs:
         """
         executor = _create_slurm_executor(folder=f"{log_folder}/%j")
         params: dict = {
-            "slurm_partition": self.partition,
             "timeout_min": self.timeout_min,
             "mem_gb": self.mem_gb,
             **extra_params,
         }
+        partition = self.effective_partition()
+        if partition:
+            params.setdefault("slurm_partition", partition)
         params["slurm_array_parallelism"] = self.effective_slurm_array_parallelism(
             slurm_array_parallelism
         )
-        if self.gres:
-            params["slurm_gres"] = self.gres
+        if gres := self.effective_gres():
+            params["slurm_gres"] = gres
         if self.constraint:
             params["slurm_constraint"] = self.constraint
         params["cpus_per_task"] = self.cpus_per_task
@@ -235,5 +369,6 @@ class JobArgs:
             params["name"] = self.job_name
         if self.nice is not None:
             params.setdefault("slurm_additional_parameters", {})["nice"] = self.nice
+        self.add_site_sbatch_params(params)
         executor.update_parameters(**params)
         return executor
