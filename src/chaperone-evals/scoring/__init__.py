@@ -1012,7 +1012,7 @@ def sequence_submission_to_handler(
     ``spec.oligomer_copies`` so the built structure matches the declared
     contract.
 
-    RNA takes the dedicated Pipelines ingest path, which writes nucleotide
+    RNA takes the dedicated Chaperone ingest path, which writes nucleotide
     residue names/C3' anchors and emits ``diffused_index_map`` metadata from the
     normalized motif map. ``ligands`` are scorer-owned CCD codes (for example a metal
     ion code), identical for every design.
@@ -1316,9 +1316,9 @@ def define_score_flags(required_n: int = 96) -> None:
         "({gpu_hours, cpu_hours, wallclock_min}); enables pass-rate-per-cost.",
     )
     flags.DEFINE_string(
-        "pipelines_repo",
-        os.environ.get("PIPELINES_REPO"),
-        "Pipelines checkout supplying scoring assets. Passed by the Harbor "
+        "chaperone_repo",
+        os.environ.get("CHAPERONE_REPO"),
+        "Chaperone checkout supplying scoring assets. Passed by the Harbor "
         "controller; scorers that resolve their own assets may ignore it.",
     )
 

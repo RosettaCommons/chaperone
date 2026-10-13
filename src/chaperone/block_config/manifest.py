@@ -149,7 +149,7 @@ class Manifest:
             #
             # Live output goes to plain sys.stdout (not rich.console) so this
             # module stays standalone-importable without dragging in
-            # `chaperone.common` → `pipelines/__init__.py` → polars/the block
+            # `chaperone.common` → `chaperone/__init__.py` → polars/the block
             # registry. The log_file already captures the same content
             # verbatim if a richer record is needed.
             try:

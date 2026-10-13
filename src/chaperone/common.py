@@ -1,4 +1,4 @@
-"""Common utility functions for pipelines."""
+"""Common utility functions for Chaperone."""
 
 import glob
 import logging
@@ -54,11 +54,11 @@ def is_apple_silicon() -> bool:
 def get_console() -> Console:
     """Get a rich Console configured based on settings.
 
-    If PIPELINES_DISABLE_RICH env var is set, returns a Console with
+    If CHAPERONE_DISABLE_RICH env var is set, returns a Console with
     colors/markup disabled.
     """
     # Check env var directly to avoid circular imports at module load time
-    disable_rich = os.environ.get("PIPELINES_DISABLE_RICH", "").lower() in (
+    disable_rich = os.environ.get("CHAPERONE_DISABLE_RICH", "").lower() in (
         "1",
         "true",
         "yes",
@@ -96,7 +96,7 @@ def progress_disabled() -> bool:
     useful. That matters beyond tidiness here: an agent tailing a log pays for
     every one of those lines in context.
     """
-    if os.environ.get("PIPELINES_PROGRESS") == "always":
+    if os.environ.get("CHAPERONE_PROGRESS") == "always":
         return False
     return not sys.stderr.isatty()
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import get_args, get_origin, Union
 import types
 
-# Ensure src/ is on the path so blocks and pipelines are importable
+# Ensure src/ is on the path so blocks and chaperone are importable
 _src = Path(__file__).resolve().parent.parent.parent / "src"
 if str(_src) not in sys.path:
     sys.path.insert(0, str(_src))

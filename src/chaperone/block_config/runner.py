@@ -6,7 +6,7 @@ A single ``runner.py`` handles both the wait and finish phases, dispatching on
   Phase 2 (``wait``)
       Supervises ``Manifest.exec`` for the entire apptainer/SLURM wait. Loaded
       by FILE PATH (``python <path>/runner.py wait <state.json>``) so that
-      ``pipelines/__init__.py`` does NOT run — which would pull in polars +
+      ``chaperone/__init__.py`` does NOT run — which would pull in polars +
       the block registry and blow the ~16 MiB memory budget. Heavy imports
       (``submitit``, ``PipelineDataHandler``) live inside ``_phase_finish``
       and are deferred until after ``Manifest.exec`` returns.
@@ -50,7 +50,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _HERE = Path(__file__).resolve().parent  # src/chaperone/block_config/
-_PIPELINES_ROOT = _HERE.parent  # src/chaperone/
+_CHAPERONE_ROOT = _HERE.parent  # src/chaperone/
 
 
 def _sha256(path: Path) -> str | None:
@@ -102,7 +102,7 @@ def _load_standalone(module_name: str, path: Path) -> types.ModuleType:
     """Import a single .py file WITHOUT triggering its parent package __init__.
 
     Critical for keeping wait mode's resident set tiny — if we let Python
-    walk up the package tree, ``pipelines/__init__.py`` runs and pulls in
+    walk up the package tree, ``chaperone/__init__.py`` runs and pulls in
     polars + the block registry + everything else.
 
     The module must be registered in ``sys.modules`` before ``exec_module``
@@ -137,7 +137,7 @@ def _get_tee_writer_class():
 
     Always loaded by FILE PATH via importlib — a normal
     ``from chaperone.block_config._log_tee import _TeeWriter`` would trigger
-    ``pipelines/__init__.py`` (polars + block registry) in wait mode, which
+    ``chaperone/__init__.py`` (polars + block registry) in wait mode, which
     is exactly the bloat we are avoiding. ``_log_tee`` is tiny and
     stdlib-only, so standalone-loading it in finish mode too is harmless and
     keeps this single-path.
@@ -242,14 +242,14 @@ def _phase_wait(state: dict) -> int:
 
     try:
         # Standalone-load Manifest and track_execution: importing them via
-        # ``from chaperone.X import Y`` would trigger ``pipelines/__init__.py``
+        # ``from chaperone.X import Y`` would trigger ``chaperone/__init__.py``
         # (which pulls in polars + block registry). Loading the .py files
         # directly via importlib bypasses the package machinery — these two
         # source files are stdlib-only at module load and stay <10 MiB
         # combined.
         manifest_mod = _load_standalone("_manifest_standalone", _HERE / "manifest.py")
         tracking_mod = _load_standalone(
-            "_execution_tracking_standalone", _PIPELINES_ROOT / "execution_tracking.py"
+            "_execution_tracking_standalone", _CHAPERONE_ROOT / "execution_tracking.py"
         )
         Manifest = manifest_mod.Manifest
         track_execution = tracking_mod.track_execution

@@ -18,7 +18,7 @@ from run_eval import (
     _SCORING_RUNDIR_BIND_ENV,
     _SCORING_USALIGN_ENV,
     _host_scoring_python,
-    _path_in_pipelines_namespace,
+    _path_in_chaperone_namespace,
     _prepare_scoring_packages,
     _run_score_command,
     _scoring_pythonpath,
@@ -33,8 +33,8 @@ from task_paths import default_chaperone_repo, private_tasks_root, task_scorer
 # generated Slurm entry point use the same shared-filesystem spelling.
 ROOT = Path(os.path.abspath(__file__)).parent
 # The controller lives inside the Chaperone checkout it evaluates; set
-# PIPELINES_REPO to score against a different one.
-DEFAULT_PIPELINES_REPO = default_chaperone_repo()
+# CHAPERONE_REPO to score against a different one.
+DEFAULT_CHAPERONE_REPO = default_chaperone_repo()
 
 
 def _load_json(path: Path) -> dict[str, object]:
@@ -194,10 +194,10 @@ def main() -> None:
     )
     parser.add_argument("--trial", help="Trial directory name when a job has several")
     parser.add_argument(
-        "--pipelines-repo",
+        "--chaperone-repo",
         type=Path,
-        default=DEFAULT_PIPELINES_REPO,
-        help="Pipelines checkout with its scoring Python environment",
+        default=DEFAULT_CHAPERONE_REPO,
+        help="Chaperone checkout with its scoring Python environment",
     )
     parser.add_argument(
         "--worker-image",
@@ -206,7 +206,7 @@ def main() -> None:
         type=Path,
         default=DEFAULT_HARNESS_IMAGE,
         help=(
-            "Pipelines image used by scientific Slurm workers; the scorer "
+            "Chaperone image used by scientific Slurm workers; the scorer "
             "itself always runs in the host .venv"
         ),
     )
@@ -274,7 +274,7 @@ def main() -> None:
         trial_dir, designs, task.name, required_n
     )
 
-    pipelines_repo = Path(os.path.abspath(args.pipelines_repo.expanduser()))
+    chaperone_repo = Path(os.path.abspath(args.chaperone_repo.expanduser()))
 
     default_scoring_dir = trial_dir / "scoring"
     out_path = (args.out or default_scoring_dir / "score.json").expanduser().resolve()
@@ -286,7 +286,7 @@ def main() -> None:
     slurm_python = scoring_runtime / "slurm-python"
     worker_image = Path(os.path.abspath(args.worker_image.expanduser()))
     if not worker_image.is_file() or worker_image.suffix != ".sif":
-        raise SystemExit(f"Pipelines worker image was not found: {worker_image}")
+        raise SystemExit(f"Chaperone worker image was not found: {worker_image}")
     worker_readonly_paths = tuple(
         Path(os.path.abspath(path.expanduser())) for path in args.worker_readonly_path
     )
@@ -294,8 +294,8 @@ def main() -> None:
     if missing_worker_paths:
         missing = ", ".join(str(path) for path in missing_worker_paths)
         raise SystemExit(f"Worker read-only path does not exist: {missing}")
-    host_python = _host_scoring_python(pipelines_repo)
-    site_environment = _scoring_site_environment(pipelines_repo)
+    host_python = _host_scoring_python(chaperone_repo)
+    site_environment = _scoring_site_environment(chaperone_repo)
     _prepare_scoring_packages(python_packages)
     # The run directory and AF3 cache must exist before the worker wrapper is
     # built, because the wrapper re-exports the cache after .env.ipd is sourced.
@@ -308,13 +308,13 @@ def main() -> None:
         slurm_python,
         scoring_dir,
         worker_image,
-        pipelines_repo=pipelines_repo,
+        chaperone_repo=chaperone_repo,
         worker_readonly_paths=(task, *worker_readonly_paths),
         site_environment=_scoring_worker_environment(site_environment, af3_jax_cache),
     )
 
     per_design_out = out_path.parent / "score_per_design.csv"
-    scorer = _path_in_pipelines_namespace(task_scorer, pipelines_repo)
+    scorer = _path_in_chaperone_namespace(task_scorer, chaperone_repo)
     command = [
         str(host_python),
         str(scorer),
@@ -322,7 +322,7 @@ def main() -> None:
         f"--out={out_path}",
         f"--per_design_out={per_design_out}",
         f"--rundir={rundir}",
-        f"--pipelines_repo={pipelines_repo}",
+        f"--chaperone_repo={chaperone_repo}",
     ]
     command.append(f"--run_meta={run_meta}")
     command.append(f"--required_n={required_n}")
@@ -343,9 +343,9 @@ def main() -> None:
     environment = os.environ.copy()
     environment.update(
         {
-            "PIPELINES_REPO": str(pipelines_repo),
-            "PIPELINES_COMPUTE_BACKEND": "local" if args.local else "slurm",
-            "PIPELINES_CONTAINER_BACKEND": "apptainer",
+            "CHAPERONE_REPO": str(chaperone_repo),
+            "CHAPERONE_COMPUTE_BACKEND": "local" if args.local else "slurm",
+            "CHAPERONE_CONTAINER_BACKEND": "apptainer",
             _SCORING_RUNDIR_BIND_ENV: "true",
             # Nested scientific containers use --containall. Export the exact
             # active scoring run before the task module constructs any blocks,
@@ -353,20 +353,20 @@ def main() -> None:
             # than the enclosing trial or all of /net/scratch.
             "RUNDIR": str(rundir),
             _SCORING_AF3_JAX_CACHE_ENV: str(af3_jax_cache),
-            "PIPELINES_SLURM_PYTHON": str(slurm_python),
-            "PIPELINES_PLIP_PYTHONPATH": str(python_packages),
-            _SCORING_USALIGN_ENV: str(pipelines_repo / ".venv" / "bin" / "USalign"),
+            "CHAPERONE_SLURM_PYTHON": str(slurm_python),
+            "CHAPERONE_PLIP_PYTHONPATH": str(python_packages),
+            _SCORING_USALIGN_ENV: str(chaperone_repo / ".venv" / "bin" / "USalign"),
         }
     )
     environment.update(_CONTROLLER_THREAD_ENV)
     environment.update(site_environment)
-    source_path = _scoring_pythonpath(pipelines_repo)
+    source_path = _scoring_pythonpath(chaperone_repo)
     environment["PYTHONPATH"] = source_path + (
         os.pathsep + environment["PYTHONPATH"] if environment.get("PYTHONPATH") else ""
     )
     _run_score_command(
         command,
-        cwd=pipelines_repo,
+        cwd=chaperone_repo,
         environment=environment,
         trial_name=trial_dir.name,
         report_path=out_path,

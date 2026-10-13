@@ -974,9 +974,9 @@ def define_score_flags(required_n: int = 96) -> None:
         "({gpu_hours, cpu_hours, wallclock_min}); enables pass-rate-per-cost.",
     )
     flags.DEFINE_string(
-        "pipelines_repo",
-        os.environ.get("PIPELINES_REPO"),
-        "Pipelines checkout supplying scoring assets. Passed by the Harbor "
+        "chaperone_repo",
+        os.environ.get("CHAPERONE_REPO"),
+        "Chaperone checkout supplying scoring assets. Passed by the Harbor "
         "controller; scorers that resolve their own assets may ignore it.",
     )
 

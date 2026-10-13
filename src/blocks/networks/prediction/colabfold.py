@@ -128,7 +128,7 @@ def colabfold_multimer_a3m(
 #   1. The prebuilt on-prem SIF. IPD jobs use this one; `colabfold_batch` is on
 #      PATH inside it and the site storage trees are bound in.
 #
-#   2. A portable buildable variant (`pipelines install colabfold_portable`)
+#   2. A portable buildable variant (`chaperone install colabfold_portable`)
 #      with the same software stack: ColabFold 1.6.1, JAX >= 0.5.2 (sm_120
 #      Blackwell kernels), kalign, hhsuite and OpenMM + pdbfixer for AMBER
 #      relax. The AF2 params directory comes from the COLABFOLD_DATA_DIR

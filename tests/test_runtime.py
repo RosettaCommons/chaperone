@@ -297,7 +297,7 @@ def test_parquet_visibility_retry_bypasses_stale_polars_path_cache(
 
 
 def _settings():
-    return SimpleNamespace(PIPELINES_CONTAINER_BACKEND="apptainer")
+    return SimpleNamespace(CHAPERONE_CONTAINER_BACKEND="apptainer")
 
 
 def test_apptainer_runs_directly_when_private_mount_namespace_is_unavailable(
@@ -488,7 +488,7 @@ def test_array_parallelism_falls_back_to_pipeline_setting(monkeypatch):
         chaperone,
         "get_setting_field",
         lambda name, default: (
-            5 if name == "PIPELINES_SLURM_ARRAY_PARALLELISM" else default
+            5 if name == "CHAPERONE_SLURM_ARRAY_PARALLELISM" else default
         ),
     )
 

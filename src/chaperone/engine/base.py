@@ -126,20 +126,20 @@ class ExecutionEngine:
             rundir = settings.RUNDIR
         if rundir is None:
             raise ValueError(
-                "rundir required via argument, PIPELINES_RUNDIR env var, or .env file"
+                "rundir required via argument, CHAPERONE_RUNDIR env var, or .env file"
             )
 
         rundir = Path(rundir)
 
-        # Resolve relative paths against PIPELINES_ROOT
+        # Resolve relative paths against CHAPERONE_ROOT
         if not rundir.is_absolute():
-            rundir = settings.PIPELINES_ROOT / rundir
+            rundir = settings.CHAPERONE_ROOT / rundir
             logger.info(f"Resolved relative rundir to: {rundir}")
         elif settings.ENFORCE_RELATIVE_RUNDIR:
             # Enforce relative paths in testing mode
             raise ValueError(
                 f"Absolute rundir '{rundir}' not allowed when ENFORCE_RELATIVE_RUNDIR=True. "
-                f"Use a relative path to have it resolved under PIPELINES_ROOT ({settings.PIPELINES_ROOT})."
+                f"Use a relative path to have it resolved under CHAPERONE_ROOT ({settings.CHAPERONE_ROOT})."
             )
 
         self.rundir = rundir.absolute()

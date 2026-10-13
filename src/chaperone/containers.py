@@ -84,17 +84,17 @@ def _supports_private_mount_namespace() -> bool:
 
 def _runtime_rundir_bind(settings: object) -> tuple[str, str] | None:
     """Return the opt-in, exact run-directory bind for contained tools."""
-    if getattr(settings, "PIPELINES_CONTAINER_BIND_RUNDIR", False) is not True:
+    if getattr(settings, "CHAPERONE_CONTAINER_BIND_RUNDIR", False) is not True:
         return None
     configured = getattr(settings, "RUNDIR", None)
     if configured is None:
         raise ValueError(
-            "PIPELINES_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
+            "CHAPERONE_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
         )
     configured_path = Path(configured).expanduser()
     if not configured_path.is_absolute():
         raise ValueError(
-            "PIPELINES_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
+            "CHAPERONE_CONTAINER_BIND_RUNDIR requires an active absolute RUNDIR"
         )
     rundir = configured_path.absolute()
     if rundir in _UNSAFE_RUNDIR_BINDS:
@@ -105,12 +105,12 @@ def _runtime_rundir_bind(settings: object) -> tuple[str, str] | None:
 
 def _runtime_workspace_bind(settings: object) -> tuple[str, str] | None:
     """Return the opt-in, exact workspace bind provided by the runtime."""
-    if getattr(settings, "PIPELINES_CONTAINER_BIND_WORKSPACE", False) is not True:
+    if getattr(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
         return None
     configured = os.environ.get("HARBOR_HOST_WORKSPACE")
     if not configured:
         raise ValueError(
-            "PIPELINES_CONTAINER_BIND_WORKSPACE requires HARBOR_HOST_WORKSPACE"
+            "CHAPERONE_CONTAINER_BIND_WORKSPACE requires HARBOR_HOST_WORKSPACE"
         )
     workspace = Path(configured).expanduser()
     if not workspace.is_absolute():
@@ -129,7 +129,7 @@ def get_container_dirs() -> list[Path]:
     # Environment variable (highest priority)
     from chaperone import get_setting_field
 
-    env_dirs = get_setting_field("PIPELINES_CONTAINER_DIRS", default="")
+    env_dirs = get_setting_field("CHAPERONE_CONTAINER_DIRS", default="")
     if env_dirs:
         dirs.extend(Path(p.strip()) for p in env_dirs.split(":") if p.strip())
 
@@ -139,7 +139,7 @@ def get_container_dirs() -> list[Path]:
         dirs.append(shared)
 
     # User directory (fallback)
-    dirs.append(Path.home() / ".pipelines" / "containers")
+    dirs.append(Path.home() / ".chaperone" / "containers")
 
     return list(dict.fromkeys(dirs))  # Dedupe preserving order
 
@@ -356,7 +356,7 @@ class Image:
         if workspace_bind is not None and workspace_bind not in all_binds:
             all_binds.append(workspace_bind)
 
-        backend = settings.PIPELINES_CONTAINER_BACKEND
+        backend = settings.CHAPERONE_CONTAINER_BACKEND
 
         if backend == "docker":
             cmd = ["docker", "run"]
@@ -443,12 +443,12 @@ class Image:
                 return self._existing_path
             raise FileNotFoundError(f"Container not found: {self._existing_path}")
 
-        backend = get_settings().PIPELINES_CONTAINER_BACKEND
+        backend = get_settings().CHAPERONE_CONTAINER_BACKEND
 
         if backend == "docker":
             import subprocess
 
-            tag = f"pipelines/{self.name}:latest"
+            tag = f"chaperone/{self.name}:latest"
             result = subprocess.run(
                 ["docker", "image", "inspect", tag],
                 capture_output=True,
@@ -457,7 +457,7 @@ class Image:
                 return tag
             raise FileNotFoundError(
                 f"Docker image '{tag}' not found.\n"
-                f"Run 'pipelines install {self.name}' to build it."
+                f"Run 'chaperone install {self.name}' to build it."
             )
 
         for d in get_container_dirs():
@@ -468,7 +468,7 @@ class Image:
         search_paths = "\n  ".join(str(d) for d in get_container_dirs())
         raise FileNotFoundError(
             f"Container '{self.name}' not found. Searched:\n  {search_paths}\n"
-            f"Run 'pipelines install {self.name}' to build it."
+            f"Run 'chaperone install {self.name}' to build it."
         )
 
     def _build_stage(self) -> hpccm.Stage:

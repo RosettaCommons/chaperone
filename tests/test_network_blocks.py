@@ -46,7 +46,7 @@ class _Handler:
 
 
 def test_af3_runner_uses_explicit_container_bind(monkeypatch):
-    monkeypatch.setenv("PIPELINES_CONTAINER_BACKEND", "apptainer")
+    monkeypatch.setenv("CHAPERONE_CONTAINER_BACKEND", "apptainer")
 
     command = AlphaFold3Block().get_command_template()
 

@@ -21,7 +21,7 @@ from chaperone.engine import (
     RuntimeArgs,
 )
 from chaperone.manifest import PipelineManifest
-from chaperone.settings import PipelinesSettings
+from chaperone.settings import ChaperoneSettings
 from chaperone.orchestration import JobArgs
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Global shared settings (all threads see the same settings)
 # ─────────────────────────────────────────────────────────────────────────────
 _settings_lock = threading.Lock()
-_global_settings: PipelinesSettings | None = None
+_global_settings: ChaperoneSettings | None = None
 
 
 def _internally_set_settings(
@@ -41,12 +41,12 @@ def _internally_set_settings(
     changes = changes or {}
     with _settings_lock:
         if _global_settings is None or reset:
-            _global_settings = PipelinesSettings()
+            _global_settings = ChaperoneSettings()
         for key, value in changes.items():
             setattr(_global_settings, key, value)
 
 
-def get_settings() -> PipelinesSettings:
+def get_settings() -> ChaperoneSettings:
     """Get global settings shared across all threads."""
     global _global_settings
     if _global_settings is None:
@@ -58,7 +58,7 @@ _UNSET = object()
 
 
 def get_setting_field(name: str, default=_UNSET, *, check_bin: bool = False):
-    """Lazily read a single field from PipelinesSettings.
+    """Lazily read a single field from ChaperoneSettings.
 
     Designed for use in ``default_factory`` lambdas on block Pydantic fields,
     where importing ``get_settings`` directly would cause circular imports::
@@ -343,7 +343,7 @@ def init_cli(
             flags.DEFINE_boolean(name, default, help_text)
 
     # ``absl.app.run`` normally installs and handles the conventional help
-    # flags. Standalone Pipelines scripts deliberately call FlagValues
+    # flags. Standalone Chaperone scripts deliberately call FlagValues
     # directly, so provide the same read-only interface before parsing;
     # otherwise every generated campaign's first ``--help`` probe fails with
     # UnrecognizedFlagError even though flag registration succeeded.

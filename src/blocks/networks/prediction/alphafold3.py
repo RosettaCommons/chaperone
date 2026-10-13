@@ -49,7 +49,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).parent.parent.parent / "scripts"
-AF3_RUNTIME_SCRIPT_DIR = Path("/opt/pipelines-runtime-scripts")
+AF3_RUNTIME_SCRIPT_DIR = Path("/opt/chaperone-runtime-scripts")
 
 ###########################################################################
 # Container
@@ -159,7 +159,7 @@ ALPHAFOLD3_CONTAINER = (
     .template_command(
         exec_mode="exec",
         binds=[
-            # The runner is maintained by Pipelines rather than AlphaFold and
+            # The runner is maintained by Chaperone rather than AlphaFold and
             # therefore is not baked into the AF3 image.  Execute it through a
             # fixed container path instead of leaking the checkout's absolute
             # path into the command.  This is required for contained scoring

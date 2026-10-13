@@ -26,7 +26,7 @@ _ORIGINAL_FILE_HANDLER_CLOSE = logging.FileHandler.close
 
 # Codex intentionally gives stdio MCP servers a filtered environment.  The
 # campaign monitor is part of the trusted harness and needs the same
-# non-secret runtime contract as the agent shell so Pipelines can submit
+# non-secret runtime contract as the agent shell so Chaperone can submit
 # guarded Slurm jobs and nested scientific containers without campaign code
 # hard-coding trial-specific paths.
 _CAMPAIGN_MONITOR_ENV_VARS = (
@@ -40,13 +40,13 @@ _CAMPAIGN_MONITOR_ENV_VARS = (
     "QHOP",
     "HARBOR_HOST_WORKSPACE",
     "HARBOR_SBATCH_SOCKET",
-    "PIPELINES_SLURM_PYTHON",
-    "PIPELINES_COMPUTE_BACKEND",
-    "PIPELINES_CONTAINER_BACKEND",
-    "PIPELINES_CONTAINER_BIND_RUNDIR",
-    "PIPELINES_CONTAINER_BIND_WORKSPACE",
-    "PIPELINES_SLURM_ARRAY_PARALLELISM",
-    "PIPELINES_CONTAINER_DIRS",
+    "CHAPERONE_SLURM_PYTHON",
+    "CHAPERONE_COMPUTE_BACKEND",
+    "CHAPERONE_CONTAINER_BACKEND",
+    "CHAPERONE_CONTAINER_BIND_RUNDIR",
+    "CHAPERONE_CONTAINER_BIND_WORKSPACE",
+    "CHAPERONE_SLURM_ARRAY_PARALLELISM",
+    "CHAPERONE_CONTAINER_DIRS",
     "HF_HUB_CACHE",
     "BOLTZ_CACHE_DIR",
     "AF3_JAX_CACHE_DIR",

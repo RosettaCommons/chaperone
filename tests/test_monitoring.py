@@ -297,7 +297,7 @@ def test_python_launch_rejects_code_modules_and_outside_scripts(tmp_path: Path):
             job_wait._validated_argv(argv, tmp_path, tmp_path)
 
 
-def test_mcp_exposes_wait_launch_and_inspect_from_pipelines(tmp_path: Path):
+def test_mcp_exposes_wait_launch_and_inspect_from_chaperone(tmp_path: Path):
     marker = tmp_path / "done"
     marker.touch()
     campaign = tmp_path / "campaigns" / "example"

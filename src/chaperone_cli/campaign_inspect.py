@@ -1,4 +1,4 @@
-"""Compact, read-only inspection of ordinary Pipelines campaign artifacts."""
+"""Compact, read-only inspection of ordinary Chaperone campaign artifacts."""
 
 from __future__ import annotations
 
@@ -304,7 +304,7 @@ def _log_evidence(
     campaign: Path, files: Iterable[Path], max_items: int
 ) -> list[dict[str, object]]:
     # Import lazily so wait/launch remain lightweight and do not initialize the
-    # main Pipelines package unless inspection actually needs a log excerpt.
+    # main Chaperone package unless inspection actually needs a log excerpt.
     from chaperone.artifacts import read_excerpt
 
     logs = sorted((path for path in files if _is_log(path)), key=_mtime, reverse=True)[

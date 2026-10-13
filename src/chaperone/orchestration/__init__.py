@@ -1,4 +1,4 @@
-"""Orchestration layer for pipelines.
+"""Orchestration layer for Chaperone.
 
 Provides local and Slurm task runners.
 """

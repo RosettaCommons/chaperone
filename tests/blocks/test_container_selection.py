@@ -47,7 +47,7 @@ CONTAIN_FLAGS = [
 @pytest.fixture
 def settings(monkeypatch):
     """Pin the container backend and host probes; return the settings object."""
-    values = SimpleNamespace(PIPELINES_CONTAINER_BACKEND="apptainer")
+    values = SimpleNamespace(CHAPERONE_CONTAINER_BACKEND="apptainer")
     monkeypatch.setattr(chaperone, "get_settings", lambda: values)
     monkeypatch.setattr(containers, "_supports_private_mount_namespace", lambda: True)
     monkeypatch.setattr(getpass, "getuser", lambda: "tester")

@@ -240,7 +240,7 @@ def _get_sequence_cif_dir() -> Path:
     if rundir is None:
         raise ValueError(
             "Cannot create RNA/DNA CIF files from sequences: RUNDIR is not set. "
-            "Set PIPELINES_RUNDIR or initialize the Pipelines CLI first."
+            "Set CHAPERONE_RUNDIR or initialize the Chaperone CLI first."
         )
     cif_dir = Path(rundir) / ".cache" / "sequence_cifs"
     cif_dir.mkdir(parents=True, exist_ok=True)

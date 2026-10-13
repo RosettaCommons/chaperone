@@ -184,7 +184,7 @@ class FoundryMPNNBlock(CompiledBlockFunction):
 
         # Leave the checkpoint unset so the Foundry process resolves its own
         # registry default inside FOUNDRY_CONTAINER. Importing that registry in
-        # this outer Pipelines worker fails because rc-foundry intentionally
+        # this outer Chaperone worker fails because rc-foundry intentionally
         # lives only in the nested scientific image. An explicit override is
         # still passed through unchanged.
         if self.checkpoint_path is not None:

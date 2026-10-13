@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """FGFR2 competitive binder design — variable-length inhibitors of FGF binding to FGFR2 (PDB 1DJS).
 
 Single-round pipeline: RFD3 generates backbones around auto-detected FGFR2 hotspots,

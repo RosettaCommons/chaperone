@@ -43,7 +43,7 @@ _PYROSETTA_VERSION = "2026.29+releasequarterly.80a0635615"
 _JAX_VERSION = "0.4.35"
 _CUDA_ROOT = "/opt/bindcraft-env/lib/python3.10/site-packages/nvidia/cuda_nvcc"
 _RUNNER_SOURCE = Path(__file__).parent.parent.parent / "scripts" / "run_bindcraft.py"
-_RUNNER_DEST = "/opt/BindCraft/pipelines_run_bindcraft.py"
+_RUNNER_DEST = "/opt/BindCraft/chaperone_run_bindcraft.py"
 
 _PYTHON_PACKAGES = (
     "numpy==1.26.4 pandas==2.2.3 matplotlib==3.9.4 biopython==1.85 "

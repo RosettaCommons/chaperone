@@ -310,8 +310,8 @@ def _allowed_runtime_executables() -> tuple[set[Path], set[Path]]:
     python = Path(sys.executable)
     python_executables = {python, Path("/opt/pipelines/.venv/bin/python")}
     cli_executables = {
-        python.parent / "pipelines",
-        Path("/opt/pipelines/.venv/bin/pipelines"),
+        python.parent / "chaperone",
+        Path("/opt/pipelines/.venv/bin/chaperone"),
     }
     return python_executables, cli_executables
 
@@ -337,7 +337,7 @@ def _validated_argv(arguments: object, root: Path, cwd: Path) -> list[str]:
     inside_workspace = resolved.is_relative_to(root)
     if not runtime_executable and not inside_workspace:
         raise WaitError(
-            "launch executable must be the active Pipelines Python/CLI or a "
+            "launch executable must be the active Chaperone Python/CLI or a "
             "workspace executable"
         )
     if inside_workspace and (
@@ -352,7 +352,7 @@ def _validated_argv(arguments: object, root: Path, cwd: Path) -> list[str]:
             script_index = 2
         if len(argv) <= script_index or argv[script_index].startswith("-"):
             raise WaitError(
-                "Pipelines Python requires a workspace script; -c and -m are forbidden"
+                "Chaperone Python requires a workspace script; -c and -m are forbidden"
             )
         script = Path(argv[script_index]).expanduser()
         if script.is_absolute():
@@ -561,9 +561,9 @@ def _write_response(request_id: object, *, result=None, error=None) -> None:
 
 
 def serve_mcp(
-    *, server_name: str = "pipelines-monitor", workspace: Path | None = None
+    *, server_name: str = "chaperone-monitor", workspace: Path | None = None
 ) -> int:
-    """Serve stateless Pipelines monitoring over line-delimited MCP stdio."""
+    """Serve stateless Chaperone monitoring over line-delimited MCP stdio."""
     for raw in sys.stdin:
         request_id = None
         try:
@@ -607,7 +607,7 @@ def serve_mcp(
                                 "description": (
                                     "Read a compact campaign summary, failure evidence, "
                                     "pipeline funnel, or public candidate shortlist from "
-                                    "ordinary Pipelines artifacts. This call is read-only, "
+                                    "ordinary Chaperone artifacts. This call is read-only, "
                                     "bounded, and creates no campaign ledger."
                                 ),
                                 "inputSchema": INSPECT_INPUT_SCHEMA,
@@ -686,7 +686,7 @@ def serve_mcp(
 
 def wait_cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="pipelines wait",
+        prog="chaperone wait",
         description="Wait outside the model loop for detached work to finish.",
     )
     parser.add_argument("--job-id", action="append", default=[])
@@ -716,10 +716,10 @@ def wait_cli(argv: list[str] | None = None) -> int:
 
 def mcp_cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="pipelines monitor-mcp",
+        prog="chaperone monitor-mcp",
         description="Serve the stateless job waiter over MCP stdio.",
     )
-    parser.add_argument("--server-name", default="pipelines-monitor")
+    parser.add_argument("--server-name", default="chaperone-monitor")
     parser.add_argument("--workspace", type=Path)
     args = parser.parse_args(argv)
     return serve_mcp(server_name=args.server_name, workspace=args.workspace)

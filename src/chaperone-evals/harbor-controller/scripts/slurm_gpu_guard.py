@@ -47,7 +47,16 @@ FORWARDED_ENV_NAMES = {
     "X3DNA_BIN_DIR",
     "X3DNA_DIR",
 }
-FORWARDED_ENV_PREFIXES = ("PIPELINES_",)
+FORWARDED_ENV_PREFIXES = ("CHAPERONE_",)
+# Controller-side settings that share the CHAPERONE_ prefix but are never
+# worker configuration (the held-out task tree location, bootstrap options).
+NEVER_FORWARDED_ENV_NAMES = {"CHAPERONE_EVALS_PRIVATE", "CHAPERONE_PYTHON_VERSION"}
+
+
+def _is_forwarded_name(name: str) -> bool:
+    if name in NEVER_FORWARDED_ENV_NAMES:
+        return False
+    return name in FORWARDED_ENV_NAMES or name.startswith(FORWARDED_ENV_PREFIXES)
 
 
 def _forwarded_environment(request_env: dict[Any, Any]) -> dict[str, str]:
@@ -58,7 +67,7 @@ def _forwarded_environment(request_env: dict[Any, Any]) -> dict[str, str]:
             raise GuardError("sbatch environment names and values must be strings")
         if "\x00" in name or "\x00" in value or "\n" in name or "\r" in name:
             raise GuardError("sbatch environment contains an invalid name or value")
-        if name in FORWARDED_ENV_NAMES or name.startswith(FORWARDED_ENV_PREFIXES):
+        if _is_forwarded_name(name):
             forwarded[name] = value
     return forwarded
 
@@ -950,7 +959,7 @@ class _BrokerHandler(socketserver.StreamRequestHandler):
             else:
                 if stdin or argv != ["--version"]:
                     raise GuardError(
-                        "direct srun execution is disabled; Pipelines may use "
+                        "direct srun execution is disabled; Chaperone may use "
                         "srun only inside a broker-approved allocation"
                     )
                 canonical_argv = ["--version"]
@@ -1471,9 +1480,7 @@ def client(socket_path: str, argv: list[str]) -> int:
             print("sbatch input script is too large", file=sys.stderr)
             return 2
     forwarded_env = {
-        name: value
-        for name, value in os.environ.items()
-        if name in FORWARDED_ENV_NAMES or name.startswith(FORWARDED_ENV_PREFIXES)
+        name: value for name, value in os.environ.items() if _is_forwarded_name(name)
     }
     request = {
         "command": Path(sys.argv[0]).name,

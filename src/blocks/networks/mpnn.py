@@ -208,7 +208,7 @@ _MODELHUB_SIF_CONTAINER = Image.from_existing(
 # types (pssm, antibody, lddt-enhanced). The container is a minimal
 # Ubuntu + python3.12 venv with torch/numpy/prody/openfold plus the repo cloned
 # into /opt/fused_mpnn. Host-side `git clone` happens during
-# `pipelines install modelhub_portable` via `prepare_git_clones()`; the
+# `chaperone install modelhub_portable` via `prepare_git_clones()`; the
 # builder copies the result in via `COPY` / `%files`.
 _MODELHUB_PORTABLE_CONTAINER = (
     Image("modelhub_portable")
@@ -814,7 +814,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                     aromatics = find_aromatic_residues_near_ligand(data.atom_array)
                 fixed_positions.extend(aromatics)
             # ``run.py`` ignores the scalar ``--fixed_residues`` option whenever
-            # ``--fixed_residues_multi`` is present. Pipelines always supplies
+            # ``--fixed_residues_multi`` is present. Chaperone always supplies
             # the latter, so merge the public MPNNArgs constraint into each
             # per-input entry rather than silently dropping it.
             fixed_positions.extend(self.args.fixed_residues.split())

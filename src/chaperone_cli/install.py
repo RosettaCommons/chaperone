@@ -2,9 +2,9 @@
 """CLI for installing containers for pipeline blocks.
 
 Usage:
-    pipelines install foundry e1
-    pipelines install e1 --dry_run
-    pipelines install e1 --force
+    chaperone install foundry e1
+    chaperone install e1 --dry_run
+    chaperone install e1 --force
 """
 
 import shutil
@@ -51,7 +51,7 @@ def get_writable_container_dir() -> Path:
                 )
                 continue
 
-    user_dir = Path.home() / ".pipelines" / "containers"
+    user_dir = Path.home() / ".chaperone" / "containers"
     user_dir.mkdir(parents=True, exist_ok=True)
     return user_dir
 
@@ -160,7 +160,7 @@ def build_container(
     """
     from chaperone import get_settings
 
-    backend = get_settings().PIPELINES_CONTAINER_BACKEND
+    backend = get_settings().CHAPERONE_CONTAINER_BACKEND
 
     if spec.is_existing:
         print(f"  Container '{name}' references existing file: {spec._existing_path}")
@@ -187,7 +187,7 @@ def _build_apptainer(
     # Pre-clone any git repos on the host so they can be injected via %files
     clone_dir = None
     if spec._git_clones:
-        clone_dir = Path(tempfile.mkdtemp(prefix=f"pipelines-{name}-"))
+        clone_dir = Path(tempfile.mkdtemp(prefix=f"chaperone-{name}-"))
         spec = spec.prepare_git_clones(clone_dir)
 
     def_content = spec.to_singularity()
@@ -230,7 +230,7 @@ def _build_docker(
     """Build a container using docker."""
     import tempfile
 
-    tag = f"pipelines/{name}:latest"
+    tag = f"chaperone/{name}:latest"
 
     if not force:
         result = subprocess.run(
@@ -244,7 +244,7 @@ def _build_docker(
     # Pre-clone any git repos on the host so they can be injected via COPY
     clone_dir = None
     if spec._git_clones:
-        clone_dir = Path(tempfile.mkdtemp(prefix=f"pipelines-{name}-"))
+        clone_dir = Path(tempfile.mkdtemp(prefix=f"chaperone-{name}-"))
         spec = spec.prepare_git_clones(clone_dir)
 
     dockerfile_content = spec.to_dockerfile()

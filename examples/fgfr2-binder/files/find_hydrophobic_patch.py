@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Find the largest solvent-exposed hydrophobic patch on each half of the receptor.
 
 Splits chain B in two by residue ID (default: at B244, the FGF-binding patch),

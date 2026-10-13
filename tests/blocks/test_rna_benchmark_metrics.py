@@ -136,11 +136,11 @@ def test_dssr_motif_pairing_remains_strict_by_default(tmp_path, monkeypatch):
 # tests that need neither still run, exactly as the US-align tests do.
 requires_vienna = pytest.mark.skipif(
     importlib.util.find_spec("RNA") is None,
-    reason="ViennaRNA not installed (pip install 'pipelines[rna]')",
+    reason="ViennaRNA not installed (pip install 'chaperone[rna]')",
 )
 requires_tmtools = pytest.mark.skipif(
     importlib.util.find_spec("tmtools") is None,
-    reason="tmtools not installed (pip install 'pipelines[rna]')",
+    reason="tmtools not installed (pip install 'chaperone[rna]')",
 )
 
 

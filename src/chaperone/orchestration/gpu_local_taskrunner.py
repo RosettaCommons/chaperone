@@ -1,6 +1,6 @@
 """GPU-aware Local TaskRunner.
 
-Provides GPU-aware local execution for pipelines by:
+Provides GPU-aware local execution for Chaperone by:
 1. Auto-detecting available CUDA GPUs
 2. Spawning one worker process per GPU with fixed CUDA_VISIBLE_DEVICES affinity
 3. Running tasks via ProcessPoolExecutor — each worker owns its GPU environment

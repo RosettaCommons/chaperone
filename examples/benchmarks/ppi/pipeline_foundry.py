@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """PPI binder design using the all-foundry stack (RFD3 + MPNN + RF3).
 
 De novo design of a protein binder for the human insulin receptor (PDB: 4ZXB)

@@ -354,7 +354,7 @@ class RFD1Block(CompiledBlockFunction):
         # so RFdiffusion can write noise schedules
         from chaperone import get_settings
 
-        if get_settings().PIPELINES_CONTAINER_BACKEND != "docker":
+        if get_settings().CHAPERONE_CONTAINER_BACKEND != "docker":
             # Find image ref position and insert before it
             for i, arg in enumerate(cmd):
                 if arg.startswith("${CONTAINER:") or arg.endswith(".sif"):

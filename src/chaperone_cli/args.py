@@ -35,7 +35,7 @@ def parse_steps(argv):
 
 
 def get_global_config():
-    # TODO: Pull from PIPELINES_CONFIG_SEARCH_PATHS
+    # TODO: Pull from CHAPERONE_CONFIG_SEARCH_PATHS
     return {}
 
 

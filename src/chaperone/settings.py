@@ -1,6 +1,6 @@
-"""Settings for pipelines.
+"""Settings for Chaperone.
 
-All configuration flows through PipelinesSettings. Add new env vars here as
+All configuration flows through ChaperoneSettings. Add new env vars here as
 fields rather than reading os.environ directly in blocks.
 """
 
@@ -22,9 +22,9 @@ def _find_env_files() -> tuple[str, ...]:
     1. .env — generic defaults (checked into git)
     2. .env.ipd — IPD-specific paths/mirrors (checked in, loaded only if at IPD)
     3. .env.local — user-specific overrides (gitignored)
-    4. ~/.env.pipelines — legacy fallback for user home config
+    4. ~/.env.chaperone — legacy fallback for user home config
 
-    Resolves the pipelines repo root by walking up from this file (__file__),
+    Resolves the Chaperone repo root by walking up from this file (__file__),
     so .env files are found regardless of the caller's working directory.
     """
     env_files: list[str] = []
@@ -50,7 +50,7 @@ def _find_env_files() -> tuple[str, ...]:
             env_files.append(str(local_env))
 
     # Legacy fallback
-    home_env = Path("~/.env.pipelines").expanduser()
+    home_env = Path("~/.env.chaperone").expanduser()
     if home_env.is_file():
         env_files.append(str(home_env))
 
@@ -79,14 +79,14 @@ def _resolve_container_backend(value: str) -> str:
     return backends[0]
 
 
-def _get_default_pipelines_root() -> Path:
-    """Get default PIPELINES_ROOT, resolving user properly."""
+def _get_default_chaperone_root() -> Path:
+    """Get default CHAPERONE_ROOT, resolving user properly."""
     user = getpass.getuser()
-    return Path(f"/net/scratch/{user}/pipelines")
+    return Path(f"/net/scratch/{user}/chaperone")
 
 
-class PipelinesSettings(BaseSettings):
-    """Central configuration for pipelines.
+class ChaperoneSettings(BaseSettings):
+    """Central configuration for Chaperone.
 
     All env vars go here. In .env files, use the field name directly
     (no prefix needed). Shell env vars also work without a prefix.
@@ -111,9 +111,9 @@ class PipelinesSettings(BaseSettings):
         default=None,
         description="Default directory for pipeline execution outputs.",
     )
-    PIPELINES_ROOT: Path = Field(
-        default_factory=_get_default_pipelines_root,
-        description="Root directory for resolving relative rundirs. Defaults to /net/scratch/{user}/pipelines.",
+    CHAPERONE_ROOT: Path = Field(
+        default_factory=_get_default_chaperone_root,
+        description="Root directory for resolving relative rundirs. Defaults to /net/scratch/{user}/chaperone.",
     )
     ENFORCE_RELATIVE_RUNDIR: bool = Field(
         default=False,
@@ -159,29 +159,29 @@ class PipelinesSettings(BaseSettings):
     # ---------------------------
     # Container / Compute Backend
     # ---------------------------
-    PIPELINES_CONTAINER_BACKEND: Literal["apptainer", "docker"] = Field(
+    CHAPERONE_CONTAINER_BACKEND: Literal["apptainer", "docker"] = Field(
         default="apptainer/docker",
         description="Container runtime. Supports slash-separated priority order.",
     )
 
-    @field_validator("PIPELINES_CONTAINER_BACKEND", mode="before")
+    @field_validator("CHAPERONE_CONTAINER_BACKEND", mode="before")
     @classmethod
     def _resolve_container_backend_validator(cls, v: str) -> str:
         return _resolve_container_backend(str(v))
 
-    PIPELINES_CONTAINER_DIRS: str = Field(
+    CHAPERONE_CONTAINER_DIRS: str = Field(
         default="",
         description="Colon-separated list of directories to search for container images.",
     )
-    PIPELINES_CONTAINER_BIND_RUNDIR: bool = Field(
+    CHAPERONE_CONTAINER_BIND_RUNDIR: bool = Field(
         default=False,
         description=(
-            "Bind the active Pipelines RUNDIR read-write at the same path in "
+            "Bind the active Chaperone RUNDIR read-write at the same path in "
             "nested tool containers. Intended for contained controller jobs "
             "whose run directory is otherwise hidden by --containall."
         ),
     )
-    PIPELINES_CONTAINER_BIND_WORKSPACE: bool = Field(
+    CHAPERONE_CONTAINER_BIND_WORKSPACE: bool = Field(
         default=False,
         description=(
             "Bind only HARBOR_HOST_WORKSPACE read-write at the same absolute "
@@ -190,23 +190,23 @@ class PipelinesSettings(BaseSettings):
         ),
     )
 
-    PIPELINES_DISABLE_RICH: bool = Field(
+    CHAPERONE_DISABLE_RICH: bool = Field(
         default=False,
         description="Disable rich formatting in console output.",
     )
 
-    PIPELINES_COMPUTE_BACKEND: Literal["auto", "slurm", "local"] = Field(
+    CHAPERONE_COMPUTE_BACKEND: Literal["auto", "slurm", "local"] = Field(
         default="auto",
         description="Default compute backend. 'auto' detects local GPU → SLURM → local fallback.",
     )
-    PIPELINES_SLURM_PYTHON: Optional[str] = Field(
+    CHAPERONE_SLURM_PYTHON: Optional[str] = Field(
         default=None,
         description=(
             "Python command Submitit should run inside Slurm allocations. "
             "Use a shared launcher when the submission Python lives in a container."
         ),
     )
-    PIPELINES_SLURM_ARRAY_PARALLELISM: Optional[int] = Field(
+    CHAPERONE_SLURM_ARRAY_PARALLELISM: Optional[int] = Field(
         default=None,
         ge=1,
         description=(
@@ -370,7 +370,7 @@ class PipelinesSettings(BaseSettings):
     # ---------------------------
     # MCP / Campaign
     # ---------------------------
-    PIPELINES_EVAL_RUNDIR: Optional[str] = Field(
+    CHAPERONE_EVAL_RUNDIR: Optional[str] = Field(
         default=None,
         description="Working directory for the MCP campaign tools.",
     )
@@ -401,9 +401,9 @@ class PipelinesSettings(BaseSettings):
 
 
 def get_setting_field(name: str, default=None):
-    """Lazily read a single field from PipelinesSettings.
+    """Lazily read a single field from ChaperoneSettings.
 
-    .. deprecated:: Moved to ``chaperone.__init__``. Import from ``pipelines`` directly.
+    .. deprecated:: Moved to ``chaperone.__init__``. Import from ``chaperone`` directly.
     """
     from chaperone import get_settings
 

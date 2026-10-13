@@ -18,7 +18,7 @@ from chaperone_cli.args import nonnegative_integer, positive_integer
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="pipelines artifact",
+        prog="chaperone artifact",
         description="Read a bounded excerpt from a line-oriented artifact.",
     )
     parser.add_argument("path", type=Path)
@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     print(excerpt.text, end="" if excerpt.text.endswith("\n") else "\n")
     if excerpt.next_cursor is not None:
         command = [
-            "pipelines",
+            "chaperone",
             "artifact",
             str(path),
             "--cursor",

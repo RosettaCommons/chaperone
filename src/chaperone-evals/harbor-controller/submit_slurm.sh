@@ -21,17 +21,17 @@ CONCURRENCY=${CONCURRENCY:-1}
 MEMORY_GB=${MEMORY_GB:-64}
 CPU_PARTITION=${SLURM_CPU_PARTITION:-cpu}
 APPTAINER_BUILD_SOURCE=${APPTAINER_BUILD_SOURCE:-/projects/ml/pipelines/containers/pipelines_agent_hardened_20260816.sif}
-PIPELINES_PATH=
+CHAPERONE_PATH=
 WORKSPACE_SEED=
 
 usage() {
-  echo "usage: $0 [--arm baseline|harness] [--pipelines-path PATH] [--model MODEL] [--reasoning-effort EFFORT] [--attempts N] [--concurrency N]" >&2
+  echo "usage: $0 [--arm baseline|harness] [--chaperone-path PATH] [--model MODEL] [--reasoning-effort EFFORT] [--attempts N] [--concurrency N]" >&2
 }
 
 while (( $# )); do
   case "$1" in
     --arm) ARM=${2:?--arm requires a value}; shift 2 ;;
-    --pipelines-path) PIPELINES_PATH=${2:?--pipelines-path requires a value}; shift 2 ;;
+    --chaperone-path) CHAPERONE_PATH=${2:?--chaperone-path requires a value}; shift 2 ;;
     --model) MODEL=${2:?--model requires a value}; shift 2 ;;
     --reasoning-effort) REASONING_EFFORT=${2:?--reasoning-effort requires a value}; shift 2 ;;
     --attempts) ATTEMPTS=${2:?--attempts requires a value}; shift 2 ;;
@@ -45,8 +45,8 @@ if [[ "$ARM" != baseline && "$ARM" != harness ]]; then
   echo "--arm must be baseline or harness" >&2
   exit 2
 fi
-if [[ "$ARM" == baseline && -n "$PIPELINES_PATH" ]]; then
-  echo "--pipelines-path is not accepted by the baseline arm" >&2
+if [[ "$ARM" == baseline && -n "$CHAPERONE_PATH" ]]; then
+  echo "--chaperone-path is not accepted by the baseline arm" >&2
   exit 2
 fi
 if [[ ! "$ATTEMPTS" =~ ^[1-9][0-9]*$ || ! "$CONCURRENCY" =~ ^[1-9][0-9]*$ || ! "$MEMORY_GB" =~ ^[1-9][0-9]*$ ]]; then
@@ -103,13 +103,13 @@ if [[ "$APPTAINER_BUILD_SOURCE" == *.sif ]] && ! apptainer inspect "$APPTAINER_B
   exit 2
 fi
 if [[ "$ARM" == harness ]]; then
-  if [[ -z "$PIPELINES_PATH" ]]; then
-    echo "--pipelines-path is required for the harness arm" >&2
+  if [[ -z "$CHAPERONE_PATH" ]]; then
+    echo "--chaperone-path is required for the harness arm" >&2
     exit 2
   fi
   WORKSPACE_SEED=$(
     "$ROOT/.venv/bin/python" "$ROOT/scripts/snapshot_harness.py" \
-      --pipelines-path "$PIPELINES_PATH" \
+      --chaperone-path "$CHAPERONE_PATH" \
       --output-root "$HARBOR_JOBS_DIR/workspace-seeds"
   )
 fi
@@ -118,12 +118,12 @@ if [[ -z "${OPENAI_API_KEY:-}" && -z "${CODEX_AUTH_JSON_PATH:-}" && ! -s "$HOME/
   exit 2
 fi
 if [[ "$ARM" == harness ]]; then
-  printf 'Pipelines source: %s\n' "$PIPELINES_PATH"
+  printf 'Chaperone source: %s\n' "$CHAPERONE_PATH"
   printf 'Sanitized source bundle: %s\n' "$WORKSPACE_SEED"
 fi
 
 STAMP=$(date -u +%H%M%SZ)
-JOB_NAME=${JOB_NAME:-pipelines-codex-${ARM}-slurm-${STAMP}}
+JOB_NAME=${JOB_NAME:-chaperone-codex-${ARM}-slurm-${STAMP}}
 if [[ ! "$JOB_NAME" =~ ^[A-Za-z0-9_.-]{1,100}$ ]]; then
   echo "JOB_NAME must contain only letters, digits, dot, underscore, and hyphen (maximum 100 characters)" >&2
   exit 2
@@ -170,7 +170,7 @@ SBATCH_ARGS=(
 if [[ ${DRY_RUN:-0} == 1 ]]; then
   printf '%q ' "${SBATCH_ARGS[@]}"
   printf '\nOuter allocation: partition=%s time=24:00:00 memory=%sG GPUs=0\n' "$CPU_PARTITION" "$MEMORY_GB"
-  printf '%s\n' 'Pipelines GPU policy: explicitly request 1-5 gpu:small GPUs per allocation (controller-pinned to A4000)'
+  printf '%s\n' 'Chaperone GPU policy: explicitly request 1-5 gpu:small GPUs per allocation (controller-pinned to A4000)'
   exit 0
 fi
 

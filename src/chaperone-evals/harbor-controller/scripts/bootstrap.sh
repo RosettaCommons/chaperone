@@ -4,7 +4,7 @@ set -euo pipefail
 CONTROLLER_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # The controller is src/chaperone-evals/harbor-controller of the Chaperone
 # checkout it evaluates, and shares that checkout's environment. The nested
-# project src/chaperone-evals depends on the checkout's `pipelines` package by
+# project src/chaperone-evals depends on the checkout's `chaperone` package by
 # path and adds the harness dependencies.
 REPO_ROOT=$(cd "$CONTROLLER_ROOT/../../.." && pwd)
 CHAPERONE_PYTHON_VERSION=${CHAPERONE_PYTHON_VERSION:-3.12}
@@ -32,14 +32,14 @@ install_into_checkout "$REPO_ROOT" src/chaperone-evals
 # environment; it is not committed.
 ln -sfn ../../../.venv "$CONTROLLER_ROOT/.venv"
 
-PIPELINES_REPO=${PIPELINES_REPO:-$REPO_ROOT}
-if [[ "$PIPELINES_REPO" != "$REPO_ROOT" ]]; then
+CHAPERONE_REPO=${CHAPERONE_REPO:-$REPO_ROOT}
+if [[ "$CHAPERONE_REPO" != "$REPO_ROOT" ]]; then
   # Held-out scoring runs in the scoring checkout's own environment.
-  if [[ ! -f "$PIPELINES_REPO/pyproject.toml" ]]; then
-    echo "Chaperone checkout not found: $PIPELINES_REPO" >&2
+  if [[ ! -f "$CHAPERONE_REPO/pyproject.toml" ]]; then
+    echo "Chaperone checkout not found: $CHAPERONE_REPO" >&2
     exit 2
   fi
-  install_into_checkout "$PIPELINES_REPO" '.'
+  install_into_checkout "$CHAPERONE_REPO" '.'
 fi
 printf '%s\n' "Harness source is intentionally not configured at bootstrap time."
-printf '%s\n' "Each harness launch must provide --pipelines-path explicitly."
+printf '%s\n' "Each harness launch must provide --chaperone-path explicitly."

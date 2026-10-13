@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Active-site Motif Evaluation (AME) benchmark pipeline.
 
 Evaluates de novo enzyme design quality by measuring how well AF3 recovers

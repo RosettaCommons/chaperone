@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Inner runner for the ESMFold2 pipelines block.
+"""Inner runner for the ESMFold2 Chaperone block.
 
 ESMFold2 ships no CLI, so this script is the command the ``esmfold2`` block
 invokes inside its container. It reads one spec JSON per design from

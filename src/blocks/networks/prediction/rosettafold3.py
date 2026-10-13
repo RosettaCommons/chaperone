@@ -169,7 +169,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
     msa_dirs: Optional[list[str]] = Field(
         None,
         description=(
-            "Absolute on-disk protein MSA roots. Pipelines exports these to both "
+            "Absolute on-disk protein MSA roots. Chaperone exports these to both "
             "LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MSA_DIRS (current "
             "foundry-dev), so RF3 MSA use no longer depends on ambient worker "
             "environment variables."
@@ -363,7 +363,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
         if self.msa_dirs is not None:
             msa_dirs = ",".join(self.msa_dirs)
             msa_environment = [
-                f"PIPELINES_LOCAL_MSA_DIRS={msa_dirs}",
+                f"CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                 f"LOCAL_MSA_DIRS={msa_dirs}",
                 f"PROTEIN_MSA_DIRS={msa_dirs}",
             ]
@@ -372,7 +372,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
                     [
                         f"APPTAINERENV_LOCAL_MSA_DIRS={msa_dirs}",
                         f"APPTAINERENV_PROTEIN_MSA_DIRS={msa_dirs}",
-                        f"APPTAINERENV_PIPELINES_LOCAL_MSA_DIRS={msa_dirs}",
+                        f"APPTAINERENV_CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                     ]
                 )
             elif "singularity" in command_template:
@@ -380,7 +380,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
                     [
                         f"SINGULARITYENV_LOCAL_MSA_DIRS={msa_dirs}",
                         f"SINGULARITYENV_PROTEIN_MSA_DIRS={msa_dirs}",
-                        f"SINGULARITYENV_PIPELINES_LOCAL_MSA_DIRS={msa_dirs}",
+                        f"SINGULARITYENV_CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                     ]
                 )
             command_template = [

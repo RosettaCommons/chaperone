@@ -12,7 +12,7 @@ def _create_slurm_executor(folder: str):
     from chaperone import get_setting_field
 
     kwargs = {}
-    slurm_python = get_setting_field("PIPELINES_SLURM_PYTHON", None)
+    slurm_python = get_setting_field("CHAPERONE_SLURM_PYTHON", None)
     if slurm_python:
         kwargs["slurm_python"] = slurm_python
     try:
@@ -23,7 +23,7 @@ def _create_slurm_executor(folder: str):
         raise RuntimeError(
             "Slurm execution was requested, but Submitit cannot find 'srun'. "
             "Expose the cluster's srun executable in the submission environment; "
-            "Pipelines will not silently run the workload locally."
+            "Chaperone will not silently run the workload locally."
         ) from exc
 
 
@@ -197,7 +197,7 @@ class JobArgs:
         else:
             from chaperone import get_setting_field
 
-            value = get_setting_field("PIPELINES_SLURM_ARRAY_PARALLELISM", None)
+            value = get_setting_field("CHAPERONE_SLURM_ARRAY_PARALLELISM", None)
         value = 1000 if value is None else int(value)
         if value < 1:
             raise ValueError("slurm_array_parallelism must be >= 1")

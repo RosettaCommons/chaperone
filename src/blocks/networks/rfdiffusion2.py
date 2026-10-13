@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 #   1. The prebuilt on-prem SIF. IPD jobs use this one; the RFdiffusion2 code
 #      and checkpoints live on site storage and are bound in.
 #
-#   2. A portable buildable variant (`pipelines install rfdiffusion2_portable`)
+#   2. A portable buildable variant (`chaperone install rfdiffusion2_portable`)
 #      that follows the upstream spec (RosettaCommons/RFdiffusion2,
 #      rf_diffusion/exec/rf_diffusion_aa.spec) and clones the public repo into
 #      /opt/RFdiffusion2 at build time. Checkpoints are not baked in: point the

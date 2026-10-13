@@ -252,7 +252,7 @@ def _resolve_run_args(
 
     if needs_default_mode and not resolved.recompile:
         resolved.mode = _resolve_default_mode(
-            settings.PIPELINES_COMPUTE_BACKEND, use_local_gpus=resolved.use_local_gpus
+            settings.CHAPERONE_COMPUTE_BACKEND, use_local_gpus=resolved.use_local_gpus
         )
 
     return resolved

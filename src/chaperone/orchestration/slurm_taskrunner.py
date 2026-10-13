@@ -115,7 +115,7 @@ class SlurmTaskRunner(TaskRunner):
         job_args: SLURM job configuration (partition, mem_gb, time_limit, job_name).
         log_folder: Directory for job logs (default: "slurm_logs").
         slurm_array_parallelism: Max concurrent array tasks. Resolution order is
-            this argument, JobArgs, PIPELINES_SLURM_ARRAY_PARALLELISM, then 1000.
+            this argument, JobArgs, CHAPERONE_SLURM_ARRAY_PARALLELISM, then 1000.
         poll_interval: Seconds between state polls (default: 1s local, 30s SLURM).
         max_poll_time: Max seconds to wait for job (default: max(2x time_limit, 24h)).
         fail_on_error: If True, raise on first task failure (default: True).

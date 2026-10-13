@@ -4,7 +4,7 @@ Used by both the legacy in-process path (``chaperone.engine.chunking._tee_output
 and the execvp-finisher path (``chaperone.block_config.runner``).
 
 Stdlib-only at module load so that ``runner.py``'s wait phase can load this
-file via ``importlib.util`` without triggering ``pipelines/__init__.py``
+file via ``importlib.util`` without triggering ``chaperone/__init__.py``
 (which would pull in polars + the block registry and blow the wait-mode
 ~16 MiB memory budget).
 """

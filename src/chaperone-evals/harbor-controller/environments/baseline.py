@@ -32,10 +32,10 @@ from environments.health_watchdog import ControllerHealthWatchdog
 BASELINE_IMAGE = Path("/net/software/containers/pipelines/pipelines_agent_base.sif")
 
 _FORBIDDEN_ENV_NAMES = {
-    "PIPELINES_COMPUTE_BACKEND",
-    "PIPELINES_CONTAINER_BACKEND",
-    "PIPELINES_REPO",
-    "PIPELINES_SLURM_PYTHON",
+    "CHAPERONE_COMPUTE_BACKEND",
+    "CHAPERONE_CONTAINER_BACKEND",
+    "CHAPERONE_REPO",
+    "CHAPERONE_SLURM_PYTHON",
     "PYTHONPATH",
     "QHOP",
 }
@@ -46,6 +46,17 @@ _FORBIDDEN_KWARGS = {
     "task_inputs",
     "workspace_seed",
 }
+# Real cluster paths (/projects/ml/pipelines, /net/software/containers/pipelines)
+# and pre-rename images still carry the old project name, so a baseline value is
+# project-specific if it contains either name.
+_PROJECT_NAMES = ("chaperone", "pipelines")
+
+
+def _names_project(value: str) -> bool:
+    lowered = value.lower()
+    return any(name in lowered for name in _PROJECT_NAMES)
+
+
 _UNSAFE_APPTAINER_HOST_ENV = {
     "APPTAINER_BIND",
     "APPTAINER_BINDPATH",
@@ -60,14 +71,16 @@ _UNSAFE_APPTAINER_HOST_ENV = {
 # This check runs inside the immutable image before Harbor installs its own
 # control server and Codex into the per-trial writable tmpfs.  Basic operating
 # system tools (including uv, Git, Node, and system Python) are allowed; a
-# scientific environment, Pipelines installation, model asset, or prebuilt
+# scientific environment, Chaperone installation, model asset, or prebuilt
 # Python virtual environment is not.
 _CLEAN_IMAGE_PROBE = r"""
 set -eu
 for path in \
+  /opt/chaperone \
   /opt/pipelines \
   /opt/skills \
   /harbor/skills \
+  /workspace/chaperone \
   /workspace/pipelines \
   /projects/ml/pipelines \
   /mnt/projects/ml/pipelines \
@@ -77,6 +90,7 @@ for path in \
 do
   test ! -e "$path"
 done
+! command -v chaperone >/dev/null 2>&1
 ! command -v pipelines >/dev/null 2>&1
 ! command -v codex >/dev/null 2>&1
 for command in \
@@ -125,7 +139,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
     ``/workspace`` containing only the selected task's copied ``inputs/``.
     In particular, there is no host workspace seed, task setup script, skill,
     raw Slurm client/configuration, checkpoint, cache, scientific database,
-    Pipelines source tree, or Pipelines virtualenv. The only compute commands
+    Chaperone source tree, or Chaperone virtualenv. The only compute commands
     are brokered sbatch/scancel/squeue clients, and workloads always re-enter
     this same clean image.
     """
@@ -190,9 +204,9 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
                 "Baseline task configuration contains harness environment "
                 "variables: " + ", ".join(forbidden_env)
             )
-        if any("pipelines" in value.lower() for value in configured_env.values()):
+        if any(_names_project(value) for value in configured_env.values()):
             raise ValueError(
-                "Baseline task environment must not reference Pipelines paths"
+                "Baseline task environment must not reference Chaperone paths"
             )
 
         task_env_config = kwargs.get("task_env_config")
@@ -208,9 +222,9 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
                 _FORBIDDEN_ENV_NAMES.intersection(resolved_env)
             )
             if forbidden_resolved_env or any(
-                "pipelines" in value.lower() for value in resolved_env.values()
+                _names_project(value) for value in resolved_env.values()
             ):
-                detail = ", ".join(forbidden_resolved_env) or "Pipelines path value"
+                detail = ", ".join(forbidden_resolved_env) or "Chaperone path value"
                 raise ValueError(
                     "Resolved baseline environment contains harness configuration: "
                     + detail
@@ -377,9 +391,9 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
         super()._validate_definition()
         forbidden_env = sorted(_FORBIDDEN_ENV_NAMES.intersection(self._persistent_env))
         if forbidden_env or any(
-            "pipelines" in value.lower() for value in self._persistent_env.values()
+            _names_project(value) for value in self._persistent_env.values()
         ):
-            detail = ", ".join(forbidden_env) or "Pipelines path value"
+            detail = ", ".join(forbidden_env) or "Chaperone path value"
             raise ValueError(
                 "Resolved baseline environment contains harness configuration: "
                 + detail
@@ -521,6 +535,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
             ".git",
             "SKILL.md",
             "examples",
+            "chaperone",
             "pipelines",
             "pyvenv.cfg",
             "weights",

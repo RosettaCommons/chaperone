@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Main CLI dispatcher for pipelines commands.
+"""Main CLI dispatcher for Chaperone commands.
 
 Usage:
-    pipelines install mpnn rfd3 af3
+    chaperone install mpnn rfd3 af3
 """
 
 import sys
@@ -41,7 +41,7 @@ def list_installed():
     from chaperone.containers import get_container_dirs
     from blocks import get_all_containers
 
-    backend = get_settings().PIPELINES_CONTAINER_BACKEND
+    backend = get_settings().CHAPERONE_CONTAINER_BACKEND
     container_names = set(get_all_containers().keys())
 
     print(f"\n Container backend: {backend}")
@@ -53,7 +53,7 @@ def list_installed():
 
         installed = []
         for name in sorted(container_names):
-            tag = f"pipelines/{name}:latest"
+            tag = f"chaperone/{name}:latest"
             result = subprocess.run(
                 ["docker", "image", "inspect", tag],
                 capture_output=True,
@@ -87,7 +87,7 @@ def list_installed():
 
     if not installed:
         print("  No containers installed yet.")
-        print("\n  Install with: pipelines install <container>")
+        print("\n  Install with: chaperone install <container>")
     print()
 
 
@@ -96,12 +96,12 @@ def find_container(name: str):
     _initialize_runtime()
     from chaperone import get_settings
 
-    backend = get_settings().PIPELINES_CONTAINER_BACKEND
+    backend = get_settings().CHAPERONE_CONTAINER_BACKEND
 
     if backend == "docker":
         import subprocess
 
-        tag = f"pipelines/{name}:latest"
+        tag = f"chaperone/{name}:latest"
         result = subprocess.run(
             ["docker", "image", "inspect", tag],
             capture_output=True,
@@ -133,12 +133,12 @@ def shell_container(name: str):
         print(f"Error: Container '{name}' not found.")
         if name in registry:
             print("  Container is available but not built.")
-            print(f"  Install with: pipelines install {name}")
+            print(f"  Install with: chaperone install {name}")
         else:
             print(f"  Available containers: {sorted(registry.keys())}")
         sys.exit(1)
 
-    backend = get_settings().PIPELINES_CONTAINER_BACKEND
+    backend = get_settings().CHAPERONE_CONTAINER_BACKEND
 
     print(f"Entering container: {container_ref}")
     print("Type 'exit' to leave the container.\n")
@@ -154,10 +154,10 @@ def shell_container(name: str):
 def print_help():
     """Print help message."""
     print("""
-pipelines - Protein design pipeline tools
+chaperone - Protein design pipeline tools
 
 Usage:
-    pipelines <command> [options]
+    chaperone <command> [options]
 
 Commands:
     list-available    List all available containers
@@ -167,7 +167,7 @@ Commands:
     shell             Enter an interactive shell in a container
     artifact          Read a bounded log/artifact excerpt with a continuation cursor
     wait              Sleep until a Slurm job, process, or marker finishes
-    monitor-mcp       Serve Pipelines monitoring tools over MCP stdio
+    monitor-mcp       Serve Chaperone monitoring tools over MCP stdio
     help              Show this help message
 
 Aliases:
@@ -175,19 +175,19 @@ Aliases:
 
 Examples:
     # Container management:
-    pipelines list-available          # Show available containers
-    pipelines list-installed          # Show installed containers
-    pipelines list-blocks             # Show blocks and their containers
-    pipelines install foundry e1      # Install containers (--force, --dry_run)
-    pipelines shell foundry           # Enter interactive shell in container
+    chaperone list-available          # Show available containers
+    chaperone list-installed          # Show installed containers
+    chaperone list-blocks             # Show blocks and their containers
+    chaperone install foundry e1      # Install containers (--force, --dry_run)
+    chaperone shell foundry           # Enter interactive shell in container
 
 For command-specific help:
-    pipelines install --help
+    chaperone install --help
 """)
 
 
 def main():
-    """Main entry point for pipelines CLI."""
+    """Main entry point for the Chaperone CLI."""
     if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help", "help"]:
         print_help()
         sys.exit(0)
@@ -214,8 +214,8 @@ def main():
         app.run(install_main)
     elif command == "shell":
         if len(sys.argv) < 3:
-            print("Usage: pipelines shell <container_name>")
-            print("Example: pipelines shell foundry")
+            print("Usage: chaperone shell <container_name>")
+            print("Example: chaperone shell foundry")
             sys.exit(1)
         shell_container(sys.argv[2])
     elif command == "artifact":
@@ -232,7 +232,7 @@ def main():
         sys.exit(mcp_cli(sys.argv[2:]))
     else:
         print(f"Unknown command: {command}")
-        print("Run 'pipelines help' for usage information")
+        print("Run 'chaperone help' for usage information")
         sys.exit(1)
 
 

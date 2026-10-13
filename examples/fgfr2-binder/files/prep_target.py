@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Fetch a complex from the PDB, keep one receptor + one ligand-protein pair, auto-detect
 interface hotspots on the receptor, and write a target-only PDB + RFD3 config.
 

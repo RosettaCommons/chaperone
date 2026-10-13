@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Send structures and commands to PyMOL via its XML-RPC server.
 
 Works with both native PyMOL -R and pymol_remote. Auto-detects port 9123-9127.

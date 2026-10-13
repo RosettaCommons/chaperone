@@ -17,10 +17,10 @@ if [[ "$SOURCE" != *://* ]]; then
   fi
 fi
 
-SAFE_JOB_NAME=${JOB_NAME:-pipelines-codex}
+SAFE_JOB_NAME=${JOB_NAME:-chaperone-codex}
 SAFE_JOB_NAME=${SAFE_JOB_NAME//[^A-Za-z0-9_.-]/_}
 RUN_IMAGE_DIR="${HARBOR_JOBS_DIR:-$ROOT/jobs}/images/${SAFE_JOB_NAME}-${SLURM_JOB_ID:-manual}"
-RUN_IMAGE="$RUN_IMAGE_DIR/pipelines_agent.sif"
+RUN_IMAGE="$RUN_IMAGE_DIR/chaperone_agent.sif"
 APPTAINER_TMPDIR=
 OWN_RUN_IMAGE=1
 LOCAL_RUN_SCRIPT=
@@ -65,12 +65,12 @@ if [[ -n "$APPTAINER_TMPDIR" ]]; then
   unset APPTAINER_TMPDIR
 fi
 
-echo "Starting Harbor with CPU-only outer allocation; Pipelines GPU work uses guarded sbatch."
+echo "Starting Harbor with CPU-only outer allocation; Chaperone GPU work uses guarded sbatch."
 echo "Evaluation task inputs: ${TASK_INPUTS:-unset}"
 export APPTAINER_IMAGE="$RUN_IMAGE"
 export GPUS=0
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-  export JOB_NAME="${JOB_NAME:-pipelines-codex}-${SLURM_JOB_ID}"
+  export JOB_NAME="${JOB_NAME:-chaperone-codex}-${SLURM_JOB_ID}"
 fi
 # Bash may lazily read a script for the lifetime of a day-long job. Stage the
 # small controller entry point on node-local storage so a transient NFS handle

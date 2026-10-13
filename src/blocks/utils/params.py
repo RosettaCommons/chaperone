@@ -3,7 +3,7 @@
 Dynamically scans a params directory for ``*.params`` files and provides
 lookup by ligand 3-letter code.  The directory is resolved in order:
 
-1. ``PIPELINES_LIGAND_PARAMS_DIR`` environment variable
+1. ``CHAPERONE_LIGAND_PARAMS_DIR`` environment variable
 2. Bundled ``blocks/utils/params/`` directory (ships with the repo)
 
 Usage::

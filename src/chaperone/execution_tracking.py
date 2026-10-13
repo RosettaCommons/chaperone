@@ -314,9 +314,9 @@ def track_execution(
     attempt = next_execution_attempt(step_dir, sandbox_dir)
     started = time.perf_counter()
     started_at = datetime.now(timezone.utc).isoformat()
-    # Inline backend inference (same logic as PipelinesSettings.infer_backend)
+    # Inline backend inference (same logic as ChaperoneSettings.infer_backend)
     # to keep this module importable by lightweight standalone scripts
-    # (e.g. runner_wait) that must NOT trigger pipelines/__init__.py — which
+    # (e.g. runner_wait) that must NOT trigger chaperone/__init__.py — which
     # would pull in PipelineDataHandler/polars/the block registry.
     if os.environ.get("SLURM_JOB_ID"):
         backend = "slurm"

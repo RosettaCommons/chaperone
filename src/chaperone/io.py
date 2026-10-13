@@ -1,4 +1,4 @@
-"""I/O utilities for pipelines."""
+"""I/O utilities for Chaperone."""
 
 import contextlib
 import logging

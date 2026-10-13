@@ -5,7 +5,7 @@ addressed as ``archive.catcif:<entry_id>`` — that string is a valid path for
 :py:func:`chaperone.io.parse_to_atom_array` and for ``get_data`` workers,
 since ``catcif_tools`` resolves it transparently.
 
-The archive is readable outside of pipelines and uses one self-describing
+The archive is readable outside of Chaperone and uses one self-describing
 ``archive.catcif:<entry_id>`` string per structure.
 """
 

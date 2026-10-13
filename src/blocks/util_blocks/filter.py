@@ -446,7 +446,7 @@ class FilterBlock(BlockFunction):
         description=(
             "When True, validate that filter columns exist and contain valid "
             "floats (not NaN) but do not prune rows. Useful for testing "
-            "pipelines end-to-end with minimal data."
+            "Chaperone end-to-end with minimal data."
         ),
     )
 

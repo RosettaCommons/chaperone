@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build a minimal, history-free Pipelines bundle from an explicit source tree.
+"""Build a minimal, history-free Chaperone bundle from an explicit source tree.
 
-The harness needs executable Pipelines source and its agent-skill instructions;
+The harness needs executable Chaperone source and its agent-skill instructions;
 it does not need a repository clone.  This module copies an allowlisted set of
 regular files directly from the caller-supplied working tree.  It never invokes
 Git, follows no symlinks, and never copies repository metadata, documentation
@@ -196,7 +196,7 @@ def _is_allowed(relative: PurePosixPath) -> bool:
         if len(relative.parts) < 3 or relative.parts[1] not in BUNDLED_SRC_PACKAGES:
             return False
         # Generic evaluation/reporting helpers are not required to compose or
-        # execute scientific Pipelines blocks and do not belong in an agent
+        # execute scientific Chaperone blocks and do not belong in an agent
         # evaluation workspace.
         if relative.as_posix() == "src/chaperone/evals.py":
             return False
@@ -252,7 +252,7 @@ def validate_advertised_skills(root: Path) -> None:
     if missing:
         details = ", ".join(f"{name} ({advertised[name]})" for name in missing)
         raise RuntimeError(
-            "Pipelines bundle advertises skills without a SKILL.md: " + details
+            "Chaperone bundle advertises skills without a SKILL.md: " + details
         )
 
 
@@ -273,13 +273,13 @@ def iter_bundle_files(source: Path) -> Iterator[tuple[PurePosixPath, Path]]:
     for name in sorted(ROOT_FILES):
         path = source / name
         if path.is_symlink():
-            raise RuntimeError(f"Refusing symlink in Pipelines source: {name}")
+            raise RuntimeError(f"Refusing symlink in Chaperone source: {name}")
         if path.is_file():
             candidates.append((PurePosixPath(name), path))
     block_reference = source / "docs" / "site" / "blocks-reference.md"
     if block_reference.is_symlink():
         raise RuntimeError(
-            "Refusing symlink in Pipelines source: docs/site/blocks-reference.md"
+            "Refusing symlink in Chaperone source: docs/site/blocks-reference.md"
         )
     if block_reference.is_file():
         candidates.append(
@@ -291,7 +291,7 @@ def iter_bundle_files(source: Path) -> Iterator[tuple[PurePosixPath, Path]]:
             continue
         if root.is_symlink():
             raise RuntimeError(
-                f"Refusing symlinked Pipelines source directory: {root.relative_to(source)}"
+                f"Refusing symlinked Chaperone source directory: {root.relative_to(source)}"
             )
         for current, directory_names, file_names in os.walk(root, followlinks=False):
             current_path = Path(current)
@@ -305,7 +305,7 @@ def iter_bundle_files(source: Path) -> Iterator[tuple[PurePosixPath, Path]]:
                 directory = current_path / directory_name
                 if directory.is_symlink():
                     raise RuntimeError(
-                        "Refusing symlink in Pipelines source: "
+                        "Refusing symlink in Chaperone source: "
                         f"{directory.relative_to(source)}"
                     )
             for file_name in file_names:
@@ -313,7 +313,7 @@ def iter_bundle_files(source: Path) -> Iterator[tuple[PurePosixPath, Path]]:
                 relative = PurePosixPath(path.relative_to(source).as_posix())
                 if path.is_symlink():
                     raise RuntimeError(
-                        f"Refusing symlink in Pipelines source: {relative}"
+                        f"Refusing symlink in Chaperone source: {relative}"
                     )
                 if _is_allowed(relative):
                     candidates.append((relative, path))
@@ -321,10 +321,10 @@ def iter_bundle_files(source: Path) -> Iterator[tuple[PurePosixPath, Path]]:
     for relative, path in sorted(candidates, key=lambda item: item[0].as_posix()):
         reason = _forbidden_reason(relative)
         if reason is not None:
-            raise RuntimeError(f"Refusing {reason} in Pipelines bundle: {relative}")
+            raise RuntimeError(f"Refusing {reason} in Chaperone bundle: {relative}")
         if not path.is_file():
             raise RuntimeError(
-                f"Pipelines bundle entry is not a regular file: {relative}"
+                f"Chaperone bundle entry is not a regular file: {relative}"
             )
         yield relative, path
 
@@ -400,7 +400,7 @@ def assert_no_evaluation_hints(root: Path, hints=None) -> None:
         if len(offenders) > 8:
             preview += f", ... ({len(offenders)} total)"
         raise RuntimeError(
-            "Pipelines bundle contains evaluation-specific hints: " + preview
+            "Chaperone bundle contains evaluation-specific hints: " + preview
         )
 
 
@@ -408,10 +408,10 @@ def validate_snapshot(root: Path, expected_hash: str | None = None) -> str:
     """Prove that a materialized bundle contains only the allowlisted files."""
     root = root.expanduser()
     if root.is_symlink():
-        raise RuntimeError(f"Pipelines bundle root may not be a symlink: {root}")
+        raise RuntimeError(f"Chaperone bundle root may not be a symlink: {root}")
     root = root.resolve()
     if not root.is_dir():
-        raise RuntimeError(f"Pipelines bundle is not a directory: {root}")
+        raise RuntimeError(f"Chaperone bundle is not a directory: {root}")
     assert_no_git_metadata(root)
     actual_files: set[str] = set()
     for path in root.rglob("*"):
@@ -428,14 +428,14 @@ def validate_snapshot(root: Path, expected_hash: str | None = None) -> str:
     missing = sorted(REQUIRED_FILES - actual_files)
     if missing:
         raise RuntimeError(
-            "Pipelines bundle is missing required files: " + ", ".join(missing)
+            "Chaperone bundle is missing required files: " + ", ".join(missing)
         )
     validate_advertised_skills(root)
     assert_no_evaluation_hints(root)
     digest = snapshot_hash(root)
     if expected_hash is not None and digest != expected_hash:
         raise RuntimeError(
-            f"Pipelines bundle hash mismatch: expected {expected_hash}, found {digest}"
+            f"Chaperone bundle hash mismatch: expected {expected_hash}, found {digest}"
         )
     return digest
 
@@ -444,14 +444,14 @@ def build(source: Path, output_root: Path) -> Path:
     """Copy a minimal raw-file bundle from an explicit source directory."""
     source = source.expanduser().resolve()
     if not source.is_dir():
-        raise RuntimeError(f"Pipelines source directory not found: {source}")
+        raise RuntimeError(f"Chaperone source directory not found: {source}")
     validate_advertised_skills(source)
     files = list(iter_bundle_files(source))
     relative_files = {relative.as_posix() for relative, _ in files}
     missing = sorted(REQUIRED_FILES - relative_files)
     if missing:
         raise RuntimeError(
-            "Pipelines source is missing required harness files: " + ", ".join(missing)
+            "Chaperone source is missing required harness files: " + ", ".join(missing)
         )
     digest = _inventory_hash(files)
     output_root = output_root.expanduser().resolve()
@@ -460,7 +460,7 @@ def build(source: Path, output_root: Path) -> Path:
     manifest_path = output_root / f"{digest}.json"
     if destination.is_symlink():
         raise RuntimeError(
-            f"Refusing symlinked Pipelines bundle destination: {destination}"
+            f"Refusing symlinked Chaperone bundle destination: {destination}"
         )
     if destination.exists():
         validate_snapshot(destination, digest)
@@ -484,7 +484,7 @@ def build(source: Path, output_root: Path) -> Path:
                 raise
             if destination.is_symlink():
                 raise RuntimeError(
-                    f"Refusing symlinked Pipelines bundle destination: {destination}"
+                    f"Refusing symlinked Chaperone bundle destination: {destination}"
                 ) from error
             validate_snapshot(destination, digest)
             shutil.rmtree(staging)
@@ -505,17 +505,17 @@ def build(source: Path, output_root: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create a minimal history-free Pipelines harness bundle."
+        description="Create a minimal history-free Chaperone harness bundle."
     )
     parser.add_argument(
-        "--pipelines-path",
+        "--chaperone-path",
         type=Path,
         required=True,
-        help="Explicit Pipelines working-tree path whose raw allowlisted files are copied.",
+        help="Explicit Chaperone working-tree path whose raw allowlisted files are copied.",
     )
     parser.add_argument("--output-root", type=Path, required=True)
     args = parser.parse_args()
-    print(build(args.pipelines_path, args.output_root))
+    print(build(args.chaperone_path, args.output_root))
 
 
 if __name__ == "__main__":

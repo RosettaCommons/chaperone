@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """PPI binder design using RFD3 + legacy (fused_mpnn) MPNN + RF3.
 
 Sibling of ``pipeline_foundry.py`` in this directory that swaps
@@ -11,7 +11,7 @@ scaffolds and RF3 validation.
 Pipeline: rfd3 -> filter -> mpnn (legacy) -> rf3 -> rmsd -> filter
 
 Cloud runs:
-    PIPELINES_COMPUTE_BACKEND=modal \
+    CHAPERONE_COMPUTE_BACKEND=modal \
     FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
     MPNN_WEIGHTS_DIR=/abs/path/to/fused_mpnn_weights \
     ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py \

@@ -105,7 +105,7 @@ def test_extra_private_input_is_reported(private_tree):
 
 
 def test_default_checkout_is_the_repository_containing_the_controller(monkeypatch):
-    monkeypatch.delenv("PIPELINES_REPO", raising=False)
+    monkeypatch.delenv("CHAPERONE_REPO", raising=False)
 
     repo = default_chaperone_repo()
 
@@ -113,8 +113,8 @@ def test_default_checkout_is_the_repository_containing_the_controller(monkeypatc
     assert (repo / "pyproject.toml").is_file()
 
 
-def test_pipelines_repo_overrides_the_default(monkeypatch, tmp_path):
-    monkeypatch.setenv("PIPELINES_REPO", str(tmp_path))
+def test_chaperone_repo_overrides_the_default(monkeypatch, tmp_path):
+    monkeypatch.setenv("CHAPERONE_REPO", str(tmp_path))
 
     assert default_chaperone_repo() == tmp_path
 

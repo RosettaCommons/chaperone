@@ -152,7 +152,7 @@ def calculate_hbonds(
         atom_groups: Optional mapping of group name to list of atom names.
             When provided, returns per-group h-bond counts as the third element.
         hbplus_path: Resolved HBPLUS executable. When omitted, resolve it from
-            Pipelines settings for backwards compatibility.
+            Chaperone settings for backwards compatibility.
 
     Returns:
         Tuple of:
