@@ -1,8 +1,18 @@
 # Agent Skills
 
-Chaperone ships with a collection of [Claude Code](https://claude.com/claude-code) **skills** — domain-specific guides and workflows that Claude loads on demand. Skills live under `.agents/skills/` in the repo and are invoked either automatically (when the user's request matches the skill description) or explicitly via `/<skill-name>`.
+Chaperone includes 14 **agent skills**: focused guides for planning, running, and debugging protein-design workflows. Each guide is a Markdown file with YAML metadata at `.agents/skills/<name>/SKILL.md`. The guides describe repository conventions and scientific workflows that an agent can follow with access to the repository and the required tools.
 
-Each skill provides focused context for a particular task so Claude can act with the right conventions, commands, and guardrails without flooding its main context window.
+## Using skills with your agent
+
+Start with the repository's [agent guide](https://github.com/RosettaCommons/chaperone/blob/main/AGENTS.md) and [skills index](https://github.com/RosettaCommons/chaperone/blob/main/.agents/skills/INDEX.md), then load the single skill that matches the task. You can ask in plain language, for example:
+
+> Read AGENTS.md and .agents/skills/INDEX.md, then use .agents/skills/design/SKILL.md to plan a tested pipeline for my target.
+
+Automatic skill discovery and commands such as `/design` depend on the agent application. If your application does not discover this directory, point it directly to the relevant `SKILL.md`. Slash names below are shorthand for the guides, not a promise that every application registers those commands. Tool names and optional permissions metadata may also need adapting to your application's capabilities.
+
+Skills provide instructions; they do not install the tools or grant access to compute. Running a workflow still requires the relevant Chaperone environment, containers, model assets, and execution backend. Some guides have additional requirements: Rosetta for ligand parameters, a running PyMOL XML-RPC server for visualization, or IPD infrastructure for the current DNA-ordering workflow. The interactive Slurm guide uses IPD's `qlogin` wrapper; adapt allocation commands to your cluster.
+
+The inventory below follows the [skills shipped in this repository](https://github.com/RosettaCommons/chaperone/tree/main/.agents/skills). Consult each source guide for its full procedure and prerequisites.
 
 ## Chaperone-specific skills
 
@@ -60,7 +70,7 @@ Iteratively improve a weak, uncertain or stalled workflow using your thresholds 
 
 ### `/build-block`
 
-End-to-end guide for adding a new block from a tool's repo or documentation URL. Covers container definition (HPCCM), block code layout, `ScriptSpec`, input/output helpers, and registering the block for lazy discovery.
+End-to-end guide for adding a new block from a tool's repo or documentation URL. Covers container definition with `chaperone.containers.Image`, block code layout, `ScriptSpec`, input/output helpers, and registering the block for lazy discovery.
 
 ### `/debugging-inputs`
 
@@ -72,7 +82,7 @@ Everything needed to generate and debug Rosetta small-molecule `.params` files: 
 
 ### `/order-designs`
 
-Generates DNA eblock orders from design PDBs using the JohnBercow Golden Gate cloning pipeline on IPD digs. Handles codon optimization, BsaI site removal, and eblock CSV output.
+Generates DNA eblock orders from design PDBs using the `cowboy-ssm` gene-order wrapper on IPD digs. The wrapper combines JohnBercow with preflight checks, quality control, and retries. This workflow requires the IPD tools and environment described in the source guide.
 
 ### `/order-collection`
 
@@ -84,11 +94,13 @@ Sends structures (CIF, PDB, pickle) and PyMOL commands to a running PyMOL sessio
 
 ### `/slurm-interactive`
 
-Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` (IPD's wrapper; adapt the allocation command on other clusters) inside a `tmux` session, so Claude runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
+Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` (IPD's wrapper; adapt the allocation command on other clusters) inside a `tmux` session, so the agent runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
 
 ### `/slurm-background`
 
-Submits **detached** SLURM work that survives disconnect — for pilots, production, and campaigns. Covers the Chaperone `ExecutionEngine` (`job_args`, `submit`/`gather`), raw `sbatch`, detaching a long driver with `nohup`/`tmux`, and how to monitor/cancel. **Scaling → background.**
+Submits **detached** Slurm work for pilots, production, and campaigns using the Chaperone `ExecutionEngine` or standalone `sbatch`. Long-running drivers use the monitor's `launch_and_wait` tool. After submitting a standalone Slurm job, call the monitor's `wait` tool directly once with its job ID; the engine manages its own inner jobs.
+
+The monitor is exposed as `campaign-monitor` under Harbor or by the standalone `chaperone monitor-mcp` server. Follow the source guide's launch and monitoring procedure rather than detaching drivers with shell backgrounding or adding polling loops. This workflow requires those monitor tools to be available to the agent.
 
 ### `/notebook-editing`
 
@@ -103,9 +115,10 @@ Skills live in `.agents/skills/<name>/SKILL.md` with YAML frontmatter:
 ```yaml
 ---
 name: my-skill
-description: One-line description Claude uses to decide when to load this skill.
-allowed-tools: ["Read", "Grep", "Glob", "Bash"]
+description: Describe the task this skill handles and when an agent should use it.
 ---
 ```
 
-Keep the description **action-oriented** and list concrete trigger phrases — Claude matches user intent against this field. After adding a skill, update the tables above so users can discover it.
+Keep the description **action-oriented** and include concrete situations where the guide applies. Document required tools, environment assumptions, validation steps, and expected outputs in the body. Add application-specific metadata only when needed, and explain any dependencies on a particular agent runtime.
+
+After adding or changing a skill, update `.agents/skills/INDEX.md` and this page together. Keep the guide as the source of truth for detailed commands; this page should summarize its purpose and prerequisites.
