@@ -23,7 +23,6 @@ _SMOKE_DEFAULTS = {
     "af3": {"diffusion_batch_size": 1, "model_seeds": [42]},
     "af3_with_target_template": {"diffusion_batch_size": 1, "model_seeds": [42]},
     "rf3": {"diffusion_batch_size": 1, "model_seeds": [42]},
-    "rf3_dev": {"diffusion_batch_size": 1, "model_seeds": [42]},
     "boltz2": {"diffusion_batch_size": 1},
     "boltz2_steered": {"diffusion_batch_size": 1},
     "chai1": {"diffusion_batch_size": 1},

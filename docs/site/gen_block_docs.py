@@ -157,7 +157,6 @@ ORACLE_RECENCY = [
     "boltz2",
     "boltz2_steered",
     "rf3",
-    "rf3_dev",
     "protenix",
     "chai1",
     "af3",
@@ -343,7 +342,7 @@ def _render_block(name: str, cls) -> list[str]:
         ])
     if name == "mpnn":
         lines.extend([
-            "**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `portable` and `legacy` select its runtimes explicitly. See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.",
+            "**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `legacy` selects it explicitly (existing site SIF). See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.",
             "",
         ])
     if name in METRIC_NOTES:

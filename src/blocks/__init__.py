@@ -162,7 +162,6 @@ def discover_all_blocks() -> dict[str, type["BlockFunction"]]:
 # Build recipes remain discoverable even when a site selects a prebuilt SIF.
 _CONTAINER_VARIANTS = {
     "ligandmpnn_public": ("blocks.networks.mpnn", "LIGANDMPNN_PUBLIC_CONTAINER"),
-    "modelhub_portable": ("blocks.networks.mpnn", "MODELHUB_PORTABLE_CONTAINER"),
     "rfdiffusion2_portable": ("blocks.networks.rfdiffusion2", "RFD2_PORTABLE_CONTAINER"),
     "colabfold_portable": ("blocks.networks.prediction.colabfold", "COLABFOLD_PORTABLE_CONTAINER"),
     "foundry": ("blocks.networks.foundry.container", "_FOUNDRY_CUDA_CONTAINER"),

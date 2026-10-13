@@ -384,7 +384,7 @@ LARGE_GPU_BLOCKS = {"bindcraft", "simplefold"}
 GPU_BLOCKS = {
     "af3", "af3_with_target_template", "bindcraft", "boltz2", "boltz2_steered",
     "boltzgen", "chai1", "colabfold", "disco", "e1", "esm2", "esmfold2",
-    "openfold3", "protein_hunter", "protenix", "rf3", "rf3_dev", "rfd1", "rfd2",
+    "openfold3", "protein_hunter", "protenix", "rf3", "rfd1", "rfd2",
     "rfd3", "rfd3_partial", "rfd3na", "simplefold",
 }  # fmt: skip
 

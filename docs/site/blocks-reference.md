@@ -17,7 +17,6 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [boltz2](#boltz2) — Boltz-2 structure prediction [[paper](https://www.biorxiv.org/content/10.1101/2025.06.14.659707v1)]
 - [boltz2_steered](#boltz2_steered) — Boltz-2 with helix steering (Protein Hunter)
 - [rf3](#rf3) — RosettaFold3 structure prediction [[paper](https://www.biorxiv.org/content/10.1101/2025.08.14.670328v1)]
-- [rf3_dev](#rf3_dev) — RF3 via local foundry-dev with CFG and auto-templating
 - [protenix](#protenix) — Protenix structure prediction
 - [chai1](#chai1) — Chai-1 structure prediction
 - [af3](#af3) — AlphaFold3 structure prediction [[paper](https://doi.org/10.1038/s41586-024-07487-w)]
@@ -292,55 +291,6 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_c
 | `template_selection` | `Optional[list[str]]` | `None` | Token-level templates for polymers and small molecules. Uses AtomSelection format, e.g. ['A/*/30', 'A/*/53', 'X']. |
 | `ground_truth_conformer_selection` | `Optional[list[str]]` | `None` | Lock selected residues/chains to ground truth conformers. Useful for keeping known ligand conformations while allowin... |
 | `cyclic_chains` | `Optional[list[str]]` | `None` | Chain IDs that should be cyclized. If input is CIF, cyclization is auto-detected. |
-
----
-
-### rf3_dev
-
-*RF3 via local foundry-dev installation with CFG and auto-templating.*
-
-> [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/rosettafold3.py)
-
-Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `foundry_public`
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`diffusion_batch_size`</span> | `int` | `5` | Number of diffusion samples (prediction structures) per input. |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`read_most_confident_model`</span> | `bool` | `True` | If True, read only the highest-confidence model; False, read all samples. |
-| <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
-| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `n_recycles` | `Optional[int]` | `10` | — |
-| `num_diffusion_steps` | `int` | `50` | — |
-| `ckpt_path` | `Optional[str]` | `<computed at runtime>` | Checkpoint path or Foundry registry name (default: rf3). |
-| `compile_as_metric` | `bool` | `False` | If True, compile outputs as metrics with path_handle instead of path. |
-| `remove_ligands` | `bool` | `False` | If True, skip ligands in input preparation. |
-| `specified_smiles` | `dict` | `<computed at runtime>` | Map ligand name → SMILES string. |
-| `specified_ccd` | `dict` | `<computed at runtime>` | Map ligand name → CCD code. |
-| `disable_ccd_detection` | `bool` | `False` | If True, disable automatic CCD code detection. |
-| `which` | `list[int] \| str` | `'last'` | Which structure(s) in each row's lineage to predict. 'last' (default) uses the most recent; a list of ints selects by... |
-| `sort_by_length` | `bool` | `True` | If True (default), sort the input handler by `sort_length_key` before chunking so each chunk hits a narrow JIT-bucket... |
-| `sort_length_key` | `str` | `'rfd3.num_residues'` | Metric column to sort on when sort_by_length=True (dot-path into metrics JSON, as exposed by handler.unpack()). If mi... |
-| `early_stopping_plddt_threshold` | `float` | `0.5` | Stop diffusion early if pLDDT falls below this threshold after the initial recycle. Set to 0.5 for 10-20x throughput ... |
-| `dump_trajectories` | `bool` | `False` | Write the noisy and denoised diffusion trajectories for each sample. Trajectory files are large, place the final pred... |
-| `seed_offset` | `int` | `42` | Base random seed; each chunk increments by 1. Ignored when model_seeds is set. |
-| `model_seeds` | `Optional[list[int]]` | `None` | List of random seeds for multi-seed inference per input. Each seed runs a completely independent trunk pass, giving m... |
-| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Chaperone exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
-| `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no MSA. Set to 0 to require an MSA for every protein chain. |
-| `create_bond_graph` | `bool` | `False` | Assign ligand bonds from specified_smiles and write inputs as CIF with bond topology. Required when input structures ... |
-| `input_mode` | `Literal` | `'file'` | 'file' passes CIF/PDB directly (current default). 'sequence' builds RF3 component JSON from sequences + CCD/SMILES. |
-| `template_json` | `Optional[str]` | `None` | Path to RF3 JSON template. Protein sequences are filled from upstream designs; everything else (ligands, bonds, templ... |
-| `template_selection` | `Optional[list[str]]` | `None` | Token-level templates for polymers and small molecules. Uses AtomSelection format, e.g. ['A/*/30', 'A/*/53', 'X']. |
-| `ground_truth_conformer_selection` | `Optional[list[str]]` | `None` | Lock selected residues/chains to ground truth conformers. Useful for keeping known ligand conformations while allowin... |
-| `cyclic_chains` | `Optional[list[str]]` | `None` | Chain IDs that should be cyclized. If input is CIF, cyclization is auto-detected. |
-| `foundry_dev_path` | `Optional[str]` | `None` | Path to local foundry-dev repository. If not set, falls back to FOUNDRY_DEV_PATH from settings. Required for this block. |
-| `inference_classifier_free_guidance` | `bool` | `False` | Enable classifier-free guidance for template-based inference. Requires at least one of template_selection, relative_t... |
-| `inference_cfg_scale` | `float` | `1.0` | CFG guidance scale. Controls how strongly the template signal is amplified during diffusion. <1.0 = less guidance (mo... |
-| `relative_template_selection` | `Optional[dict]` | `None` | Grouped template specification for relative positioning between components. Dict mapping group names to selection lis... |
-| `auto_templating` | `bool` | `False` | Automatically discover protein residues near the ligand and build per-structure template selections for CFG. When ena... |
-| `auto_templating_radius` | `float` | `5.0` | Radius in angstroms for finding nearby protein residues. |
-| `auto_templating_chain` | `str` | `'B'` | Chain ID of the ligand in input structures. |
-| `protein_chain` | `str` | `'A'` | Chain ID of the protein for auto-templating. |
-| `ligand_atoms` | `Optional[list[str]]` | `None` | Ligand atom names to use for radius search in auto-templating. If None, all ligand atoms are used. Use to restrict to... |
 
 ---
 
@@ -734,7 +684,7 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 > Dauparas et al. (2023) — Atomic context-conditioned protein sequence design using LigandMPNN
 > [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/dauparas/LigandMPNN) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/mpnn.py)
 
-**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `portable` and `legacy` select its runtimes explicitly. See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.
+**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `legacy` selects it explicitly (existing site SIF). See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.
 
 Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn_public`
 

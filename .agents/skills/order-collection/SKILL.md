@@ -58,7 +58,7 @@ mkdir -p {rundir}/order_collection
 Read `{rundir}/pipeline.json` with the Read tool. Parse the `steps` array and classify each step by its `block_name` field (NOT the `name` field, which may include cycling namespaces):
 
 **Prediction blocks** (structure prediction oracles):
-- `af3`, `boltz2`, `rf3`, `rf3_dev`, `chai1`, `protenix`, `openfold3`
+- `af3`, `boltz2`, `rf3`, `chai1`, `protenix`, `openfold3`
 
 **Filter blocks**:
 - `filter`
@@ -135,7 +135,7 @@ import polars as pl
 
 rundir = '{rundir}'
 manifest = json.load(open(os.path.join(rundir, 'pipeline.json')))
-prediction_blocks = {'af3', 'boltz2', 'rf3', 'rf3_dev', 'chai1', 'protenix', 'openfold3'}
+prediction_blocks = {'af3', 'boltz2', 'rf3', 'chai1', 'protenix', 'openfold3'}
 outdir = os.path.join(rundir, 'order_collection')
 
 def is_apo(step, _cache={}):
@@ -282,7 +282,7 @@ manifest = json.load(open(os.path.join(rundir, 'pipeline.json')))
 with open(os.path.join(rundir, 'order_collection', '_ordered_seqs.json')) as f:
     ordered_seqs = set(json.load(f))
 
-prediction_blocks = {'af3', 'boltz2', 'rf3', 'rf3_dev', 'chai1', 'protenix', 'openfold3'}
+prediction_blocks = {'af3', 'boltz2', 'rf3', 'chai1', 'protenix', 'openfold3'}
 # Leave 4 cores free; cap at 24 (diminishing returns past that).
 NUM_WORKERS = max(1, min(os.cpu_count() or 4, 24) - 4)
 

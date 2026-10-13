@@ -30,7 +30,6 @@ from blocks.networks.hallucination.protein_hunter import (
 from blocks.networks.prediction.rosettafold3 import (
     _RF3_INPUT_MANIFEST,
     _rf3_input_records,
-    RF3DevBlock,
     RosettaFold3Block,
     compile_rf3,
 )
@@ -247,6 +246,9 @@ def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
     tmp_path, monkeypatch, backend, expected,
 ):
     import blocks.networks.mpnn as mpnn
+    sif = tmp_path / "modelhub.sif"
+    sif.touch()
+    monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(sif))
     monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.LIGANDMPNN_PUBLIC_CONTAINER if backend == "public" else mpnn._MODELHUB_SIF_CONTAINER)
     structure = tmp_path / "input.pdb"
     structure.write_text(
@@ -337,27 +339,22 @@ def test_compile_accepts_cycle_zero_only_diagnostic(tmp_path: Path):
 
 
 def test_rf3_single_seed_uses_supported_seed_setting():
-    for block_cls, seed_arg in (
-        (RosettaFold3Block, "seed=20"),
-        (RF3DevBlock, "+seed=20"),
-    ):
-        command = block_cls(seed_offset=17, model_seeds=None, command_template=["rf3", "fold"])._append_common_cli_args(
-            ["rf3", "fold"], chunk_id=3
-        )
-        assert seed_arg in command
-        assert not any("model_seeds" in arg for arg in command)
+    command = RosettaFold3Block(
+        seed_offset=17, model_seeds=None, command_template=["rf3", "fold"]
+    )._append_common_cli_args(["rf3", "fold"], chunk_id=3)
+    assert "seed=20" in command
+    assert not any("model_seeds" in arg for arg in command)
 
 
 def test_rf3_model_seeds_expand_to_independent_invocations():
     base = ["rf3", "fold", "inputs=in.json", "out_dir=outputs"]
-    for block_cls, seed_prefix in ((RosettaFold3Block, ""), (RF3DevBlock, "+")):
-        command = block_cls(model_seeds=[101, 202], command_template=["rf3", "fold"])._expand_model_seed_commands(
-            base, "outputs"
-        )
-        assert command[:2] == ["bash", "-lc"]
-        assert all(f"out_dir=outputs/seed_{seed}" in command[2] for seed in (101, 202))
-        assert all(f"{seed_prefix}seed={seed}" in command[2] for seed in (101, 202))
-        assert " && " in command[2]
+    command = RosettaFold3Block(
+        model_seeds=[101, 202], command_template=["rf3", "fold"]
+    )._expand_model_seed_commands(base, "outputs")
+    assert command[:2] == ["bash", "-lc"]
+    assert all(f"out_dir=outputs/seed_{seed}" in command[2] for seed in (101, 202))
+    assert all(f"seed={seed}" in command[2] for seed in (101, 202))
+    assert " && " in command[2]
 
 
 def test_rf3_all_samples_excludes_top_model_alias(tmp_path):

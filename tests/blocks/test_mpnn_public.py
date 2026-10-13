@@ -79,10 +79,10 @@ def test_public_numpy_patch_replaces_only_removed_aliases_and_checks_pinned_sour
         exec(compile(patch, "numpy_compatibility_patch", "exec"), {})
 
 
-def test_backend_switch_has_distinct_cache_identity_without_invalidating_site_caches(monkeypatch):
+def test_backend_switch_has_distinct_cache_identity_without_invalidating_site_caches(monkeypatch, classic_sif):
     monkeypatch.setattr(get_settings(), "MPNN_WEIGHTS_DIR", None)
     fingerprints = []
-    for image in (mpnn._MODELHUB_SIF_CONTAINER, mpnn.MODELHUB_PORTABLE_CONTAINER, mpnn.LIGANDMPNN_PUBLIC_CONTAINER):
+    for image in (mpnn._MODELHUB_SIF_CONTAINER, mpnn.LIGANDMPNN_PUBLIC_CONTAINER):
         monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", image)
         # Equalize even the unused packer option: the selected command alone
         # must distinguish the scientific implementation used for sequence output.
@@ -93,12 +93,18 @@ def test_backend_switch_has_distinct_cache_identity_without_invalidating_site_ca
         assert fingerprints[-1] == ExecutionEngine._cache_fingerprint([
             mpnn.ClassicMPNNBlock(args={"checkpoint_path_sc": "/same/unused/packer.pt"})
         ])
-    assert len(set(fingerprints)) == 3
+    assert len(set(fingerprints)) == 2
 
 
-@pytest.mark.parametrize("backend,env_flag", [("apptainer", "--env"), ("docker", "-e")])
-@pytest.mark.parametrize("image", [mpnn._MODELHUB_SIF_CONTAINER, mpnn.MODELHUB_PORTABLE_CONTAINER, mpnn.LIGANDMPNN_PUBLIC_CONTAINER])
-def test_cpu_device_is_masked_inside_each_container_runtime(monkeypatch, tmp_path, backend, env_flag, image):
+@pytest.mark.parametrize(
+    "backend,env_flag,image",
+    [
+        ("apptainer", "--env", mpnn._MODELHUB_SIF_CONTAINER),  # a SIF cannot run under Docker
+        ("apptainer", "--env", mpnn.LIGANDMPNN_PUBLIC_CONTAINER),
+        ("docker", "-e", mpnn.LIGANDMPNN_PUBLIC_CONTAINER),
+    ],
+)
+def test_cpu_device_is_masked_inside_each_container_runtime(monkeypatch, tmp_path, classic_sif, backend, env_flag, image):
     monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", image)
     monkeypatch.setattr(get_settings(), "MPNN_WEIGHTS_DIR", None)
     monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", backend)

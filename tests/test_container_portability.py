@@ -125,11 +125,6 @@ def test_all_reinstallable_recipes_render_and_have_local_copy_sources():
                 assert "/ubuntu2204/" in commands and "/ubuntu2404/" not in commands, name
 
 
-def test_classic_mpnn_advertises_private_dependency():
-    from blocks.networks.mpnn import MODELHUB_PORTABLE_CONTAINER
-    assert "private" in MODELHUB_PORTABLE_CONTAINER._labels["BuildAccess"]
-
-
 def test_ligand_ddg_reports_missing_dalphaball(monkeypatch):
     from blocks.metrics.ligand_ddg import LigandDDGBlock
     monkeypatch.setattr("blocks.metrics.ligand_ddg.shutil.which", lambda _: None)
@@ -151,22 +146,18 @@ def test_ligand_ddg_dalphaball_override_and_custom_protocol(tmp_path):
     assert block._dalphaball_command() == []
 
 
-def test_portable_variants_can_be_installed_even_when_site_selects_legacy(monkeypatch):
-    import blocks.networks.mpnn as mpnn
-    from blocks import get_container, get_all_containers
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
-    assert get_container("mpnn") is mpnn._MODELHUB_SIF_CONTAINER
-    assert get_container("modelhub_portable") is mpnn.MODELHUB_PORTABLE_CONTAINER
-    assert get_all_containers()["modelhub_portable"] is mpnn.MODELHUB_PORTABLE_CONTAINER
-
-
 def test_private_source_failure_is_actionable(monkeypatch, tmp_path):
-    from blocks.networks.mpnn import MODELHUB_PORTABLE_CONTAINER
+    image = (
+        Image("private-test")
+        .base_image("ubuntu:24.04")
+        .git_clone("https://github.com/example/private", "/opt/private")
+        .label(BuildAccess="Requires authorized access to private example/private")
+    )
     def unavailable(command, **kwargs):
         raise subprocess.CalledProcessError(128, command)
     monkeypatch.setattr(subprocess, "run", unavailable)
     with pytest.raises(RuntimeError, match="Requires authorized access to private"):
-        MODELHUB_PORTABLE_CONTAINER.prepare_git_clones(tmp_path)
+        image.prepare_git_clones(tmp_path)
 
 
 def test_esmfold2_recipe_uses_released_public_model_and_legacy_images_still_work(monkeypatch):
@@ -534,22 +525,21 @@ def test_mpnn_runtime_selection_preserves_explicit_legacy_and_docker(monkeypatch
     import blocks.networks.mpnn as mpnn
     options = {"CHAPERONE_MPNN_CONTAINER": "auto", "CHAPERONE_CONTAINER_BACKEND": "apptainer"}
     monkeypatch.setattr(mpnn, "get_setting_field", lambda key, default=None: options.get(key, default))
-    monkeypatch.setattr(mpnn, "get_container_dirs", lambda: [tmp_path])
     legacy = tmp_path / "legacy.sif"
     legacy.touch()
     monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(legacy))
     assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
     options["MPNN_WEIGHTS_DIR"] = str(tmp_path / "site-profile-weights")
     assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
-    (tmp_path / "modelhub_portable.sif").touch()
-    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_PORTABLE_CONTAINER
     options["CHAPERONE_MPNN_CONTAINER"] = "legacy"
     assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
     options["CHAPERONE_CONTAINER_BACKEND"] = "docker"
     with pytest.raises(ValueError, match="requires Apptainer"):
         mpnn._pick_modelhub_container()
     options["CHAPERONE_MPNN_CONTAINER"] = "auto"
-    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_PORTABLE_CONTAINER
+    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
+    with pytest.raises(FileNotFoundError, match="Classic ProteinMPNN needs.*LigandMPNN"):
+        mpnn._require_classic_sif()
     options.pop("MPNN_WEIGHTS_DIR")
     assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
 

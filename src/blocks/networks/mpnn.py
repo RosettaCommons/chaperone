@@ -18,7 +18,7 @@ from chaperone import (
     get_setting_field,
 )
 from chaperone.block_config import TIER_PRIMARY
-from chaperone.containers import Image, get_container_dirs
+from chaperone.containers import Image
 from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
@@ -33,9 +33,6 @@ from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
-# The legacy portable recipe needs authorized access to this private fork.
-# Its main runner accepts PDB inputs; CIF support on IPD is a separate revision.
-_PORTABLE_MPNN_REVISION = "fd01540ea1ed9868b95839bd7a8ac54a7570a95e"
 _PUBLIC_MPNN_REVISION = "26ec57ac976ade5379920dbd43c7f97a91cf82de"
 _PUBLIC_MPNN_ROOT = "/opt/ligandmpnn"
 _PUBLIC_MPNN_CHECKPOINTS = {
@@ -223,20 +220,9 @@ def _chain_ids_in_cif(path: Path) -> set[str]:
 
 # ── Container ───────────────────────────────────────────────────────────
 #
-# Two variants of the "modelhub" container exist:
-#
-#   1. The legacy institutional SIF at /projects/ml/modelhub/apptainer/...
-#      This is what IPD SLURM jobs use. It bakes fused_mpnn's run.py at
-#      /net/software/lab/fused_mpnn/v1.1.1/run.py via a bind mount.
-#
-#   2. A portable buildable variant that git-clones
-#      baker-laboratory/fused_mpnn at build time and installs a minimal
-#      python venv with torch, numpy, and prody. The run.py lives at
-#      /opt/fused_mpnn/run.py inside this image.
-#
-# Selection happens at import time. A configured or installed portable image
-# takes precedence; otherwise IPD keeps its legacy SIF. Docker always needs
-# the buildable recipe because it cannot execute a SIF.
+# Classic ProteinMPNN (the fused_mpnn fork) runs from a prebuilt on-prem
+# "modelhub" SIF; there is no buildable recipe for it. Public LigandMPNN is
+# built from source (below) and is the default when no site weights are set.
 
 _ONPREM_MODELHUB_CANDIDATES = (
     "/projects/ml/modelhub/apptainer/frozen_modelhub_datahub_cifutils_2025-02-05.sif",
@@ -259,68 +245,6 @@ _MODELHUB_SIF_CONTAINER = Image.from_existing(
         ("/net/databases/mpnn", "/databases/mpnn"),
     ],
 )
-
-# fused_mpnn is a private Baker-lab fork of LigandMPNN with added model
-# types (pssm, antibody, lddt-enhanced). The container is a minimal
-# Ubuntu + python3.12 venv with torch/numpy/prody/openfold plus the repo cloned
-# into /opt/fused_mpnn. Host-side `git clone` happens during
-# `chaperone install modelhub_portable` via `prepare_git_clones()`; the
-# builder copies the result in via `COPY` / `%files`.
-_MODELHUB_PORTABLE_CONTAINER = (
-    Image("modelhub_portable")
-    .base_image("ubuntu:24.04")
-    .packages(
-        "build-essential",
-        "git",
-        "wget",
-        "curl",
-        "ca-certificates",
-        "python3.12",
-        "python3.12-dev",
-        "python3.12-venv",
-        "python3-pip",
-    )
-    .run(
-        "python3.12 -m venv /opt/mpnn-env",
-        ". /opt/mpnn-env/bin/activate && pip install --upgrade pip setuptools wheel",
-        ". /opt/mpnn-env/bin/activate && pip install --no-cache-dir torch numpy prody ml-collections dm-tree biopython modelcif",
-    )
-    .git_clone(
-        "https://github.com/baker-laboratory/fused_mpnn",
-        "/opt/fused_mpnn",
-    )
-    .run(f"git -C /opt/fused_mpnn checkout {_PORTABLE_MPNN_REVISION}")
-    # openfold is required by fused_mpnn's sc_utils.py for side-chain packing.
-    # Only pure-Python modules are used (residue_constants, rigid_utils, feats,
-    # data_transforms, loss), so we clone the repo and add it to PYTHONPATH
-    # instead of building the full package (which needs CUDA toolkit).
-    .git_clone(
-        "https://github.com/aqlaboratory/openfold",
-        "/opt/openfold",
-    )
-    .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
-    .env(
-        PATH="/opt/mpnn-env/bin:$PATH",
-        VIRTUAL_ENV="/opt/mpnn-env",
-        # fused_mpnn's run.py imports data_utils, model_utils, sc_utils
-        # as top-level modules, not as a package — the repo root itself
-        # must be on PYTHONPATH.
-        PYTHONPATH="/opt/fused_mpnn:/opt/openfold",
-    )
-    .label(
-        Version=f"fused_mpnn-{_PORTABLE_MPNN_REVISION}", Platform="cpu-or-gpu",
-        BuildAccess="Requires authorized access to private baker-laboratory/fused_mpnn; "
-        "foundry_mpnn is a separate public implementation, not a validated drop-in replacement",
-    )
-    .runscript('"$@"')
-    .template_command(
-        exec_mode="exec",
-        env={
-            "MPNN_WEIGHTS_DIR": lambda: get_setting_field("MPNN_WEIGHTS_DIR", ""),
-        },
-    )
-)
-
 
 _PUBLIC_MPNN_CONTAINER = (
     Image("ligandmpnn_public")
@@ -359,31 +283,33 @@ _PUBLIC_MPNN_CONTAINER = (
 
 
 def _pick_modelhub_container() -> Image:
-    """Use public source by default; an explicit site weights profile keeps IPD selection."""
+    """Use public source by default; an explicit site weights profile selects the classic SIF."""
     preference = get_setting_field("CHAPERONE_MPNN_CONTAINER", "auto")
-    backend = get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer")
-    if preference == "legacy":
-        if backend == "docker":
-            raise ValueError(
-                "CHAPERONE_MPNN_CONTAINER=legacy requires Apptainer; "
-                "use public or portable with Docker."
-            )
-        return _MODELHUB_SIF_CONTAINER
-    if preference == "portable":
-        return _MODELHUB_PORTABLE_CONTAINER
-    if preference == "public" or not get_setting_field("MPNN_WEIGHTS_DIR", None):
+    if preference == "legacy" and get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer") == "docker":
+        raise ValueError(
+            "CHAPERONE_MPNN_CONTAINER=legacy requires Apptainer; use public with Docker."
+        )
+    if preference == "public" or (
+        preference == "auto" and not get_setting_field("MPNN_WEIGHTS_DIR", None)
+    ):
         return _PUBLIC_MPNN_CONTAINER
-    if backend == "docker":
-        return _MODELHUB_PORTABLE_CONTAINER
-    if any((directory / "modelhub_portable.sif").is_file() for directory in get_container_dirs()):
-        return _MODELHUB_PORTABLE_CONTAINER
-    if Path(_ONPREM_MODELHUB_SIF).is_file():
-        return _MODELHUB_SIF_CONTAINER
-    return _MODELHUB_PORTABLE_CONTAINER
+    return _MODELHUB_SIF_CONTAINER
+
+
+def _require_classic_sif() -> None:
+    """Fail early, and say what to use instead, when classic ProteinMPNN has no SIF."""
+    backend = get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer")
+    if backend != "docker" and Path(_ONPREM_MODELHUB_SIF).is_file():
+        return
+    raise FileNotFoundError(
+        "Classic ProteinMPNN needs an Apptainer image (SIF) that is not available "
+        f"here (expected {_ONPREM_MODELHUB_SIF}; Docker cannot run it). Use public "
+        "LigandMPNN instead: set CHAPERONE_MPNN_CONTAINER=public (the default when "
+        "MPNN_WEIGHTS_DIR is unset), or use the foundry_mpnn block."
+    )
 
 
 MODELHUB_CONTAINER = _pick_modelhub_container()
-MODELHUB_PORTABLE_CONTAINER = _MODELHUB_PORTABLE_CONTAINER
 LIGANDMPNN_PUBLIC_CONTAINER = _PUBLIC_MPNN_CONTAINER
 
 
@@ -603,13 +529,10 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         Public: pinned official code and MIT checkpoints are baked into the image.
         Legacy MPNN_WEIGHTS_DIR settings are deliberately not used by this backend.
 
-        On-prem: the SIF exposes run.py via a bind mount at
+        Classic: the SIF exposes run.py via a bind mount at
         ``/net/software/lab/fused_mpnn/v1.1.1/run.py`` and weights at
         ``/databases/mpnn/...``. Host database roots vary by machine
         (``/databases`` vs ``/net/databases``), so we bind whichever exists.
-
-        Portable: run.py is baked into the image at ``/opt/fused_mpnn/run.py``
-        and weight paths come from ``MPNN_WEIGHTS_DIR``.
         """
         # Host environment prefixes are discarded by --cleanenv / Docker.
         runtime_env = {"CUDA_VISIBLE_DEVICES": ""} if self.device == "cpu" else None
@@ -628,7 +551,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 if kind != "path_sc":
                     cmd += [f"--checkpoint_{kind}", _public_checkpoint(kind)]
             return cmd
-        is_portable_container = self._get_image() is _MODELHUB_PORTABLE_CONTAINER
+        _require_classic_sif()
         configured_weights = _configured_mpnn_weights_dir()
         if configured_weights and not Path(configured_weights).is_dir():
             raise FileNotFoundError(
@@ -636,41 +559,28 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 "Set the host checkpoint path (on digs, /net/databases/mpnn); "
                 "/databases/mpnn is a legacy container alias."
             )
-        weights_dir = configured_weights
-        if is_portable_container:
-            run_py = "/opt/fused_mpnn/run.py"
-            binds: list[tuple[str, str]] = []
-            if not weights_dir:
-                weights_dir = "/weights/mpnn"
-            # The image carries no checkpoints and --containall hides the host
-            # filesystem, so expose the weights directory at the same path.
-            if Path(weights_dir).is_dir():
-                host_weights = os.path.abspath(weights_dir)
-                binds.append((host_weights, host_weights))
-        else:
-            run_py = "/net/software/lab/fused_mpnn/v1.1.1/run.py"
-            host_databases = (
-                "/databases"
-                if Path("/databases").is_dir()
-                else "/net/databases"
-                if Path("/net/databases").is_dir()
-                else "/databases"
-            )
-            binds = [
-                (host_databases, "/databases"),
-                ("/net/software", "/net/software"),
-            ]
-            if configured_weights:
-                binds.append((configured_weights, configured_weights))
+        host_databases = (
+            "/databases"
+            if Path("/databases").is_dir()
+            else "/net/databases"
+            if Path("/net/databases").is_dir()
+            else "/databases"
+        )
+        binds = [
+            (host_databases, "/databases"),
+            ("/net/software", "/net/software"),
+        ]
+        if configured_weights:
+            binds.append((configured_weights, configured_weights))
 
-        cmd = self._get_image().build_command("python", "-u", run_py, binds=binds, env=runtime_env)
+        cmd = self._get_image().build_command("python", "-u", "/net/software/lab/fused_mpnn/v1.1.1/run.py", binds=binds, env=runtime_env)
 
-        if not is_portable_container and not configured_weights:
+        if not configured_weights:
             return cmd
 
         # Spell out the common checkpoint paths. run.py looks up a
         # single path based on --model_type so unused entries are harmless.
-        wd = weights_dir.rstrip("/")
+        wd = configured_weights.rstrip("/")
         cmd += [
             "--checkpoint_protein_mpnn",
             f"{wd}/vanilla_model_weights/v_48_020.pt",
@@ -853,7 +763,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             pdb.set_structure(rename.rename(atoms))
         except Exception as error:
             raise ValueError(
-                f"Portable MPNN requires PDB-representable inputs: {input_path}. "
+                f"Public MPNN requires PDB-representable inputs: {input_path}. "
                 "Check chain/residue identifiers and ligand component names."
             ) from error
         pdb.write(str(out_path))
@@ -923,7 +833,6 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             self.hbond_fix or self.aromatic_fix or self.output_mode == "sequences"
         )
         public = self._get_image() is _PUBLIC_MPNN_CONTAINER
-        portable = public or self._get_image() is _MODELHUB_PORTABLE_CONTAINER
         manifest = {}
         renames: dict[str, dict[str, str]] = {}  # input stem -> chain rename
         public_options: dict[str, str] = {}
@@ -956,10 +865,10 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             design_metadata = data.metadata
 
             # The site's CIF-aware sequence runner accepts original identifiers.
-            # Portable main needs a PDB even in sequence mode; its manifest maps
+            # Public LigandMPNN needs a PDB even in sequence mode; its manifest maps
             # the resulting FASTA back to the original chain identifiers.
             rename = ChainRename()
-            if portable or self.output_mode != "sequences":
+            if public or self.output_mode != "sequences":
                 atoms = self._atoms_of(data)
                 rename = ChainRename.for_atoms(atoms)
                 selected_chains = None
@@ -991,7 +900,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                         if option in public_options and public_options[option] != value:
                             raise ValueError(f"Public MPNN {option} needs different chain mappings across inputs; run those inputs in separate chunks.")
                         public_options[option] = value
-                if portable:
+                if public:
                     input_path = self._write_portable_pdb(
                         input_path, atoms, rename, inputdir / "portable_pdb"
                     )

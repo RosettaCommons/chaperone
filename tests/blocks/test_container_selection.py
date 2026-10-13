@@ -1,7 +1,8 @@
 """On-prem vs portable container selection for colabfold, rfdiffusion2 and mpnn.
 
-Site images remain available alongside portable recipes. MPNN can prefer a
-rebuilt image and accepts the historical IPD checkpoint alias. Existence checks
+Site images remain available alongside portable recipes (colabfold, rfdiffusion2).
+Classic MPNN uses the on-prem SIF and accepts the historical IPD checkpoint
+alias; there is no portable classic image. Existence checks
 are monkeypatched so these tests behave the same on a site host and a fresh clone.
 """
 
@@ -334,28 +335,7 @@ def test_rfd2_portable_clones_the_public_repo_at_build_time():
 # ── mpnn ────────────────────────────────────────────────────────────────
 
 
-def test_mpnn_portable_binds_an_existing_weights_dir(monkeypatch, settings, tmp_path):
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.MODELHUB_PORTABLE_CONTAINER)
-    settings.MPNN_WEIGHTS_DIR = str(tmp_path)
-
-    command = mpnn.ClassicMPNNBlock().get_command_template()
-
-    assert f"{tmp_path}:{tmp_path}" in command
-    assert f"{tmp_path}/vanilla_model_weights/v_48_020.pt" in command
-
-
-def test_mpnn_portable_rejects_a_missing_configured_weights_dir(
-    monkeypatch, settings, tmp_path
-):
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.MODELHUB_PORTABLE_CONTAINER)
-    missing = tmp_path / "nope"
-    settings.MPNN_WEIGHTS_DIR = str(missing)
-
-    with pytest.raises(FileNotFoundError, match="MPNN_WEIGHTS_DIR.*host directory"):
-        mpnn.ClassicMPNNBlock().get_command_template()
-
-
-def test_mpnn_onprem_honors_configured_host_weights(monkeypatch, settings, tmp_path):
+def test_mpnn_onprem_honors_configured_host_weights(monkeypatch, settings, tmp_path, classic_sif):
     monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
     settings.MPNN_WEIGHTS_DIR = str(tmp_path)
 
@@ -368,7 +348,7 @@ def test_mpnn_onprem_honors_configured_host_weights(monkeypatch, settings, tmp_p
     assert mpnn.MPNNArgs().checkpoint_path_sc == f"{tmp_path}/packer_weights/s_300756.pt"
 
 
-def test_mpnn_onprem_default_command_is_unchanged(monkeypatch, settings):
+def test_mpnn_onprem_default_command_is_unchanged(monkeypatch, settings, classic_sif):
     monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
     settings.MPNN_WEIGHTS_DIR = None
     command = mpnn.ClassicMPNNBlock().get_command_template()
@@ -376,7 +356,7 @@ def test_mpnn_onprem_default_command_is_unchanged(monkeypatch, settings):
     assert "--checkpoint_protein_mpnn" not in command
 
 
-def test_mpnn_onprem_rejects_missing_configured_weights(monkeypatch, settings, tmp_path):
+def test_mpnn_onprem_rejects_missing_configured_weights(monkeypatch, settings, tmp_path, classic_sif):
     monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
     settings.MPNN_WEIGHTS_DIR = str(tmp_path / "missing")
     with pytest.raises(FileNotFoundError, match="MPNN_WEIGHTS_DIR.*host directory"):
@@ -422,19 +402,15 @@ def test_weights_install_needs_the_setting(monkeypatch):
         weights.main(["install", "rfd2"])
 
 
-@pytest.mark.parametrize("portable", [False, True])
 @pytest.mark.parametrize("alias_exists", [False, True])
 def test_mpnn_old_ipd_weights_alias_maps_consistently(
-    monkeypatch, settings, portable, alias_exists
+    monkeypatch, settings, classic_sif, alias_exists
 ):
     from pathlib import Path
 
     # Original supplied .env.ipd values referred to an internal container alias.
     settings.MPNN_WEIGHTS_DIR = "/databases/mpnn"
-    monkeypatch.setattr(
-        mpnn, "MODELHUB_CONTAINER",
-        mpnn.MODELHUB_PORTABLE_CONTAINER if portable else mpnn._MODELHUB_SIF_CONTAINER,
-    )
+    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
     original_is_dir = Path.is_dir
     def is_dir(path):
         if path == Path("/databases/mpnn"):

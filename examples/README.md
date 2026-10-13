@@ -95,8 +95,8 @@ for each run so a smoke test cannot reuse a production output directory.
 | `tests/catcif-storage/pipeline.py --test --auto_store_format=catcif --auto_store_cleanup` | One backbone, one sequence, one AF3 sample, followed by archive/materialization | Foundry, selected MPNN runtime, AF3; explicit flags re-enable the storage behavior under test |
 
 The `mpnn` block uses public LigandMPNN by default without a legacy site weights
-profile. `CHAPERONE_MPNN_CONTAINER=public` selects it explicitly; `portable` or
-`legacy` selects the private fused_mpnn runtime. The filename
+profile. `CHAPERONE_MPNN_CONTAINER=public` selects it explicitly; `legacy`
+selects the private fused_mpnn runtime (existing site SIF). The filename
 `pipeline_legacy_mpnn.py` distinguishes the `mpnn` block from `foundry_mpnn`; it
 does not override this site/backend setting. Earlier recorded GPU example runs
 used the legacy runtime. Public-backend example validation and scientific

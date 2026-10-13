@@ -88,12 +88,11 @@ mounts would defeat evaluation isolation.
 
 An optional JSON `env_file` reads allowlisted scientific settings from a supplied
 `.env.ipd` or another dotenv file. JSON `environment` overrides those settings.
-Both sources accept `CHAPERONE_MPNN_CONTAINER=auto`, `public`, `portable`, or
+Both sources accept `CHAPERONE_MPNN_CONTAINER=auto`, `public`, or
 `legacy` to select the MPNN runtime consistently in agent workers and scoring.
-`public` uses the public LigandMPNN image with bundled checkpoints; `portable`
-uses the rebuilt private fork, including on GPUs unsupported by its older site
-image. This setting selects an existing runtime; it does not install images or
-supply the private backend's weights. Workspace-control settings remain excluded.
+`public` uses the public LigandMPNN image with bundled checkpoints; `legacy`
+uses the existing site image. This setting selects an existing runtime; it does
+not install images or supply the private backend's weights. Workspace-control settings remain excluded.
 Scheduler fields in the JSON remain authoritative so workers and the submission
 guard agree. Core Chaperone also accepts an untracked `.env.ipd` in the checkout
 root, independently of the eval policy.
