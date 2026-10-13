@@ -1,15 +1,14 @@
 # Release validation — 2026-10-13
 
 This records engineering checks for the public-release changes. It is **not a
-scientific benchmark or certification of every block**. GPU results below are
-provisional while the remaining runs finish; update the matrix from retained
-run artifacts before treating it as the final release record.
+scientific benchmark or certification of every block**. The results below record completed checks at PR closeout. Unfinished coverage
+is explicitly deferred; no additional cluster tests are running.
 
 ## Local checks
 
 | Check | Result |
 |---|---|
-| Framework regression suite | **601 passed, 14 skipped**. Includes PR #356 regressions, smoke configuration, container selection/binds, site settings and Slurm resources. |
+| Framework regression suite | **631 passed, 14 skipped** after the targeted naming-check rerun following the main-branch docs merge. Includes PR #356 regressions, smoke configuration, container selection/binds, site settings and Slurm resources. |
 | Eval controller suite | **259 passed, 2 skipped**, plus **27 passing subtests**. Includes snapshots, isolation, site profiles, scoring dispatch and guarded Slurm submission. |
 | Submission/scoring helpers | **13 passed**. |
 | Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the public MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
@@ -43,7 +42,7 @@ file with that permission; the counts above include the passing rerun. On macOS,
 canonical temporary directory such as `TMPDIR=/private/tmp` to avoid `/var` versus
 `/private/var` path differences in test fixtures.
 
-## GPU and build matrix — remaining runs in progress
+## GPU and build matrix
 
 The results below cover a subset of the scientific runtimes and two eval
 images. **The 22 scientific recipes have not all been built or GPU-tested.**
@@ -54,17 +53,30 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Repaired rebuild v3 in progress after a NumPy compatibility fix | Public source and six checksum-verified official checkpoints are included in the new recipe. Local adapter/CLI contract tests passed; a successful fresh build and GPU inference remain pending. No equivalence claim versus other MPNN backends. |
+| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. Six official checkpoints passed checksums and load checks. Public side-chain packing has local contract tests but no completed GPU check. No equivalence claim versus other backends. |
 | Legacy MPNN (`modelhub_portable`) | Passed with authorized private-source access | Complete PPI example executed: RFD3 → initial filter (1/1) → fresh MPNN → RF3 → RMSD → final filter (0/1). The final design failed both ipTM and RMSD gates. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
-| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image is available; its core-block GPU batch checks remain pending. |
-| DISCO | Corrected full source build passed | Initial GPU run exposed a Transformers 5 checkpoint-layout mismatch. The rebuilt recipe pins compatible Transformers 4.57.6 and checks ESM state-dict layout; repaired image GPU validation remains pending. |
+| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with public MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
+| DISCO | Transformers-repaired full build passed; final architecture repair not rebuilt | The first GPU failure was a Transformers 5 checkpoint-layout mismatch. The corrected rebuild reached a second upstream failure: a comma-delimited CUDA architecture list. The final recipe repairs that assignment and passes parser/regression checks; final GPU validation is deferred. |
 | Boltz2 | Passed | Fresh-image GPU smoke passed for 48 residues, one sample and the normal 512-step default, returning finite coordinates. |
 | Chai1 | Passed, with explicit Torch compatibility override | Fresh built-image GPU smoke passed with one sample and the normal 200 diffusion steps; compiled artifact step naming is correct after its repair. |
 | Protenix | Full source build passed | Fresh-image GPU smoke passed on 48 residues with the normal 200 diffusion steps and ten cycles: finite coordinates, pLDDT 78.271866, no reported clash. |
 | E1 | Passed | Fresh-image GPU inference passed after the DNS fix, including public Hugging Face checkpoint download and finite logits, token embeddings, and mean embeddings. |
 | Eval agent | Passed | Clean imports/block discovery and CPU functional smoke passed. Nested Apptainer execution passed with `/dev/fuse` bound, matching the controller runtime binds. Full LLM agent trial remains untested. |
 | Eval baseline | Passed | Image build checks passed; full baseline trial pending. |
+
+The final core batch on one RTX A6000 passed fresh-image RFD3 → public MPNN,
+then independent AF3 and ESMFold2 predictions of all four designed sequences.
+The helper verified exact sequences, parent lineage, finite bounded coordinates,
+confidence metrics and disk-cache replay without new execution or changed output
+tables: **296.0 GPU seconds**. AF3 used its normal sampling settings; ESMFold2
+used its normal three loops. RF3 was not part of this final batch. Its separate
+early-stop regression tests preserve the default threshold and distinguish
+intentional stops from unexplained missing outputs.
+
+Foundry remains pinned to **AtomWorks 2.2.1** as the tested compatibility
+workaround. Fixing upstream compatibility with AtomWorks 3 is deferred until
+after merge; this PR does not claim that compatibility.
 
 A prior PPI Foundry example executed using an existing site image, with **0 of 1**
 designs passing its scientific filters. This supplies execution evidence only;
@@ -83,8 +95,7 @@ mmCIF preparation could predict the backbone context sequence instead of the
 designed MPNN sequence. Its RMSD is therefore not validation of the intended
 designed sequence. The fix routes authoritative sequence data, including folded
 descendants, through JSON input and invalidates the affected AF3 caches. A
-corrected CatCIF inference rerun remains pending. Other example reruns remain
-pending. No full scientific benchmark, FoundryMPNN equivalence study, or
+corrected CatCIF inference rerun remains pending. Other example reruns are deferred at the requested scope cutoff. No full scientific benchmark, FoundryMPNN equivalence study, or
 experimental validation was performed.
 
 Chai1's recipe deliberately uses Torch 2.7.1/CUDA 12.8 for Blackwell although
@@ -198,4 +209,4 @@ with each result. The assertions verify execution, not structural accuracy.
 
 ### Latest runtime findings
 
-Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. Core-block batch checks for AF3, RFD3, MPNN, RF3 and ESMFold2 are the current priority.
+Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/public-MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, public packing and nested scientific eval runs are deferred; their opt-in helpers remain available.
