@@ -144,7 +144,6 @@ def _runtime_capabilities():
 _HARNESS_CONTAINER_CAPABILITIES = (
     "AlphaFold3 container",
     "Foundry RF3/RFD3 container",
-    "LigandMPNN container",
 )
 _SHARED_JOB_DIRECTORIES = (
     "host-scorers",

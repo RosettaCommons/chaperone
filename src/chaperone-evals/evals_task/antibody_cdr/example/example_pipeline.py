@@ -8,8 +8,8 @@ every framework and antigen position is fixed, and MPNN redesigns only the 54
 AbM CDR positions.
 
 Why not RFdiffusion3? The antibody RFD3 stack in ``examples/antibody-design``
-needs an external modelhub checkout, an antibody-finetuned checkpoint and the
-abMPNN-PoE container, none of which ship with this repository — the committed
+needs an external checkout, an antibody-finetuned checkpoint and an
+antibody-specific MPNN container, none of which ship with this repository — the committed
 ``files/rfd3_config.yaml`` there is an unfilled placeholder. A reference run
 must be reproducible from the repo alone, so this pipeline uses only blocks
 that are.
