@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Send structures and commands to PyMOL via its XML-RPC server.
 
 Works with both native PyMOL -R and pymol_remote. Auto-detects port 9123-9127.
@@ -83,7 +83,7 @@ def viz(
     try:
         from atomworks.io.utils.visualize import view_pymol
 
-        from pipelines.io import parse_to_atom_array
+        from chaperone.io import parse_to_atom_array
 
         atom_array = parse_to_atom_array(str(path))
         import biotite.structure as struc

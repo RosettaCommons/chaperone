@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pipelines.common import strip_name
-from pipelines.data import make_sequence_row
+from chaperone.common import strip_name
+from chaperone.data import make_sequence_row
 
 MANIFEST_NAME = "_mpnn_input_manifest.json"
 

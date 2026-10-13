@@ -29,7 +29,7 @@ def _download_once(url: str, destination: Path) -> None:
             for attempt in range(5):
                 try:
                     request = urllib.request.Request(
-                        url, headers={"User-Agent": "pipelines-simplefold/1"}
+                        url, headers={"User-Agent": "chaperone-simplefold/1"}
                     )
                     with urllib.request.urlopen(request, timeout=60) as response:
                         with partial.open("wb") as output:

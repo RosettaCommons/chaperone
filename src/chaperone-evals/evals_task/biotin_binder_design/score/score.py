@@ -20,10 +20,10 @@ from absl import flags
 
 from blocks import Blocks
 from blocks.util_blocks.select_diverse import _identity_matrix
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.handler import PipelineDataHandler
-from pipelines.io import parse_to_atom_array
-from pipelines.settings import get_setting_field
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.handler import PipelineDataHandler
+from chaperone.io import parse_to_atom_array
+from chaperone.settings import get_setting_field
 
 
 flags.DEFINE_string(
@@ -50,8 +50,8 @@ flags.DEFINE_string(
     "standalone scoring may pass an external record.",
 )
 flags.DEFINE_string(
-    "pipelines_repo",
-    os.environ.get("PIPELINES_REPO"),
+    "chaperone_repo",
+    os.environ.get("CHAPERONE_REPO"),
     "Harness checkout. Passed by the controller; this scorer resolves its own "
     "assets and does not read it.",
 )

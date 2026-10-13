@@ -16,8 +16,8 @@ from typing import Optional
 
 from pydantic import Field
 
-from pipelines import JobArgs
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone import JobArgs
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 
 from blocks.networks.foundry.container import FOUNDRY_CONTAINER
 from blocks.networks.foundry.rfdiffusion3 import RFD3Block

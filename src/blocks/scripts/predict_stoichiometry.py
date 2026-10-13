@@ -11,7 +11,7 @@ USAGE (with container - recommended):
 
     # Basic usage with container
     apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/pipelines/src/blocks/scripts/predict_stoichiometry.py \
+        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv
 
@@ -20,7 +20,7 @@ USAGE (with container - recommended):
         --bind /projects:/projects \
         --bind /home/$USER:/home/$USER \
         /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/pipelines/src/blocks/scripts/predict_stoichiometry.py \
+        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path /home/$USER/data/sequences.fasta \
         --output-path /home/$USER/results/predictions.csv
 
@@ -28,14 +28,14 @@ USAGE (with container - recommended):
     apptainer run --nv \
         --bind /projects:/projects \
         /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/pipelines/src/blocks/scripts/predict_stoichiometry.py \
+        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv \
         --e1-model 600m
 
     # Skip E1 inference if embeddings already exist
     apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/pipelines/src/blocks/scripts/predict_stoichiometry.py \
+        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv \
         --skip-e1 \
@@ -43,7 +43,7 @@ USAGE (with container - recommended):
 
     # With custom classifier weights
     apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/pipelines/src/blocks/scripts/predict_stoichiometry.py \
+        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv \
         --weights-path /path/to/custom_classifier.pt
@@ -82,7 +82,7 @@ DEPENDENCIES:
 
 AUTHORS:
 ========
-    Pipelines framework - https://github.com/RosettaCommons/pipelines
+    Chaperone framework - https://github.com/RosettaCommons/chaperone
 """
 
 import logging

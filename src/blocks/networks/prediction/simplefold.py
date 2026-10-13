@@ -18,12 +18,12 @@ from blocks.networks.prediction.monomer_reference import (
     load_monomer_references,
     stage_monomer_manifest,
 )
-from pipelines import JobArgs, PipelineDataHandler, get_setting_field
-from pipelines.block_config import AF3LikePredictionBlock, ScriptSpec
-from pipelines.block_config.base import TIER_PRIMARY, TIER_SECONDARY
-from pipelines.containers import Image
-from pipelines.data import make_row
-from pipelines.io import parse_to_atom_array
+from chaperone import JobArgs, PipelineDataHandler, get_setting_field
+from chaperone.block_config import AF3LikePredictionBlock, ScriptSpec
+from chaperone.block_config.base import TIER_PRIMARY, TIER_SECONDARY
+from chaperone.containers import Image
+from chaperone.data import make_row
+from chaperone.io import parse_to_atom_array
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class SimpleFoldBlock(AF3LikePredictionBlock):
             compiled_dir.mkdir(parents=True, exist_ok=True)
             from atomworks.io.utils.io_utils import to_cif_file
 
-            from pipelines.io import ensure_bonds
+            from chaperone.io import ensure_bonds
 
         rows = []
         for target, sample_index, raw, predicted, manifest in sorted(

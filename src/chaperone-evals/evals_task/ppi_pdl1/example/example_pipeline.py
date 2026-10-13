@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Generate 96 PD-L1 binder sequences with RFD3, MPNN, and AF3 validation.
 
 Production defaults generate 96 independent RFD3 backbones and one sequence
@@ -15,7 +15,7 @@ import polars as pl
 from absl import flags
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 
 flags.DEFINE_integer(
     "required_n",

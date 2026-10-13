@@ -12,10 +12,10 @@ from biotite.structure.io.pdb import PDBFile
 
 pytest.importorskip("catcif_tools")
 
-from pipelines import PipelineDataHandler  # noqa: E402
-from pipelines.data import make_row  # noqa: E402
-from pipelines.data.handler import _sequence_to_cif  # noqa: E402
-from pipelines.io import ensure_bonds, parse_to_atom_array  # noqa: E402
+from chaperone import PipelineDataHandler  # noqa: E402
+from chaperone.data import make_row  # noqa: E402
+from chaperone.data.handler import _sequence_to_cif  # noqa: E402
+from chaperone.io import ensure_bonds, parse_to_atom_array  # noqa: E402
 
 
 def _peptide(chain_id: str = "A", offset: float = 0.0) -> AtomArray:

@@ -18,8 +18,8 @@ from pathlib import Path
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineBlockFunction, JobArgs, PipelineDataHandler
-from pipelines.data.schema import make_row
+from chaperone import InlineBlockFunction, JobArgs, PipelineDataHandler
+from chaperone.data.schema import make_row
 
 
 BACKBONE_ATOMS = frozenset({"N", "CA", "C", "O"})
@@ -199,7 +199,7 @@ class RestoreSidechainsBlock(InlineBlockFunction):
         chunk_id: int = 0,
     ) -> PipelineDataHandler:
         from atomworks.io.utils.io_utils import to_cif_file
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
 
         sandbox_dir = Path(sandbox_dir)
         sandbox_dir.mkdir(parents=True, exist_ok=True)

@@ -10,15 +10,15 @@ from typing import Literal
 from atomworks.io.utils.chain import create_chain_id_generator
 from pydantic import BaseModel, Field, model_validator
 
-from pipelines import (
+from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
     get_setting_field,
 )
-from pipelines.block_config import TIER_PRIMARY
-from pipelines.containers import Image
-from pipelines.data import make_row
+from chaperone.block_config import TIER_PRIMARY
+from chaperone.containers import Image
+from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
     load_manifest,
@@ -28,7 +28,7 @@ from blocks.networks.mpnn_io import (
     write_manifest,
 )
 
-from pipelines.common import glob_designs_in_dir
+from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,7 @@ _MODELHUB_SIF_CONTAINER = Image.from_existing(
 # types (pssm, antibody, lddt-enhanced). The container is a minimal
 # Ubuntu + python3.12 venv with torch/numpy/prody/openfold plus the repo cloned
 # into /opt/fused_mpnn. Host-side `git clone` happens during
-# `pipelines install modelhub_portable` via `prepare_git_clones()`; the
+# `chaperone install modelhub_portable` via `prepare_git_clones()`; the
 # builder copies the result in via `COPY` / `%files`.
 _MODELHUB_PORTABLE_CONTAINER = (
     Image("modelhub_portable")
@@ -626,7 +626,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         from concurrent.futures import ThreadPoolExecutor
         from atomworks.io.utils.io_utils import to_cif_file
 
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
         from tqdm import tqdm
 
         remap_dir = Path(sandbox_dir) / "remapped_inputs"
@@ -682,7 +682,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         """Write ``atoms`` with the renamed chains as a new file; the input is untouched."""
         from atomworks.io.utils.io_utils import to_cif_file
 
-        from pipelines.io import ensure_bonds
+        from chaperone.io import ensure_bonds
 
         stem = Path(input_path).name
         for suffix in (".gz", ".cif", ".pdb"):
@@ -814,7 +814,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                     aromatics = find_aromatic_residues_near_ligand(data.atom_array)
                 fixed_positions.extend(aromatics)
             # ``run.py`` ignores the scalar ``--fixed_residues`` option whenever
-            # ``--fixed_residues_multi`` is present. Pipelines always supplies
+            # ``--fixed_residues_multi`` is present. Chaperone always supplies
             # the latter, so merge the public MPNNArgs constraint into each
             # per-input entry rather than silently dropping it.
             fixed_positions.extend(self.args.fixed_residues.split())

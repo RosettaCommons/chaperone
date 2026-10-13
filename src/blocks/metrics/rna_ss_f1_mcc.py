@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from pydantic import Field
 
 from blocks.metrics.rna_thermo import _split_resid, rna_sequence_and_index
-from pipelines import InlineMetricBlock, JobArgs
+from chaperone import InlineMetricBlock, JobArgs
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class RNASecondaryStructureF1Block(InlineMetricBlock):
         description=(
             "Column shared with the handler used to match a prediction to its "
             "design. Row position is NOT used - the runner preserves order, but "
-            "a pipelines chunk does not necessarily present rows in that order."
+            "a Chaperone chunk does not necessarily present rows in that order."
         ),
     )
     reference_pairs: List[List[str]] = Field(

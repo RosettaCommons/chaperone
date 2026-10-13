@@ -15,8 +15,8 @@ import os
 
 from pydantic import Field
 
-from pipelines import JobArgs
-from pipelines.block_config import TIER_PRIMARY
+from chaperone import JobArgs
+from chaperone.block_config import TIER_PRIMARY
 
 from blocks.networks.prediction.boltz2 import Boltz2Block
 from blocks.networks.hallucination.protein_hunter import PROTEIN_HUNTER_CONTAINER

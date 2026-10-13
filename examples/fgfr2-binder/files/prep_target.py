@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Fetch a complex from the PDB, keep one receptor + one ligand-protein pair, auto-detect
 interface hotspots on the receptor, and write a target-only PDB + RFD3 config.
 
@@ -36,7 +36,7 @@ from blocks.util_blocks.annotate import (  # noqa: E402
     InterfaceQuery,
     _get_closest_residues_by_sidechain_dist,
 )
-from pipelines.io import parse_to_atom_array  # noqa: E402
+from chaperone.io import parse_to_atom_array  # noqa: E402
 
 logger = logging.getLogger("prep_target")
 

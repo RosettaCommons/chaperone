@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 
 def _get_configured_pyrosetta_path() -> str | None:
     configured = os.environ.get("PYROSETTA_PATH") or os.environ.get(
-        "PIPELINES_PYROSETTA_PATH"
+        "CHAPERONE_PYROSETTA_PATH"
     )
     try:
-        from pipelines import get_setting_field
+        from chaperone import get_setting_field
 
         configured = configured or get_setting_field("PYROSETTA_PATH", default=None)
     except Exception:
-        # Keep PyRosetta usable in standalone contexts where pipelines settings
+        # Keep PyRosetta usable in standalone contexts where Chaperone settings
         # are unavailable; the direct environment-variable fallback still works.
         pass
 

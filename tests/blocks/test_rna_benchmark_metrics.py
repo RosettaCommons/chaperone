@@ -26,9 +26,9 @@ from blocks.metrics.sequence_identity_gate import (
     read_fasta,
 )
 from blocks.metrics.tm_score import TMScoreBlock, polymer_anchors
-from pipelines import PipelineDataHandler
-from pipelines.data import make_row
-from pipelines.io import parse_to_atom_array
+from chaperone import PipelineDataHandler
+from chaperone.data import make_row
+from chaperone.io import parse_to_atom_array
 
 RNA_FIXTURE = "tests/test_data/rna_metrics/synthetic_six_nt.pdb"
 
@@ -136,11 +136,11 @@ def test_dssr_motif_pairing_remains_strict_by_default(tmp_path, monkeypatch):
 # tests that need neither still run, exactly as the US-align tests do.
 requires_vienna = pytest.mark.skipif(
     importlib.util.find_spec("RNA") is None,
-    reason="ViennaRNA not installed (pip install 'pipelines[rna]')",
+    reason="ViennaRNA not installed (pip install 'chaperone[rna]')",
 )
 requires_tmtools = pytest.mark.skipif(
     importlib.util.find_spec("tmtools") is None,
-    reason="tmtools not installed (pip install 'pipelines[rna]')",
+    reason="tmtools not installed (pip install 'chaperone[rna]')",
 )
 
 

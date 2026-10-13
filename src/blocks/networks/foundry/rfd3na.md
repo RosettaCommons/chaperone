@@ -10,7 +10,7 @@ JSON file per design.
 
 Upstream source: [RosettaCommons/foundry `models/rfd3na`](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na).
 
-Install the shared runtime with `pipelines install foundry`. The default IPD
+Install the shared runtime with `chaperone install foundry`. The default IPD
 checkpoint is `/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na_1190.ckpt`;
 outside that environment, pass `ckpt_path="rfd3na"` after installing the
 checkpoint with Foundry's checkpoint installer.
@@ -28,7 +28,7 @@ block = RFD3NA(
 )
 ```
 
-Each named specification produces `n_batches * batch_size` designs. Pipelines
+Each named specification produces `n_batches * batch_size` designs. Chaperone
 uses the chunk ID to vary the seed and output prefix, so chunked generation
 does not repeat samples. `read_sequence_from_sequence_head=False` and input
 prevalidation are enabled by default, following the upstream RFD3NA inference
@@ -287,7 +287,7 @@ classes. Peak memory depends on total polymer tokens, `diffusion_batch_size`,
 input atomization, and whether `low_memory_mode` is enabled; base pairs alone
 are not a sufficient predictor for mixed-polymer jobs.
 
-Callers can opt into a large GPU through Pipelines job arguments:
+Callers can opt into a large GPU through Chaperone job arguments:
 
 ```python
 engine.run(

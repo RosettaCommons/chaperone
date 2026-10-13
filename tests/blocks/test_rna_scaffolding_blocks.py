@@ -14,10 +14,10 @@ from biotite.structure import AtomArray
 
 from blocks.metrics.motif_confidence import MotifConfidenceBlock
 from blocks.metrics.rna_connectivity import RNAConnectivityBlock
-from pipelines import PipelineDataHandler
-from pipelines.data import make_row
-from pipelines.data.handler import _sequence_to_cif
-from pipelines.io import parse_to_atom_array
+from chaperone import PipelineDataHandler
+from chaperone.data import make_row
+from chaperone.data.handler import _sequence_to_cif
+from chaperone.io import parse_to_atom_array
 
 BOND = 1.6
 
@@ -30,7 +30,7 @@ def _write_rna(path, n_residues: int, break_after: int | None = None, b_factors=
     after ``break_after`` (0-based), where the next residue is displaced 10 A.
     """
     from atomworks.io.utils.io_utils import to_cif_file
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     starts = [
         10.0 * i + (10.0 if break_after is not None and i > break_after else 0.0)

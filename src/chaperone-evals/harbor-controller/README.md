@@ -12,7 +12,7 @@ never exposed to the model. `CHAPERONE_EVALS_PRIVATE` moves them elsewhere (see
 ## How a run works
 
 1. The controller validates the task, authentication, containers, Slurm, and
-   the requested Pipelines source.
+   the requested Chaperone source.
 2. It submits a CPU-only outer Slurm job that runs Harbor and Codex inside an
    isolated Apptainer workspace.
 3. Work submitted by the agent goes through a guarded Slurm broker. The trial
@@ -23,15 +23,15 @@ never exposed to the model. `CHAPERONE_EVALS_PRIVATE` moves them elsewhere (see
 
 There are two evaluation arms:
 
-- `harness` receives task inputs plus a sanitized copy of the Pipelines source
+- `harness` receives task inputs plus a sanitized copy of the Chaperone source
   and agent skills. It is the default arm.
-- `baseline` receives task inputs in a clean workspace without Pipelines
+- `baseline` receives task inputs in a clean workspace without Chaperone
   source, skills, or scientific assets.
 
-Harness launches require `--pipelines-path`. The controller copies only
+Harness launches require `--chaperone-path`. The controller copies only
 allowlisted source and instruction files into a content-addressed bundle under
 `$HARBOR_JOBS_DIR/workspace-seeds/`, then copies that bundle into each trial as
-`/workspace/pipelines`. Git metadata, tests, examples, evaluations, generated
+`/workspace/chaperone`. Git metadata, tests, examples, evaluations, generated
 outputs, and prior submissions are excluded. There is no persistent
 `harbor-controller/snapshots/` directory or default source checkout.
 
@@ -62,7 +62,7 @@ Harness:
 ```bash
 ./run_eval.py rna_binder \
   --arm harness \
-  --pipelines-path /absolute/path/to/pipelines \
+  --chaperone-path /absolute/path/to/chaperone \
   --run-dir /absolute/path/to/eval-runs \
   --run-name rna-binder-harness
 ```
@@ -75,7 +75,7 @@ Baseline:
   --run-name rna-binder-baseline
 ```
 
-Do not pass `--pipelines-path` to the baseline arm. By default, the launcher
+Do not pass `--chaperone-path` to the baseline arm. By default, the launcher
 returns after submitting Harbor and starting the detached scoring watcher. Add
 `--wait` to stay attached until both finish, or `--dry-run` to run preflight
 without submitting.
@@ -94,11 +94,11 @@ Common options:
 Run `./run_eval.py --help` for the complete option list.
 
 Inside a harness trial, detached work uses the `campaign-monitor.wait` MCP tool.
-It is provided by the Pipelines harness and blocks outside the model loop until
+It is provided by the Chaperone harness and blocks outside the model loop until
 the Slurm job, process marker, or explicit timeout is terminal. Baseline trials
 receive no monitoring MCP server.
 
-The same Pipelines-owned MCP server exposes `campaign-monitor.inspect`. It
+The same Chaperone-owned MCP server exposes `campaign-monitor.inspect`. It
 returns bounded `summary`, `failures`, `funnel`, or `candidates` views derived
 from the campaign's ordinary manifests, execution records, logs, score tables,
 and submissions. Inspection is read-only and creates no controller or campaign

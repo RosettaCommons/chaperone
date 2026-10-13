@@ -8,9 +8,9 @@ supported on Apple Silicon (MPS MLIR bug).
 
 from pathlib import Path
 
-from pipelines import get_setting_field
-from pipelines.common import is_apple_silicon
-from pipelines.containers import Image
+from chaperone import get_setting_field
+from chaperone.common import is_apple_silicon
+from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 

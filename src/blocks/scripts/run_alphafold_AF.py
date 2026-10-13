@@ -32,7 +32,7 @@ import os
 import pathlib
 import sys
 
-# This runner lives beside the pipelines block module ``alphafold3.py``. When
+# This runner lives beside the Chaperone block module ``alphafold3.py``. When
 # executed by file path, Python prepends that directory to ``sys.path`` and the
 # block module would shadow the installed Google ``alphafold3`` package.
 _SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -161,7 +161,7 @@ _INPUT_DIR = flags.DEFINE_string(
 _INPUT_MANIFEST = flags.DEFINE_string(
     "input_manifest",
     None,
-    "Path to a pipelines AF3 manifest containing inline mmCIF inputs.",
+    "Path to a Chaperone AF3 manifest containing inline mmCIF inputs.",
 )
 
 _PROTEIN_SEQS = flags.DEFINE_list(
@@ -604,7 +604,7 @@ def build_fold_input_from_cif(
 
 
 def load_fold_inputs_from_manifest(manifest_path: pathlib.Path):
-    """Load pipelines mmCIF manifest entries as native AF3 inputs."""
+    """Load Chaperone mmCIF manifest entries as native AF3 inputs."""
     payloads = json.loads(manifest_path.read_text())
     if not isinstance(payloads, list) or not payloads:
         raise ValueError(f"AF3 input manifest is empty or invalid: {manifest_path}")

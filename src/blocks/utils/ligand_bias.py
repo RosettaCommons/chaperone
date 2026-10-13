@@ -141,7 +141,7 @@ def write_ligand_proximity_bias(
     **kwargs,
 ) -> dict[str, dict[str, float]]:
     """Write a geometry-derived LigandMPNN ``bias_AA_per_residue`` JSON."""
-    from pipelines.io import parse_to_atom_array
+    from chaperone.io import parse_to_atom_array
 
     bias = ligand_proximity_bias(parse_to_atom_array(str(structure)), **kwargs)
     output = Path(output)

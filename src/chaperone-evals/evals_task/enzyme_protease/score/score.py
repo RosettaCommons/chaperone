@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Held-out scorer for de novo zinc-metalloprotease submissions.
 
 A submission is sequences plus a ``motif_index_map`` naming where each
@@ -26,7 +26,7 @@ from pathlib import Path
 from absl import flags
 
 from blocks import Blocks
-from pipelines import init_cli
+from chaperone import init_cli
 from scoring import (
     SequenceSubmissionSpec,
     define_score_flags,

@@ -67,7 +67,7 @@ import numpy as np
 from scipy.optimize import brentq
 from scipy.spatial.distance import cdist
 
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 
 def fibonacci_sphere(n: int) -> np.ndarray:

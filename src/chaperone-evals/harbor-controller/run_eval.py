@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -c 'exec "$(dirname "$0")/.venv/bin/python" "$0" "$@"'
-"""Submit one Pipelines evaluation through Harbor, monitor it, and score it."""
+"""Submit one Chaperone evaluation through Harbor, monitor it, and score it."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ from task_paths import (
 
 
 # Keep the shared filesystem's logical spelling. Resolving /projects on a CPU
-# node rewrites it to /mnt/projects, where the host Pipelines .venv is absent.
+# node rewrites it to /mnt/projects, where the host Chaperone .venv is absent.
 ROOT = Path(os.path.abspath(__file__)).parent
 EVALS_ROOT = ROOT.parent
 
@@ -76,7 +76,7 @@ ARM_INSTRUCTIONS = {
     "harness": ROOT / "instruction_harness.md",
 }
 # The controller lives inside the Chaperone checkout it evaluates.
-DEFAULT_PIPELINES_REPO = default_chaperone_repo()
+DEFAULT_CHAPERONE_REPO = default_chaperone_repo()
 DEFAULT_MODEL = "openai/gpt-5.6-sol"
 DEFAULT_REASONING = "medium"
 DEFAULT_CONTROLLER_MEMORY_GB = 64
@@ -108,7 +108,7 @@ TERMINAL_FAILURES = {
 }
 _SCORING_PACKAGES = ("plip==3.0.1", "openbabel==3.2.1", "lxml==6.1.1")
 _SCORING_PACKAGE_MARKER = ".harbor-scoring-packages.json"
-_SCORING_RUNDIR_BIND_ENV = "PIPELINES_CONTAINER_BIND_RUNDIR"
+_SCORING_RUNDIR_BIND_ENV = "CHAPERONE_CONTAINER_BIND_RUNDIR"
 _SCORING_AF3_JAX_CACHE_ENV = "AF3_JAX_CACHE_DIR"
 # Only these non-secret, site-local settings may cross the held-out scorer
 # boundary. Their values come from the checkout's checked-in site config; this
@@ -190,7 +190,7 @@ def _runtime_capability_manifest(
         for label, alternatives in sorted(_HARNESS_RUNTIME_CAPABILITIES.items())
     ]
     monitor_backend = (
-        workspace_seed / "src" / "pipelines_cli" / "job_wait.py"
+        workspace_seed / "src" / "chaperone_cli" / "job_wait.py"
         if workspace_seed is not None
         else None
     )
@@ -210,18 +210,18 @@ def _runtime_capability_manifest(
         {
             "name": "campaign-monitor",
             "available": monitor_available,
-            "version": "pipelines-monitor-v2.1",
+            "version": "chaperone-monitor-v2.1",
             "tools": ["wait", "launch_and_wait", "inspect"]
             if monitor_available
             else [],
             "reason": None
             if monitor_available
-            else "Pipelines campaign monitor backend is unavailable or incomplete",
+            else "Chaperone campaign monitor backend is unavailable or incomplete",
         }
     )
     return {
         "schema_version": 1,
-        "environment": "harbor-pipelines-harness",
+        "environment": "harbor-chaperone-harness",
         "generated_at": datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
         .replace("+00:00", "Z"),
@@ -485,21 +485,21 @@ TMPDIR = "/workspace/.tmp"
 XDG_CACHE_HOME = "/workspace/.home/.cache"
 XDG_CONFIG_HOME = "/workspace/.home/.config"
 MPLCONFIGDIR = "/workspace/.home/.config/matplotlib"
-PYTHONPATH = "/workspace/pipelines/src"
-PIPELINES_COMPUTE_BACKEND = "auto"
-PIPELINES_CONTAINER_BACKEND = "apptainer"
-PIPELINES_CONTAINER_BIND_RUNDIR = "true"
-PIPELINES_CONTAINER_BIND_WORKSPACE = "true"
+PYTHONPATH = "/workspace/chaperone/src"
+CHAPERONE_COMPUTE_BACKEND = "auto"
+CHAPERONE_CONTAINER_BACKEND = "apptainer"
+CHAPERONE_CONTAINER_BIND_RUNDIR = "true"
+CHAPERONE_CONTAINER_BIND_WORKSPACE = "true"
 """
-        description = f"Pipelines evaluation: {task.name}"
-        keywords = '["pipelines", "evaluation", "gpu"]'
-        benchmark_role = "pipelines-agent-evaluation"
+        description = f"Chaperone evaluation: {task.name}"
+        keywords = '["chaperone", "evaluation", "gpu"]'
+        benchmark_role = "chaperone-agent-evaluation"
         mcp_server_config = """
 [[environment.mcp_servers]]
 name = "campaign-monitor"
 transport = "stdio"
 command = "/opt/pipelines/.venv/bin/python"
-args = ["-m", "pipelines_cli.main", "monitor-mcp", "--server-name", "campaign-monitor"]
+args = ["-m", "chaperone_cli.main", "monitor-mcp", "--server-name", "campaign-monitor"]
 """
     else:
         # Harbor and Codex keep their control files outside the workspace. The
@@ -532,7 +532,7 @@ NVM_DIR = "/tmp/baseline-home/.nvm"
         keywords = '["baseline", "evaluation"]'
         benchmark_role = "baseline-agent-evaluation"
         # Baseline measures the raw default agent/runtime. Do not inject any
-        # Pipelines harness tools or MCP servers.
+        # Chaperone harness tools or MCP servers.
         mcp_server_config = ""
     environment_variables += f'HARBOR_AGENT_TIMEOUT_SEC = "{agent_timeout_sec}"\n'
     # build_timeout_sec: Harbor's own default is 600 s. Environment start
@@ -1272,10 +1272,10 @@ def _public_score_error(
     return None
 
 
-def _scoring_pythonpath(pipelines_repo: Path) -> str:
-    """Expose Pipelines plus held-out shared scorer machinery to host Python."""
-    entries = [pipelines_repo / "src", EVALS_ROOT]
-    library = pipelines_repo / ".venv" / "lib"
+def _scoring_pythonpath(chaperone_repo: Path) -> str:
+    """Expose Chaperone plus held-out shared scorer machinery to host Python."""
+    entries = [chaperone_repo / "src", EVALS_ROOT]
+    library = chaperone_repo / ".venv" / "lib"
     if library.is_dir():
         entries.extend(
             path
@@ -1285,8 +1285,8 @@ def _scoring_pythonpath(pipelines_repo: Path) -> str:
     return os.pathsep.join(str(path) for path in entries)
 
 
-def _host_scoring_python(pipelines_repo: Path) -> Path:
-    """Return a host interpreter that can run a held-out Pipelines scorer.
+def _host_scoring_python(chaperone_repo: Path) -> Path:
+    """Return a host interpreter that can run a held-out Chaperone scorer.
 
     The scorer is deliberately a host-side controller process. Scientific
     blocks that it launches still use the generated Slurm worker entry point
@@ -1295,15 +1295,15 @@ def _host_scoring_python(pipelines_repo: Path) -> Path:
     otherwise equivalent ``/projects`` and ``/mnt/projects`` paths between
     compilation and worker execution.
     """
-    pipelines_repo = Path(os.path.abspath(pipelines_repo.expanduser()))
-    pipelines_python = pipelines_repo / ".venv" / "bin" / "python"
-    candidates = [pipelines_python, ROOT / ".venv" / "bin" / "python"]
+    chaperone_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
+    chaperone_python = chaperone_repo / ".venv" / "bin" / "python"
+    candidates = [chaperone_python, ROOT / ".venv" / "bin" / "python"]
     current_python = Path(sys.executable)
     if current_python not in candidates:
         candidates.append(current_python)
     environment = os.environ.copy()
     environment.update(_CONTROLLER_THREAD_ENV)
-    environment["PYTHONPATH"] = _scoring_pythonpath(pipelines_repo)
+    environment["PYTHONPATH"] = _scoring_pythonpath(chaperone_repo)
     probe_code = "; ".join(
         (
             "import numpy",
@@ -1314,9 +1314,9 @@ def _host_scoring_python(pipelines_repo: Path) -> Path:
             "import atomworks",
             "import submitit",
             "from blocks import Blocks",
-            "from pipelines import ExecutionEngine",
+            "from chaperone import ExecutionEngine",
             "import scoring",
-            "from pipelines_cli.registry import register_flags",
+            "from chaperone_cli.registry import register_flags",
             "register_flags()",
         )
     )
@@ -1341,14 +1341,14 @@ def _host_scoring_python(pipelines_repo: Path) -> Path:
         if lines:
             detail = f" Probe failed for {python}: {lines[-1]}"
     raise SystemExit(
-        "Host Pipelines environment cannot run held-out scoring. "
-        f"Repair it with: cd {pipelines_repo} && uv sync --frozen.{detail}"
+        "Host Chaperone environment cannot run held-out scoring. "
+        f"Repair it with: cd {chaperone_repo} && uv sync --frozen.{detail}"
     )
 
 
-def _path_in_pipelines_namespace(path: Path, pipelines_repo: Path) -> Path:
-    """Spell a checkout-owned path under the same alias as ``pipelines_repo``."""
-    logical_repo = Path(os.path.abspath(pipelines_repo.expanduser()))
+def _path_in_chaperone_namespace(path: Path, chaperone_repo: Path) -> Path:
+    """Spell a checkout-owned path under the same alias as ``chaperone_repo``."""
+    logical_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
     try:
         relative = path.expanduser().resolve().relative_to(logical_repo.resolve())
     except ValueError:
@@ -1357,7 +1357,7 @@ def _path_in_pipelines_namespace(path: Path, pipelines_repo: Path) -> Path:
 
 
 def _scoring_site_config_repo(
-    pipelines_repo: Path, environment: Mapping[str, str]
+    chaperone_repo: Path, environment: Mapping[str, str]
 ) -> Path:
     """Locate the checkout that owns the checked-in site config.
 
@@ -1367,11 +1367,11 @@ def _scoring_site_config_repo(
     An operator may name another trusted checkout explicitly, without copying
     any ``.env`` file into the immutable snapshot.
     """
-    configured = environment.get("PIPELINES_SITE_CONFIG_REPO")
+    configured = environment.get("CHAPERONE_SITE_CONFIG_REPO")
     if configured:
         candidates = [Path(configured).expanduser()]
     else:
-        logical_repo = Path(os.path.abspath(pipelines_repo.expanduser()))
+        logical_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
         candidates = [logical_repo]
         venv = logical_repo / ".venv"
         try:
@@ -1391,14 +1391,14 @@ def _scoring_site_config_repo(
             return candidate
 
     source = (
-        f" configured by PIPELINES_SITE_CONFIG_REPO={configured!r}"
+        f" configured by CHAPERONE_SITE_CONFIG_REPO={configured!r}"
         if configured
         else ""
     )
     raise SystemExit(
         "Could not locate the trusted .env and .env.ipd site config" + source + ". "
         "The frozen scoring checkout is intentionally sanitized; point "
-        "PIPELINES_SITE_CONFIG_REPO at the canonical checkout."
+        "CHAPERONE_SITE_CONFIG_REPO at the canonical checkout."
     )
 
 
@@ -1421,7 +1421,7 @@ def _preflight_scoring_site_environment(values: Mapping[str, str]) -> None:
 
 
 def _scoring_site_environment(
-    pipelines_repo: Path, environment: Mapping[str, str] | None = None
+    chaperone_repo: Path, environment: Mapping[str, str] | None = None
 ) -> dict[str, str]:
     """Resolve the scorer's allowlisted site settings from the checked-in config.
 
@@ -1432,7 +1432,7 @@ def _scoring_site_environment(
     workers. The result is preflighted before it is returned.
     """
     source_environment = os.environ if environment is None else environment
-    config_repo = _scoring_site_config_repo(pipelines_repo, source_environment)
+    config_repo = _scoring_site_config_repo(chaperone_repo, source_environment)
     configured: dict[str, str] = {}
     for filename in (".env", ".env.ipd"):
         for name, value in dotenv_values(config_repo / filename).items():
@@ -1608,7 +1608,7 @@ def _run_score_command(
 def _score_trial(
     scorer: Path,
     trial: Path,
-    pipelines_repo: Path,
+    chaperone_repo: Path,
     image: Path,
     required_n: int = 96,
     public_contract: Path | None = None,
@@ -1622,13 +1622,13 @@ def _score_trial(
     stop, while a rescore wants to skip a finished trial and clear the wreckage
     of a failed one.
     """
-    pipelines_repo = Path(os.path.abspath(pipelines_repo.expanduser()))
-    scorer = _path_in_pipelines_namespace(scorer, pipelines_repo)
-    host_python = _host_scoring_python(pipelines_repo)
-    site_environment = _scoring_site_environment(pipelines_repo)
+    chaperone_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
+    scorer = _path_in_chaperone_namespace(scorer, chaperone_repo)
+    host_python = _host_scoring_python(chaperone_repo)
+    site_environment = _scoring_site_environment(chaperone_repo)
     image = image.expanduser().resolve()
     if not image.is_file() or image.suffix != ".sif":
-        raise SystemExit(f"Pipelines worker image was not found: {image}")
+        raise SystemExit(f"Chaperone worker image was not found: {image}")
     designs, _legacy_run_meta = _submission(trial)
     task_name = scorer.parent.parent.name
     audit_path, run_meta, audit = write_trial_audit(
@@ -1648,7 +1648,7 @@ def _score_trial(
     slurm_python = scoring_runtime / "slurm-python"
     # Compiled blocks resolve their nested-container command while the scorer
     # constructs the block, before ExecutionEngine has a chance to publish its
-    # rundir through Pipelines' process-global settings.  Export the exact same
+    # rundir through Chaperone's process-global settings.  Export the exact same
     # absolute path passed via --rundir up front so the opt-in bind is valid at
     # block construction time as well as execution time.
     score_run = (results / "score_run").absolute()
@@ -1665,7 +1665,7 @@ def _score_trial(
         slurm_python,
         results,
         image,
-        pipelines_repo=pipelines_repo,
+        chaperone_repo=chaperone_repo,
         worker_readonly_paths=(scorer.parent.parent,),
         site_environment=_scoring_worker_environment(site_environment, af3_jax_cache),
     )
@@ -1676,7 +1676,7 @@ def _score_trial(
         f"--out={results / 'score.json'}",
         f"--per_design_out={results / 'score_per_design.csv'}",
         f"--rundir={score_run}",
-        f"--pipelines_repo={pipelines_repo}",
+        f"--chaperone_repo={chaperone_repo}",
         f"--required_n={required_n}",
     ]
     command.append(f"--run_meta={run_meta}")
@@ -1684,22 +1684,22 @@ def _score_trial(
     environment.update(_CONTROLLER_THREAD_ENV)
     environment.update(
         {
-            "PIPELINES_REPO": str(pipelines_repo),
-            "PIPELINES_COMPUTE_BACKEND": "slurm",
-            "PIPELINES_CONTAINER_BACKEND": "apptainer",
+            "CHAPERONE_REPO": str(chaperone_repo),
+            "CHAPERONE_COMPUTE_BACKEND": "slurm",
+            "CHAPERONE_CONTAINER_BACKEND": "apptainer",
             # Nested scientific containers use --containall. Bind only this
             # scorer's active RUNDIR so their generated inputs and outputs are
             # visible without exposing the enclosing trial or /net/scratch.
             _SCORING_RUNDIR_BIND_ENV: "true",
             "RUNDIR": str(score_run),
             _SCORING_AF3_JAX_CACHE_ENV: str(af3_jax_cache),
-            "PIPELINES_SLURM_PYTHON": str(slurm_python),
-            "PIPELINES_PLIP_PYTHONPATH": str(python_packages),
+            "CHAPERONE_SLURM_PYTHON": str(slurm_python),
+            "CHAPERONE_PLIP_PYTHONPATH": str(python_packages),
             # The worker image's interpreter lives below /opt/pipelines and
             # cannot discover tools installed into this external checkout by
             # inspecting sys.prefix. The checkout is already mounted read-only
             # into workers; publish its exact US-align executable explicitly.
-            _SCORING_USALIGN_ENV: str(pipelines_repo / ".venv" / "bin" / "USalign"),
+            _SCORING_USALIGN_ENV: str(chaperone_repo / ".venv" / "bin" / "USalign"),
             "MPLCONFIGDIR": str(results / ".matplotlib"),
         }
     )
@@ -1707,7 +1707,7 @@ def _score_trial(
     # files. Publish only the preflighted settings resolved from the checked-in
     # site config; the Slurm worker wrapper re-exports these exact values.
     environment.update(site_environment)
-    scoring_path = _scoring_pythonpath(pipelines_repo)
+    scoring_path = _scoring_pythonpath(chaperone_repo)
     environment["PYTHONPATH"] = scoring_path + (
         os.pathsep + environment["PYTHONPATH"] if environment.get("PYTHONPATH") else ""
     )
@@ -1715,7 +1715,7 @@ def _score_trial(
     print(f"Scoring command: {shlex.join(command)}", flush=True)
     _run_score_command(
         command,
-        cwd=pipelines_repo,
+        cwd=chaperone_repo,
         environment=environment,
         trial_name=trial.name,
         report_path=results / "score.json",
@@ -1728,12 +1728,12 @@ def _score_trial(
 def _score(
     task: Path,
     job_dir: Path,
-    pipelines_repo: Path,
+    chaperone_repo: Path,
     image: Path,
     required_n: int = 96,
     public_contract: Path | None = None,
 ) -> None:
-    pipelines_repo = Path(os.path.abspath(pipelines_repo.expanduser()))
+    chaperone_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
     image = image.expanduser().resolve()
     try:
         successful = _successful_trials(job_dir)
@@ -1751,7 +1751,7 @@ def _score(
         _score_trial(
             scorer,
             trial,
-            pipelines_repo,
+            chaperone_repo,
             image,
             required_n=required_n,
             public_contract=public_contract,
@@ -1859,7 +1859,7 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
     probe = "codex --version"
     if arm == "harness":
         probe += (
-            " && pipelines --help >/dev/null"
+            " && chaperone --help >/dev/null"
             " && test -x /bin/bash && test -x /bin/sh"
             " && /opt/pipelines/.venv/bin/python -c "
             + shlex.quote(
@@ -1957,8 +1957,8 @@ def _external_scoring_command(
         task.name,
         "--run-dir",
         str(job_dir),
-        "--pipelines-repo",
-        str(Path(os.path.abspath(args.pipelines_repo.expanduser()))),
+        "--chaperone-repo",
+        str(Path(os.path.abspath(args.chaperone_repo.expanduser()))),
         "--worker-image",
         str(Path(os.path.abspath(args.worker_image.expanduser()))),
         "--required-n",
@@ -2095,15 +2095,15 @@ def _preflight(args: argparse.Namespace, task: Path) -> None:
         try:
             validate_snapshot(args.workspace_seed, args.workspace_seed.name)
         except RuntimeError as error:
-            raise SystemExit(f"Unsafe Pipelines harness bundle: {error}") from error
+            raise SystemExit(f"Unsafe Chaperone harness bundle: {error}") from error
     if not args.image.expanduser().resolve().is_file():
         raise SystemExit(f"Apptainer image not found: {args.image}")
     if not args.no_score and not args.worker_image.expanduser().resolve().is_file():
-        raise SystemExit(f"Pipelines worker image not found: {args.worker_image}")
+        raise SystemExit(f"Chaperone worker image not found: {args.worker_image}")
     commands = ["sbatch", "squeue", "sacct", "apptainer"]
     if not args.no_score:
         commands.append("uv")
-        _host_scoring_python(args.pipelines_repo)
+        _host_scoring_python(args.chaperone_repo)
     for command in commands:
         if shutil.which(command) is None:
             raise SystemExit(f"Required command is unavailable: {command}")
@@ -2216,23 +2216,23 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--pipelines-path",
+        "--chaperone-path",
         type=Path,
         help=(
-            "Required for the harness arm: explicit Pipelines working-tree path. "
+            "Required for the harness arm: explicit Chaperone working-tree path. "
             "Only allowlisted raw source and agent-skill files are copied; Git "
             "metadata, history, branches, generated docs, examples, tests, "
             "campaigns, and evaluation artifacts are excluded."
         ),
     )
     parser.add_argument(
-        "--pipelines-repo",
+        "--chaperone-repo",
         type=Path,
-        default=DEFAULT_PIPELINES_REPO,
+        default=DEFAULT_CHAPERONE_REPO,
         help=(
-            "Host-only Pipelines checkout used by the held-out scoring controller; "
+            "Host-only Chaperone checkout used by the held-out scoring controller; "
             "it is never copied or mounted into the agent. This is intentionally "
-            "separate from --pipelines-path."
+            "separate from --chaperone-path."
         ),
     )
     parser.add_argument(
@@ -2240,7 +2240,7 @@ def main() -> None:
         type=Path,
         help=(
             "agent image override; defaults to the minimal baseline image for "
-            "baseline and the Pipelines image for harness"
+            "baseline and the Chaperone image for harness"
         ),
     )
     parser.add_argument(
@@ -2250,7 +2250,7 @@ def main() -> None:
         type=Path,
         default=DEFAULT_HARNESS_IMAGE,
         help=(
-            "Pipelines image used by scientific Slurm workers launched by the "
+            "Chaperone image used by scientific Slurm workers launched by the "
             "host-side scorer; --scoring-image is a compatibility alias"
         ),
     )
@@ -2290,17 +2290,17 @@ def main() -> None:
         os.environ["HARBOR_EXCLUDED_NODES"] = args.exclude_nodes
     else:
         os.environ.pop("HARBOR_EXCLUDED_NODES", None)
-    if args.arm == "harness" and args.pipelines_path is None:
-        parser.error("the harness arm requires an explicit --pipelines-path")
-    if args.arm == "baseline" and args.pipelines_path is not None:
-        parser.error("--pipelines-path is not accepted by the baseline arm")
+    if args.arm == "harness" and args.chaperone_path is None:
+        parser.error("the harness arm requires an explicit --chaperone-path")
+    if args.arm == "baseline" and args.chaperone_path is not None:
+        parser.error("--chaperone-path is not accepted by the baseline arm")
     if args.run_dir is not None:
         JOBS_ROOT = _jobs_root(args.run_dir)
     _prepare_shared_job_directories()
     if args.arm == "harness":
         try:
             args.workspace_seed = build_harness_bundle(
-                args.pipelines_path,
+                args.chaperone_path,
                 JOBS_ROOT / "workspace-seeds",
             )
         except RuntimeError as error:
@@ -2335,7 +2335,7 @@ def main() -> None:
 
     print(f"Task: {task}")
     if args.arm == "harness":
-        print(f"Pipelines source: {args.pipelines_path.expanduser().resolve()}")
+        print(f"Chaperone source: {args.chaperone_path.expanduser().resolve()}")
         print(f"Sanitized source bundle: {args.workspace_seed}")
     print(f"Harbor task wrapper: {harbor_task}")
     print(f"Run name: {run_name}")

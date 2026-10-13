@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Reference pipeline for the ``enzyme-protease`` eval.
 
 Scaffolds the HEXXH zinc site plus the downstream Tyr/Glu pair against the
@@ -46,9 +46,9 @@ from absl import flags
 
 from blocks import Blocks
 from blocks.util_blocks.filter import MetricFilter
-from pipelines import ExecutionEngine, init_cli
+from chaperone import ExecutionEngine, init_cli
 from scoring import THREE_TO_ONE, format_motif_index_map, motif_rmsd
-from pipelines.io import parse_to_atom_array
+from chaperone.io import parse_to_atom_array
 
 flags.DEFINE_integer(
     "required_n",

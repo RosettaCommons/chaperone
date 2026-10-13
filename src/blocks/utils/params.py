@@ -3,7 +3,7 @@
 Dynamically scans a params directory for ``*.params`` files and provides
 lookup by ligand 3-letter code.  The directory is resolved in order:
 
-1. ``PIPELINES_LIGAND_PARAMS_DIR`` environment variable
+1. ``CHAPERONE_LIGAND_PARAMS_DIR`` environment variable
 2. Bundled ``blocks/utils/params/`` directory (ships with the repo)
 
 Usage::
@@ -33,7 +33,7 @@ _BUNDLED_PARAMS_DIR = Path(__file__).parent / "params"
 
 
 def _get_ligand_params_dir() -> Path:
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     # default="" suppresses the raise when LIGAND_PARAMS_DIR is None in
     # settings — we fall through to the bundled dir instead.
@@ -170,7 +170,7 @@ def generate_params(
     from atomworks.io.tools.rdkit import atom_array_to_rdkit
     from rdkit import Chem
 
-    from pipelines import get_setting_field
+    from chaperone import get_setting_field
 
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)

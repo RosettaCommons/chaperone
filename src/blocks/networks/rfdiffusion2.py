@@ -18,18 +18,18 @@ import types
 import numpy as np
 from pydantic import Field
 
-from pipelines import (
+from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
     get_setting_field,
 )
-from pipelines.block_config import TIER_PRIMARY
-from pipelines.containers import Image
-from pipelines.common import glob_designs_in_dir, tail_block_log
-from pipelines.data import make_row
+from chaperone.block_config import TIER_PRIMARY
+from chaperone.containers import Image
+from chaperone.common import glob_designs_in_dir, tail_block_log
+from chaperone.data import make_row
 from typing import List
-from pipelines.data.schema import DesignMetadata
+from chaperone.data.schema import DesignMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 #   1. The prebuilt on-prem SIF. IPD jobs use this one; the RFdiffusion2 code
 #      and checkpoints live on site storage and are bound in.
 #
-#   2. A portable buildable variant (`pipelines install rfdiffusion2_portable`)
+#   2. A portable buildable variant (`chaperone install rfdiffusion2_portable`)
 #      that follows the upstream spec (RosettaCommons/RFdiffusion2,
 #      rf_diffusion/exec/rf_diffusion_aa.spec) and clones the public repo into
 #      /opt/RFdiffusion2 at build time. Checkpoints are not baked in: point the
@@ -358,7 +358,7 @@ class RFD2Block(CompiledBlockFunction):
     )
 
     def init_handler(self):
-        from pipelines.data.schema import Column
+        from chaperone.data.schema import Column
 
         return PipelineDataHandler(
             [

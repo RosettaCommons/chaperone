@@ -6,8 +6,8 @@ from typing import Callable, Literal, Optional
 import polars as pl
 from pydantic import BaseModel, Field, model_validator
 
-from pipelines import BlockFunction
-from pipelines.data.schema import Column, StructureColumn
+from chaperone import BlockFunction
+from chaperone.data.schema import Column, StructureColumn
 
 logger = logging.getLogger(__name__)
 
@@ -446,7 +446,7 @@ class FilterBlock(BlockFunction):
         description=(
             "When True, validate that filter columns exist and contain valid "
             "floats (not NaN) but do not prune rows. Useful for testing "
-            "pipelines end-to-end with minimal data."
+            "Chaperone end-to-end with minimal data."
         ),
     )
 
@@ -653,7 +653,7 @@ class FilterBlock(BlockFunction):
                     n_before_q,
                 )
 
-            from pipelines import PipelineDataHandler
+            from chaperone import PipelineDataHandler
 
             filtered = PipelineDataHandler.__new__(PipelineDataHandler)
             filtered._df = filtered_df
@@ -664,7 +664,7 @@ class FilterBlock(BlockFunction):
                 "FilterBlock requires one of 'expr', 'filters', or 'function'."
             )
 
-        from pipelines import PipelineDataHandler
+        from chaperone import PipelineDataHandler
 
         n_before = handler._df.height
         n_after = filtered._df.height

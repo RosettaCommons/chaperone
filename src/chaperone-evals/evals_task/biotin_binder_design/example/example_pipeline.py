@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Run the core biotin example and export a submission of selected binders.
 
 The eval contract is a fixed count (96), not "however many passed". Filter
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import polars as pl
 
-from pipelines import PipelineDataHandler
+from chaperone import PipelineDataHandler
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[2]

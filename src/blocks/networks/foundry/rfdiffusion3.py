@@ -7,11 +7,11 @@ import re
 from pathlib import Path
 from pydantic import Field, field_validator
 from typing import Optional
-from pipelines import CompiledBlockFunction, PipelineDataHandler, JobArgs
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.data import make_row
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.data import make_row
 
-from pipelines.common import glob_designs_in_dir, tail_block_log
+from chaperone.common import glob_designs_in_dir, tail_block_log
 from blocks.networks.foundry.container import FOUNDRY_CONTAINER
 import logging
 
@@ -184,7 +184,7 @@ See the RFdiffusion3 skill for more information
         assert self.inputs is not None, (
             "No input provided (use field inputs={'design': {}} to create inputs inline)."
         )
-        from pipelines.data.schema import Column
+        from chaperone.data.schema import Column
 
         rows = []
         for batch_idx in range(self.n_batches):

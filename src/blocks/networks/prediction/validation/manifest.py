@@ -8,9 +8,9 @@ from pathlib import Path
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler, get_setting_field
-from pipelines.data import make_row
-from pipelines.io import parse_pdb_assembly
+from chaperone import BlockFunction, PipelineDataHandler, get_setting_field
+from chaperone.data import make_row
+from chaperone.io import parse_pdb_assembly
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class ManifestValStructuresBlock(BlockFunction):
     def init_handler(self) -> PipelineDataHandler:
         import pandas as pd
 
-        from pipelines.data.schema import Column
+        from chaperone.data.schema import Column
 
         if not (source := Path(self.parquet_path)).is_file():
             raise FileNotFoundError(source)

@@ -31,7 +31,7 @@ designs to resemble it.
 (C3, 70 residues per protomer, RFdiffusion v1 symmetric backbones, homo-oligomer
 MPNN). You may change any of it.
 
-Use the `pipelines` framework and the design tools in this repository. Note that
+Use the `chaperone` framework and the design tools in this repository. Note that
 `rfd3` has no symmetry mode — `rfd1` (RFdiffusion v1) does, via
 `symmetry="c3"`, and its contig string takes the **total** assembly length
 (3 × protomer). You may of course reach a C3 trimer another way.

@@ -8,8 +8,8 @@ import biotite.structure as struc
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs
-from pipelines.data.schema import SELECTIONS
+from chaperone import InlineMetricBlock, JobArgs
+from chaperone.data.schema import SELECTIONS
 
 logger = logging.getLogger(__name__)
 

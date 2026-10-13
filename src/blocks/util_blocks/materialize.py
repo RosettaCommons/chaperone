@@ -6,7 +6,7 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
+from chaperone import BlockFunction, PipelineDataHandler
 
 logger = logging.getLogger(__name__)
 

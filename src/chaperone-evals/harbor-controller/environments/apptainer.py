@@ -31,7 +31,7 @@ from scripts.snapshot_harness import validate_snapshot
 # Runtime dependencies and scientific assets explicitly assigned by the task.
 # Missing paths are skipped so the controller remains portable.
 _READ_ONLY_RUNTIME_PATHS = (
-    # Needed for Pipelines to execute assigned SIF images from inside the
+    # Needed for Chaperone to execute assigned SIF images from inside the
     # outer agent container without exposing the host's complete /dev tree.
     "/dev/fuse",
     "/etc/slurm",
@@ -153,7 +153,7 @@ SCIENTIFIC_ENV_DEFAULTS = {
     ),
     "CCD_MIRROR_PATH": "/projects/ml/frozen_pdb_copies/2024_12_11_ccd",
     "PDB_MIRROR_PATH": "/projects/ml/frozen_pdb_copies/2024_12_01_pdb",
-    "PIPELINES_CONTAINER_DIRS": (
+    "CHAPERONE_CONTAINER_DIRS": (
         "/net/software/containers/pipelines:/projects/ml/pipelines/containers"
     ),
 }
@@ -268,11 +268,11 @@ class ApptainerEnvironment(SingularityEnvironment):
                     "MPLCONFIGDIR": str(
                         self._host_workspace / ".home/.config/matplotlib"
                     ),
-                    "PYTHONPATH": str(self._host_workspace / "pipelines/src"),
+                    "PYTHONPATH": str(self._host_workspace / "chaperone/src"),
                     "QHOP": "false",
                     "HARBOR_SBATCH_SOCKET": "/run/harbor-slurm/sbatch.sock",
-                    "PIPELINES_SLURM_PYTHON": str(slurm_python),
-                    "PIPELINES_SLURM_ARRAY_PARALLELISM": str(_MAX_TOTAL_GPUS),
+                    "CHAPERONE_SLURM_PYTHON": str(slurm_python),
+                    "CHAPERONE_SLURM_ARRAY_PARALLELISM": str(_MAX_TOTAL_GPUS),
                     "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION": str(
                         MAX_REQUESTED_GPUS_PER_SUBMISSION
                     ),
@@ -406,22 +406,22 @@ class ApptainerEnvironment(SingularityEnvironment):
             )
 
         workspace.mkdir(parents=True, exist_ok=True)
-        pipelines = workspace / "pipelines"
-        if not pipelines.exists():
-            staging = workspace / ".pipelines.partial"
+        chaperone = workspace / "chaperone"
+        if not chaperone.exists():
+            staging = workspace / ".chaperone.partial"
             if staging.exists():
                 shutil.rmtree(staging)
             try:
                 shutil.copytree(seed, staging)
                 validate_snapshot(staging, seed.name)
-                staging.rename(pipelines)
+                staging.rename(chaperone)
             except BaseException:
                 shutil.rmtree(staging, ignore_errors=True)
                 raise
         else:
-            # The workspace directory is named "pipelines", so compare it to
+            # The workspace directory is named "chaperone", so compare it to
             # the immutable source bundle's digest rather than its own name.
-            validate_snapshot(pipelines, seed.name)
+            validate_snapshot(chaperone, seed.name)
 
         input_copy = workspace / "inputs"
         if not input_copy.exists():
@@ -448,7 +448,7 @@ class ApptainerEnvironment(SingularityEnvironment):
         path: Path,
         workspace: Path,
         image: Path,
-        pipelines_repo: Path | None = None,
+        chaperone_repo: Path | None = None,
         worker_readonly_paths: tuple[Path, ...] = (),
         site_environment: Mapping[str, str] | None = None,
     ) -> None:
@@ -462,17 +462,17 @@ class ApptainerEnvironment(SingularityEnvironment):
         """
         if not image.is_file() or image.suffix != ".sif":
             raise FileNotFoundError(
-                f"Shared Pipelines worker SIF was not found: {image}"
+                f"Shared Chaperone worker SIF was not found: {image}"
             )
         # Preserve the caller's logical shared-filesystem spelling. On DIGS
         # CPU nodes /projects contains the checkout's .venv while resolving it
         # to /mnt/projects produces a namespace without that environment.
-        pipelines_repo = Path(
-            os.path.abspath(pipelines_repo or workspace / "pipelines")
+        chaperone_repo = Path(
+            os.path.abspath(chaperone_repo or workspace / "chaperone")
         )
-        if not (pipelines_repo / "src").is_dir():
+        if not (chaperone_repo / "src").is_dir():
             raise FileNotFoundError(
-                f"Pipelines source tree not found: {pipelines_repo}"
+                f"Chaperone source tree not found: {chaperone_repo}"
             )
         bind_paths: list[tuple[Path, Path, bool]] = [(workspace, workspace, False)]
         # The worker runs with --containall, so its synthetic /etc/passwd does
@@ -484,17 +484,17 @@ class ApptainerEnvironment(SingularityEnvironment):
             if identity_file.is_file():
                 bind_paths.append((identity_file, Path("/etc") / name, True))
         try:
-            pipelines_repo.relative_to(workspace)
+            chaperone_repo.relative_to(workspace)
         except ValueError:
-            bind_paths.append((pipelines_repo, pipelines_repo, True))
-        pipelines_repo_alias = ApptainerEnvironment._project_path_alias(pipelines_repo)
-        if pipelines_repo_alias is not None:
+            bind_paths.append((chaperone_repo, chaperone_repo, True))
+        chaperone_repo_alias = ApptainerEnvironment._project_path_alias(chaperone_repo)
+        if chaperone_repo_alias is not None:
             # A host-side scorer launched from a CPU node can canonicalize
             # /projects to /mnt/projects before it serializes task assets into
             # a Submitit pickle. Mount the checkout at both spellings so held-
             # out inputs such as score/../inputs/target.pdb remain readable in
             # the scientific worker container.
-            bind_paths.append((pipelines_repo, pipelines_repo_alias, True))
+            bind_paths.append((chaperone_repo, chaperone_repo_alias, True))
         for readonly_path in worker_readonly_paths:
             readonly_path = Path(os.path.abspath(readonly_path))
             readonly_alias = ApptainerEnvironment._project_path_alias(readonly_path)
@@ -513,7 +513,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                 bind_paths.append((readonly_source, readonly_alias, True))
         workspace_alias = ApptainerEnvironment._project_path_alias(workspace)
         if workspace_alias is not None:
-            # Pipelines' nested scientific containers bind /projects to
+            # Chaperone's nested scientific containers bind /projects to
             # /mnt/projects. Expose the writable trial at both equivalent
             # spellings so input and output paths survive that extra boundary.
             bind_paths.append((workspace, workspace_alias, False))
@@ -553,16 +553,16 @@ class ApptainerEnvironment(SingularityEnvironment):
                 f"export XDG_CACHE_HOME={shlex.quote(str(workspace / '.home/.cache'))}",
                 f"export XDG_CONFIG_HOME={shlex.quote(str(workspace / '.home/.config'))}",
                 f"export MPLCONFIGDIR={shlex.quote(str(workspace / '.home/.config/matplotlib'))}",
-                # Some Pipelines scientific manifests include standard home
+                # Some Chaperone scientific manifests include standard home
                 # mount points even when they do not consume files from them.
                 # --containall may omit /mnt/home, so create empty mount
                 # sources in the worker's writable overlay before nesting.
                 "mkdir -p /mnt/home /home",
-                f"export PYTHONPATH={shlex.quote(str(pipelines_repo / 'src'))}${{PYTHONPATH:+:$PYTHONPATH}}",
-                f"if [[ -f {shlex.quote(str(pipelines_repo / '.env'))} ]]; then",
+                f"export PYTHONPATH={shlex.quote(str(chaperone_repo / 'src'))}${{PYTHONPATH:+:$PYTHONPATH}}",
+                f"if [[ -f {shlex.quote(str(chaperone_repo / '.env'))} ]]; then",
                 "  set -a",
-                f"  source {shlex.quote(str(pipelines_repo / '.env'))}",
-                f"  [[ ! -f {shlex.quote(str(pipelines_repo / '.env.ipd'))} ]] || source {shlex.quote(str(pipelines_repo / '.env.ipd'))}",
+                f"  source {shlex.quote(str(chaperone_repo / '.env'))}",
+                f"  [[ ! -f {shlex.quote(str(chaperone_repo / '.env.ipd'))} ]] || source {shlex.quote(str(chaperone_repo / '.env.ipd'))}",
                 "  set +a",
                 "fi",
                 # Reassert the controller's values after the env files so an
@@ -570,8 +570,8 @@ class ApptainerEnvironment(SingularityEnvironment):
                 # by the checkout default.
                 *site_exports,
                 "export QHOP=false",
-                "export PIPELINES_COMPUTE_BACKEND=auto",
-                "export PIPELINES_CONTAINER_BACKEND=apptainer",
+                "export CHAPERONE_COMPUTE_BACKEND=auto",
+                "export CHAPERONE_CONTAINER_BACKEND=apptainer",
                 f'cd "${{HARBOR_WORKER_CWD:-{str(workspace)}}}"',
                 'exec /opt/pipelines/.venv/bin/python "$@"',
             )
@@ -811,7 +811,7 @@ class ApptainerEnvironment(SingularityEnvironment):
             self._start_sbatch_broker()
             result = await self.exec(
                 "codex --version"
-                " && pipelines --help >/dev/null"
+                " && chaperone --help >/dev/null"
                 " && sbatch --version >/dev/null"
                 " && getent ahosts api.openai.com >/dev/null"
             )

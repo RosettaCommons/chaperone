@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -c '"${PIPELINES_REPO:-.}/.venv/bin/python" "$0" "$@"'
+#!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
 """Generate 96 EIN2 site-1 peptide binder sequences with RFD3, MPNN, and AF3.
 
 Reference implementation for the ``peptide-binder`` eval. RFD3 diffuses a
@@ -27,8 +27,8 @@ import polars as pl
 from absl import flags
 
 from blocks import Blocks
-from pipelines import ExecutionEngine, init_cli
-from pipelines.data.schema import SELECTIONS
+from chaperone import ExecutionEngine, init_cli
+from chaperone.data.schema import SELECTIONS
 
 flags.DEFINE_integer(
     "required_n",

@@ -7,7 +7,7 @@ from typing import Optional
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineMetricBlock
+from chaperone import InlineMetricBlock
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class HBondBlock(InlineMetricBlock):
     )
 
     def setup(self, handler, sandbox_dir, chunk_id):
-        from pipelines import get_setting_field
+        from chaperone import get_setting_field
 
         hbplus_path = self.hbplus_path or get_setting_field(
             "HBPLUS_COPY", check_bin=True

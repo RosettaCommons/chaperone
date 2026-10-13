@@ -347,7 +347,7 @@ def _execution_fallback(
                 * int(record.get("allocated_gpus", 0))
             )
         except (TypeError, ValueError):
-            warnings.append(f"invalid Pipelines execution record: {path}")
+            warnings.append(f"invalid Chaperone execution record: {path}")
             continue
         grouped[root_match.group(1)].append(
             {
@@ -359,7 +359,7 @@ def _execution_fallback(
         )
     return {
         root: {
-            "source": "pipelines_execution",
+            "source": "chaperone_execution",
             "rows": rows,
             "gpu_seconds": sum(float(row["gpu_seconds"]) for row in rows),
             # Execution records intentionally do not claim whole-allocation CPU cost.
@@ -389,7 +389,7 @@ def reconcile_compute(
         elif job_id in fallback:
             jobs[job_id] = fallback[job_id]
             warnings.append(
-                f"Slurm job {job_id} used Pipelines .execution fallback; "
+                f"Slurm job {job_id} used Chaperone .execution fallback; "
                 "scheduler allocation accounting was unavailable"
             )
         else:
@@ -398,7 +398,7 @@ def reconcile_compute(
     accounting_complete = registry_present and not uncovered
     if uncovered:
         warnings.append(
-            "GPU accounting is incomplete; no sacct allocation or Pipelines "
+            "GPU accounting is incomplete; no sacct allocation or Chaperone "
             f"execution record covers jobs: {', '.join(uncovered)}"
         )
     gpu_seconds = sum(float(job["gpu_seconds"]) for job in jobs.values())

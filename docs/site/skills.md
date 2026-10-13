@@ -1,16 +1,16 @@
 # Claude Skills
 
-Pipelines ships with a collection of [Claude Code](https://claude.com/claude-code) **skills** — domain-specific guides and workflows that Claude loads on demand. Skills live under `.agents/skills/` in the repo and are invoked either automatically (when the user's request matches the skill description) or explicitly via `/<skill-name>`.
+Chaperone ships with a collection of [Claude Code](https://claude.com/claude-code) **skills** — domain-specific guides and workflows that Claude loads on demand. Skills live under `.agents/skills/` in the repo and are invoked either automatically (when the user's request matches the skill description) or explicitly via `/<skill-name>`.
 
 Each skill provides focused context for a particular task so Claude can act with the right conventions, commands, and guardrails without flooding its main context window.
 
-## Pipelines-specific skills
+## Chaperone-specific skills
 
-Skills that directly concern writing, running, or debugging pipelines code.
+Skills that directly concern writing, running, or debugging Chaperone code.
 
 | Skill | Purpose | Typical triggers |
 |-------|---------|------------------|
-| [`/setup`](#setup) | Install and check pipelines functionality | "set up pipelines", "install", "check my environment" |
+| [`/setup`](#setup) | Install and check Chaperone functionality | "set up Chaperone", "install", "check my environment" |
 | [`/design`](#design) | Plan and convert specs into clean, tested pipeline code | "how do I design this protein?", "convert this notebook into a pipeline" |
 | [`/scripting`](#scripting) | Writing, running, and testing standalone pipeline scripts | "write a pipeline script", "debug CLI flags", "test → pilot → production" |
 | [`/blocks-reference`](#blocks-reference) | Choose and compare blocks by task, modality, cost and limitation | "which tool", "alternative to", "compare oracles" |
@@ -38,7 +38,7 @@ General skills for protein design workflows and peripheral tooling.
 
 ### `/setup`
 
-Guides new users through pipelines environment configuration: venv creation, `uv` installs, `.env` setup, container backend checks, and a smoke test.
+Guides new users through Chaperone environment configuration: venv creation, `uv` installs, `.env` setup, container backend checks, and a smoke test.
 
 Use this when first cloning the repo, when collaborators hit install errors, or when the main branch migrates and environments need updating.
 
@@ -56,7 +56,7 @@ Choose and compare blocks by scientific task, modality, speed, cost, evidence qu
 
 ### `/auto-research`
 
-Iteratively improve a weak, uncertain or stalled workflow using your thresholds or an existing Pipelines-compatible scorer. Turns thresholds into one tested `score.py`, then runs bounded pilots before scaling.
+Iteratively improve a weak, uncertain or stalled workflow using your thresholds or an existing Chaperone-compatible scorer. Turns thresholds into one tested `score.py`, then runs bounded pilots before scaling.
 
 ### `/build-block`
 
@@ -88,7 +88,7 @@ Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` 
 
 ### `/slurm-background`
 
-Submits **detached** SLURM work that survives disconnect — for pilots, production, and campaigns. Covers the pipelines `ExecutionEngine` (`job_args`, `submit`/`gather`), raw `sbatch`, detaching a long driver with `nohup`/`tmux`, and how to monitor/cancel. **Scaling → background.**
+Submits **detached** SLURM work that survives disconnect — for pilots, production, and campaigns. Covers the Chaperone `ExecutionEngine` (`job_args`, `submit`/`gather`), raw `sbatch`, detaching a long driver with `nohup`/`tmux`, and how to monitor/cancel. **Scaling → background.**
 
 ### `/notebook-editing`
 

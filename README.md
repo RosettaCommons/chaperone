@@ -1,11 +1,11 @@
-# Pipelines <img src="docs/site/.assets/icon.png" alt="icon" width="32" align="right"/>
+# Chaperone <img src="docs/site/.assets/icon.png" alt="icon" width="32" align="right"/>
 
 <p align="center">
   <img src="docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
-  <figcaption>Figure 1: Overview of the uses of Pipelines. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
+  <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
 </p>
 
-Pipelines is a unified framework for making structural biology tools interoperable.
+Chaperone is a unified framework for making structural biology tools interoperable.
 Hook together design, sequencing, folding, and analysis into reproducible pipelines
 with automatic SLURM orchestration, chunking, and path tracking.
 
@@ -14,7 +14,7 @@ ProteinHunter, Protein/Ligand/FoundryMPNN, AF3, RF3, Boltz2, Chai1,
 Protenix v2, OpenFold3, ESMFold2, E1, and ESM2.
 Analysis blocks include RMSD, Foldseek, RASA, contact metrics, H-bond metrics,
 and aromatic-neighbor scoring.
-People have used pipelines for PPI, symmetric design, and enzyme design — reach out to the respective experts if interested.
+People have used Chaperone for PPI, symmetric design, and enzyme design — reach out to the respective experts if interested.
 
 This repo ships with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills and project context (`AGENTS.md`) that make Claude a first-class interface for writing, running, and debugging pipelines. If you hit an issue, ask Claude — it knows the codebase and will typically self-correct.
 
@@ -31,8 +31,8 @@ First, install `uv` & Claude Code (or Codex):
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via `curl -fsSL https://claude.ai/install.sh | bash`.
 
 ```bash
-git clone git@github.com:baker-laboratory/pipelines.git
-cd pipelines
+git clone git@github.com:RosettaCommons/chaperone.git
+cd chaperone
 export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 claude
 # inside Claude Code, just type: /setup
@@ -40,34 +40,34 @@ claude
 
 `/setup` handles everything — creating the venv, installing dependencies, detecting your compute environment (local GPU, SLURM, etc.), configuring container backends, and installing block containers. It's a little intentionally verbose; the few lines below will suffice, but it should also give you a quick overview of the things claude can take care of for you.
 
-`/setup` is one of many skills pipelines comes with, check out more below.
+`/setup` is one of many skills Chaperone comes with, check out more below.
 
 ## Installation (Manual)
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/):
 ```bash
-git clone git@github.com:baker-laboratory/pipelines.git
-cd pipelines
+git clone git@github.com:RosettaCommons/chaperone.git
+cd chaperone
 export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 uv venv && source .venv/bin/activate
 uv pip install -e '.[all]' --override overrides.txt
-python -m ipykernel install --user --name pipelines --display-name "Pipelines"  # optional jupyter kernel
+python -m ipykernel install --user --name chaperone --display-name "Chaperone"  # optional jupyter kernel
 ```
 
 The `PYTHONPATH` command prepends the checkout containing the current shell,
-preventing an older Pipelines clone from taking precedence. Run it from the
-repository root before starting an agent or using Pipelines. After activating
+preventing an older Chaperone clone from taking precedence. Run it from the
+repository root before starting an agent or using Chaperone. After activating
 the environment, verify that both modules resolve inside the current checkout:
 
 ```bash
 python - <<'PY'
 from pathlib import Path
 
-import pipelines
-import pipelines_cli.main
+import chaperone
+import chaperone_cli.main
 
 root = Path.cwd().resolve()
-for module in (pipelines, pipelines_cli.main):
+for module in (chaperone, chaperone_cli.main):
     origin = Path(module.__file__).resolve()
     print(f"{module.__name__}: {origin}")
     if not origin.is_relative_to(root):
@@ -89,9 +89,9 @@ python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"
 
 # Overview
 
-Pipelines is a general framework for making structural biology tools interoperable. It is explicitly built as a *very simple* harness on top of tools: each tool is a **block** with a self-contained dataframe-in, dataframe-out API. Structure lineage, metrics, and metadata propagate automatically — so you can chain tools together, filter, analyse, and scale without manual bookkeeping.
+Chaperone is a general framework for making structural biology tools interoperable. It is explicitly built as a *very simple* harness on top of tools: each tool is a **block** with a self-contained dataframe-in, dataframe-out API. Structure lineage, metrics, and metadata propagate automatically — so you can chain tools together, filter, analyse, and scale without manual bookkeeping.
 
-It also provides [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex CLI](https://github.com/openai/codex) with a robust harness for agentic automation at various levels: Claude can write, run, debug, and iterate on pipelines scripts using built-in project context and skills.
+It also provides [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex CLI](https://github.com/openai/codex) with a robust harness for agentic automation at various levels: Claude can write, run, debug, and iterate on Chaperone scripts using built-in project context and skills.
 
 ### Core concepts
 
@@ -104,7 +104,7 @@ It also provides [Claude Code](https://docs.anthropic.com/en/docs/claude-code) o
 ## Agent workflows
 
 For iterative research, give `/auto-research` either acceptance thresholds or a
-Pipelines-compatible `score.py`/`scorer.py`. It converts thresholds into one
+Chaperone-compatible `score.py`/`scorer.py`. It converts thresholds into one
 tested scorer, runs baselines and candidate arms through that same scorer, and
 uses the normal scorer and pipeline outputs to decide what to try next.
 
@@ -112,24 +112,24 @@ Search for the relevant skill, source symbol, or failure before opening large
 files. For long jobs, let `ExecutionEngine` manage inner Slurm jobs and make one
 stateless wait call for the detached outer driver rather than polling from agent
 turns. Harbor exposes this as `campaign-monitor.wait`; standalone installations
-can serve the same MCP tool with `pipelines monitor-mcp`. Process waits require
+can serve the same MCP tool with `chaperone monitor-mcp`. Process waits require
 a completion marker because a detached exit code cannot be recovered without
 persistent state. Non-agent supervisors can use the equivalent CLI:
 
 ```bash
-pipelines wait --job-id 12345
-pipelines wait --process-id 23456 --completion-marker run.done \
+chaperone wait --job-id 12345
+chaperone wait --process-id 23456 --completion-marker run.done \
   --failure-marker run.failed
 ```
 
-Read line-oriented artifacts through the Pipelines-wide bounded reader. Its
+Read line-oriented artifacts through the Chaperone-wide bounded reader. Its
 default output is capped at 200 lines and 20 KiB, and it returns a byte cursor
 when more content remains:
 
 ```bash
-pipelines artifact path/to/job.log --view events --tail
-pipelines artifact path/to/job.log --view errors
-pipelines artifact path/to/job.log --cursor BYTE_OFFSET
+chaperone artifact path/to/job.log --view events --tail
+chaperone artifact path/to/job.log --view errors
+chaperone artifact path/to/job.log --cursor BYTE_OFFSET
 ```
 
 The same reader retrieves one piece of a large document or source file.
@@ -138,9 +138,9 @@ higher level; `--start-line` takes a line number, so `rg -n` output composes
 directly:
 
 ```bash
-pipelines artifact docs/blocks-reference.md --section rfd3
+chaperone artifact docs/blocks-reference.md --section rfd3
 rg -n 'def create_command' src/blocks/networks/rfd3.py
-pipelines artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
+chaperone artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
 ```
 
 ### Supported blocks
@@ -158,7 +158,7 @@ pipelines artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
 ProteinHunter is registered as `protein_hunter`. Its self-contained Apptainer
 recipe pins Protein-Hunter commit `a3e048e96c93`, PyTorch 2.11, and CUDA 12.8,
 and embeds the LigandMPNN weights and required Python packages. Build it with
-`pipelines install protein_hunter`. Runtime still requires an NVIDIA GPU and a
+`chaperone install protein_hunter`. Runtime still requires an NVIDIA GPU and a
 CUDA-12.8-compatible driver, plus the Boltz2 checkpoint and CCD cache configured
 by `BOLTZ_CACHE_DIR`. The image has been validated on an RTX A4000 at IPD with
 a complete Boltz → soluble LigandMPNN → Boltz optimization cycle.
@@ -195,7 +195,7 @@ engine.run(
 
 Select generators, sequence models, predictors, and metrics for the active
 scientific task. Do not copy a workflow from a different design modality as a
-default. The pipelines scripting language supports moving the resulting script
+default. The Chaperone scripting language supports moving the resulting script
 from a small test to pilot and campaign scale.
 
 ## Examples
@@ -206,41 +206,41 @@ See [examples/README.md](examples/README.md) for the layout and how to run them.
 For anything else, build the pipeline from the block reference and the skills index:
 
 ```bash
-pipelines list-blocks
-pipelines artifact docs/blocks-reference.md --section BLOCK_NAME
+chaperone list-blocks
+chaperone artifact docs/blocks-reference.md --section BLOCK_NAME
 ```
 
 # Using agents and Claude Code
 
-Pipelines is designed to work hand-in-hand with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI agent. The repo includes an `AGENTS.md` project guide and a suite of **skills** — specialized prompts that Claude can execute to perform common tasks.
+Chaperone is designed to work hand-in-hand with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI agent. The repo includes an `AGENTS.md` project guide and a suite of **skills** — specialized prompts that Claude can execute to perform common tasks.
 
 ## Apptainer agent container
 
 For hosts where you'd rather not install Claude + uv locally (or want throwaway agents for parallel work), prebuilt apptainer images live at `/net/software/containers/pipelines/pipelines_agent{_base,}.sif`. The agent is split into two layers: `pipelines_agent_base.sif` (OS + apptainer + Node + Claude CLI + uv; rarely rebuilt) and `pipelines_agent.sif` (the repo snapshot + uv venv layered on top, rebuilt whenever the repo changes). Each run gets its own in-memory overlay (`--writable-tmpfs`) so parallel agents stay isolated — edits disappear on exit unless written to a host-bound path.
 
 ```bash
-./agent/run.sh -p "Respond with exactly: Hi from inside the pipelines agent container."
-# Hi from inside the pipelines agent container.
+./agent/run.sh -p "Respond with exactly: Hi from inside the chaperone agent container."
+# Hi from inside the chaperone agent container.
 ```
 
-The wrapper sets `--writable-tmpfs --no-home --cleanenv`, binds the IPD keys dir for `claude-toggle on`, and binds the host's apptainer stack so `apptainer` subprocesses work from inside (e.g. pipelines blocks running containerized tools). Raw pipelines use (no Claude) works too: `apptainer exec agent/pipelines.sif pipelines list-blocks`.
+The wrapper sets `--writable-tmpfs --no-home --cleanenv`, binds the IPD keys dir for `claude-toggle on`, and binds the host's apptainer stack so `apptainer` subprocesses work from inside (e.g. Chaperone blocks running containerized tools). Raw Chaperone use (no Claude) works too: `apptainer exec agent/pipelines.sif chaperone list-blocks`.
 
 Rebuild against your current working tree with `./agent/build.sh` — the image writes through to the shared path via the `agent/pipelines.sif` symlink. Use `./agent/build.sh --base` to also rebuild the base layer (only needed when the OS/apptainer/Node/Claude/uv deps change).
 
 ## Agentic Skills
-*The pipelines skills harness is built primarily for Claude but Codex can easily read the same files.*
+*The Chaperone skills harness is built primarily for Claude but Codex can easily read the same files.*
 
-1. **Start Claude Code** in the repo: `cd pipelines && claude`
+1. **Start Claude Code** in the repo: `cd chaperone && claude`
 2. **Use skills** by typing a slash command: `/setup`, `/design`, `/scripting`, etc. Claude will automatically read this but referencing them helps make it concrete which one to use
-3. Claude reads `AGENTS.md` for project conventions, API patterns, and block documentation — so it can write, run, and debug pipelines code with minimal guidance.
+3. Claude reads `AGENTS.md` for project conventions, API patterns, and block documentation — so it can write, run, and debug Chaperone code with minimal guidance.
 
 You can also just talk to the agent in natural language ("design a peptide binder for EIN2") and it will use its knowledge of the repo to build the right script.
 
-### Pipelines skills
+### Chaperone skills
 
 | Skill | What it does |
 |-------|-------------|
-| `/setup` | Install pipelines, detect compute environment, build containers |
+| `/setup` | Install Chaperone, detect compute environment, build containers |
 | `/design` | Plan and generate a pipeline script from a design spec |
 | `/blocks-reference` | Compare blocks and choose tools by task, modality, cost and limitation |
 | `/scripting` | Write, run and test a standalone pipeline script |
@@ -333,7 +333,7 @@ confidence: sequence-native MPNN rows already contain the FASTA metrics.
 ## Storage formats and cleanups
 
 
-Large campaigns (10k–1M designs) drown the rundir in per-design files. Pipelines supports catcif consolidation on each compiled block:
+Large campaigns (10k–1M designs) drown the rundir in per-design files. Chaperone supports catcif consolidation on each compiled block:
 
 - `store="catcif"` — one concatenated-CIF archive per chunk (`<step>/<step>.chunk_N.catcif`); handler paths become self-describing `archive.catcif:entry_id` tags.
 

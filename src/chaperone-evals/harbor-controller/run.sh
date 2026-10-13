@@ -10,7 +10,7 @@ if [[ -n "$PROMPT_FILE" ]]; then
 fi
 
 if [[ "$ARM" == both ]]; then
-  PAIR_NAME=${JOB_NAME:-pipelines-codex-both-$(date -u +%H%M%SZ)}
+  PAIR_NAME=${JOB_NAME:-chaperone-codex-both-$(date -u +%H%M%SZ)}
   JOB_NAME="${PAIR_NAME}-baseline" "$0" "$MODE" baseline "$PROMPT_FILE"
   JOB_NAME="${PAIR_NAME}-harness" "$0" "$MODE" harness "$PROMPT_FILE"
   exit
@@ -58,7 +58,7 @@ if [[ ! "$GPUS" =~ ^[0-9]+$ ]] || (( GPUS > 5 )); then
   exit 2
 fi
 STAMP=$(date -u +%H%M%SZ)
-JOB_NAME=${JOB_NAME:-pipelines-codex-${ARM}-${STAMP}}
+JOB_NAME=${JOB_NAME:-chaperone-codex-${ARM}-${STAMP}}
 if [[ ! "$JOB_NAME" =~ ^[A-Za-z0-9_.-]{1,128}$ ]]; then
   echo "JOB_NAME must contain only letters, digits, dot, underscore, and hyphen (maximum 128 characters)" >&2
   exit 2
@@ -74,7 +74,7 @@ if [[ ! -f "$TASK/task.toml" || ! -f "$TASK/instruction.md" || ! -d "$TASK/envir
 fi
 if [[ "$ARM" == harness ]]; then
   if [[ -z "${WORKSPACE_SEED:-}" ]]; then
-    echo "WORKSPACE_SEED is required; launch harness runs through run_eval.py with an explicit --pipelines-path." >&2
+    echo "WORKSPACE_SEED is required; launch harness runs through run_eval.py with an explicit --chaperone-path." >&2
     exit 2
   fi
   SNAPSHOT=$WORKSPACE_SEED
@@ -83,7 +83,7 @@ if [[ "$ARM" == harness ]]; then
   # accept an ambient second path that could reintroduce repository artifacts.
   HARNESS_SKILL=$SNAPSHOT
   if [[ ! -d "$SNAPSHOT" ]]; then
-    echo "Pipelines workspace seed not found: $SNAPSHOT" >&2
+    echo "Chaperone workspace seed not found: $SNAPSHOT" >&2
     exit 2
   fi
   if [[ ! -d "$TASK_INPUTS" ]]; then
@@ -91,7 +91,7 @@ if [[ "$ARM" == harness ]]; then
     exit 2
   fi
   if [[ ! -f "$HARNESS_SKILL/SKILL.md" ]]; then
-    echo "Pipelines harness skill not found: $HARNESS_SKILL/SKILL.md" >&2
+    echo "Chaperone harness skill not found: $HARNESS_SKILL/SKILL.md" >&2
     exit 2
   fi
 fi

@@ -41,7 +41,7 @@ from typing import ClassVar
 import numpy as np
 from pydantic import Field
 
-from pipelines import InlineMetricBlock, JobArgs, get_setting_field
+from chaperone import InlineMetricBlock, JobArgs, get_setting_field
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ def parse_dssr_nt_id(identifier: str) -> dict[str, str | int]:
     DSSR emits identifiers such as ``1..A.G.20.`` (model, segment, chain,
     residue name, residue number).  Returning both the raw identifier and the
     compact ``A10`` spelling keeps pair records lossless while making them easy
-    to join to Pipelines' ``diffused_index_map`` convention.
+    to join to Chaperone's ``diffused_index_map`` convention.
     """
     parts = str(identifier).rstrip(".").split(".")
     if len(parts) != 5:

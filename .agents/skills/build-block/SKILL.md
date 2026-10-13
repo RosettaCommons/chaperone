@@ -6,7 +6,7 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit", "WebFetch", "Ag
 
 # Build Block Skill
 
-End-to-end guide for creating a new pipelines block from a tool's documentation or repository URL.
+End-to-end guide for creating a new Chaperone block from a tool's documentation or repository URL.
 
 ## Overview
 
@@ -71,10 +71,10 @@ Create a new file for the container. Choose the location based on whether the to
 - **Standalone tool**: `src/blocks/networks/{tool_name}.py` (container + block in same file, or separate `container.py` if complex)
 - **Tool family** (e.g., foundry tools): `src/blocks/networks/{family}/container.py`
 
-Use the `Image` builder pattern from `pipelines.containers`. For example:
+Use the `Image` builder pattern from `chaperone.containers`. For example:
 
 ```python
-from pipelines.containers import Image
+from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL  # Only if GPU tool needs CUDA
 
 {TOOL}_CONTAINER = (
@@ -119,7 +119,7 @@ Try building the container (selects apptainer or docker in the background):
 
 ```bash
 source .venv/bin/activate
-pipelines install <tool_name>
+chaperone install <tool_name>
 ```
 
 ### 2c. Test the Container
@@ -131,7 +131,7 @@ Run an example command from the tool's documentation inside the container:
 apptainer exec --nv /tmp/{tool_name}.sif {tool_entry_point} --help
 
 # Docker
-docker run --gpus all pipelines/{tool_name}:latest {tool_entry_point} --help
+docker run --gpus all chaperone/{tool_name}:latest {tool_entry_point} --help
 ```
 
 Verify the tool runs and responds correctly. If it fails, debug and fix the container definition.
@@ -163,9 +163,9 @@ import json
 import logging
 from typing import Optional
 from pydantic import Field
-from pipelines import CompiledBlockFunction, PipelineDataHandler, JobArgs
-from pipelines.data import make_row
-from pipelines.common import glob_designs_in_dir
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone.data import make_row
+from chaperone.common import glob_designs_in_dir
 
 logger = logging.getLogger(__name__)
 
@@ -273,10 +273,10 @@ Write a minimal test or run the block via the engine:
 ```python
 source .venv/bin/activate
 python -c "
-from pipelines import ExecutionEngine
+from chaperone import ExecutionEngine
 engine = ExecutionEngine(rundir='/tmp/test_{tool_name}')
 # If the block needs input, provide a handler:
-# from pipelines import PipelineDataHandler
+# from chaperone import PipelineDataHandler
 # handler = PipelineDataHandler.from_dir('path/to/pdbs', name='input')
 # result = engine.run('{tool_name}', data=handler)
 
@@ -374,13 +374,13 @@ Ask the user if they want to commit and create a PR. If yes, follow the standard
 
 | File | Purpose |
 |------|---------|
-| `src/pipelines/containers.py` | `Image` builder class |
+| `src/chaperone/containers.py` | `Image` builder class |
 | `src/blocks/constants.py` | `CUDA_INSTALL` and shared constants |
-| `src/pipelines/block_config/compiled.py` | `CompiledBlockFunction` base class |
-| `src/pipelines/block_config/base.py` | `BlockFunction` base class |
-| `src/pipelines/data/handler.py` | `PipelineDataHandler` |
-| `src/pipelines/data/schema.py` | `make_row()`, `Column`, `merge_rows()` |
-| `src/pipelines/common.py` | `glob_designs_in_dir()` |
+| `src/chaperone/block_config/compiled.py` | `CompiledBlockFunction` base class |
+| `src/chaperone/block_config/base.py` | `BlockFunction` base class |
+| `src/chaperone/data/handler.py` | `PipelineDataHandler` |
+| `src/chaperone/data/schema.py` | `make_row()`, `Column`, `merge_rows()` |
+| `src/chaperone/common.py` | `glob_designs_in_dir()` |
 | `src/blocks/__init__.py` | Lazy block registry (AST scanning) |
 | `src/blocks/networks/foundry/rfdiffusion3.py` | Reference: complex GPU block |
 | `src/blocks/networks/mpnn.py` | Reference: simpler PDB-in/PDB-out block |

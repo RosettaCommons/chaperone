@@ -154,10 +154,10 @@ def test_stage_multimer_gate_fails_on_a_missing_chain_msa(tmp_path):
 
 
 def test_create_command_stages_complex_fasta_and_rejects_monomer_model(tmp_path):
-    from pipelines import PipelineDataHandler
-    from pipelines.data import make_row
+    from chaperone import PipelineDataHandler
+    from chaperone.data import make_row
     from atomworks.io.utils.io_utils import to_cif_file
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     structure = tmp_path / "toy.cif"
     to_cif_file(

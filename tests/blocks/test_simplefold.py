@@ -13,7 +13,7 @@ def test_simplefold_is_discoverable():
 
 def test_compile_converts_to_cif_without_inline_scoring(tmp_path):
     from atomworks.io.utils.io_utils import to_cif_file
-    from pipelines.io import ensure_bonds
+    from chaperone.io import ensure_bonds
 
     reference_path = tmp_path / "references" / "toy.cif"
     prediction_dir = tmp_path / "outputs" / "predictions_simplefold_100M"

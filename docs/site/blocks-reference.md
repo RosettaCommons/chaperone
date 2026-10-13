@@ -275,7 +275,7 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=
 | `dump_trajectories` | `bool` | `False` | Write the noisy and denoised diffusion trajectories for each sample. Trajectory files are large, place the final pred... |
 | `seed_offset` | `int` | `42` | Base random seed; each chunk increments by 1. Ignored when model_seeds is set. |
 | `model_seeds` | `Optional[list[int]]` | `None` | List of random seeds for multi-seed inference per input. Each seed runs a completely independent trunk pass, giving m... |
-| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Pipelines exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
+| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Chaperone exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
 | `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no MSA. Set to 0 to require an MSA for every protein chain. |
 | `create_bond_graph` | `bool` | `False` | Assign ligand bonds from specified_smiles and write inputs as CIF with bond topology. Required when input structures ... |
 | `input_mode` | `Literal` | `'file'` | 'file' passes CIF/PDB directly (current default). 'sequence' builds RF3 component JSON from sequences + CCD/SMILES. |
@@ -313,7 +313,7 @@ Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:s
 | `dump_trajectories` | `bool` | `False` | Write the noisy and denoised diffusion trajectories for each sample. Trajectory files are large, place the final pred... |
 | `seed_offset` | `int` | `42` | Base random seed; each chunk increments by 1. Ignored when model_seeds is set. |
 | `model_seeds` | `Optional[list[int]]` | `None` | List of random seeds for multi-seed inference per input. Each seed runs a completely independent trunk pass, giving m... |
-| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Pipelines exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
+| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Chaperone exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
 | `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no MSA. Set to 0 to require an MSA for every protein chain. |
 | `create_bond_graph` | `bool` | `False` | Assign ligand bonds from specified_smiles and write inputs as CIF with bond topology. Required when input structures ... |
 | `input_mode` | `Literal` | `'file'` | 'file' passes CIF/PDB directly (current default). 'sequence' builds RF3 component JSON from sequences + CCD/SMILES. |

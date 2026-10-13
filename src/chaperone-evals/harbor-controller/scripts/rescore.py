@@ -39,7 +39,7 @@ if str(ROOT) not in sys.path:
 from task_paths import task_scorer  # noqa: E402
 from run_eval import (  # noqa: E402
     DEFAULT_HARNESS_IMAGE,
-    DEFAULT_PIPELINES_REPO,
+    DEFAULT_CHAPERONE_REPO,
     _scan_trials,
     _score_trial,
     resolve_task,
@@ -93,7 +93,7 @@ def main() -> None:
         metavar="PATH",
         help="A Harbor run folder; repeat for several.",
     )
-    parser.add_argument("--pipelines-repo", type=Path, default=DEFAULT_PIPELINES_REPO)
+    parser.add_argument("--chaperone-repo", type=Path, default=DEFAULT_CHAPERONE_REPO)
     parser.add_argument(
         "--worker-image",
         "--scoring-image",
@@ -101,8 +101,8 @@ def main() -> None:
         type=Path,
         default=DEFAULT_HARNESS_IMAGE,
         help=(
-            "Pipelines image used by scientific Slurm workers; the scorer "
-            "itself runs in the host Pipelines .venv"
+            "Chaperone image used by scientific Slurm workers; the scorer "
+            "itself runs in the host Chaperone .venv"
         ),
     )
     parser.add_argument("--required-n", type=_positive_integer, default=96)
@@ -119,11 +119,11 @@ def main() -> None:
 
     task = resolve_task(args.task)
     scorer = task_scorer(task.name)
-    pipelines_repo = Path(os.path.abspath(args.pipelines_repo.expanduser()))
+    chaperone_repo = Path(os.path.abspath(args.chaperone_repo.expanduser()))
     image = args.worker_image.expanduser().resolve()
 
     print(f"Task: {task}")
-    print(f"Pipelines repo: {pipelines_repo}")
+    print(f"Chaperone repo: {chaperone_repo}")
     print(f"Scientific worker image: {image}", flush=True)
 
     planned: list[tuple[Path, str]] = []
@@ -166,7 +166,7 @@ def main() -> None:
             shutil.rmtree(scoring)
         try:
             _score_trial(
-                scorer, trial, pipelines_repo, image, required_n=args.required_n
+                scorer, trial, chaperone_repo, image, required_n=args.required_n
             )
         except SystemExit as exc:
             failed.append(trial.name)

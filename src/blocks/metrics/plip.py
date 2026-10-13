@@ -12,8 +12,8 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from pipelines import InlineMetricBlock
-from pipelines.orchestration.job_args import JobArgs
+from chaperone import InlineMetricBlock
+from chaperone.orchestration.job_args import JobArgs
 
 logger = logging.getLogger(__name__)
 
@@ -138,11 +138,11 @@ def _run_plip_isolated(
 ) -> dict:
     """Run OpenBabel/PLIP away from RDKit's native libraries.
 
-    OpenBabel and the RDKit build used by the Pipelines image can segfault when
+    OpenBabel and the RDKit build used by the Chaperone image can segfault when
     loaded into one process. The parent performs structure conversion; this
     short-lived child imports only PLIP/OpenBabel and returns JSON metrics.
     """
-    with tempfile.TemporaryDirectory(prefix="pipelines-plip-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="chaperone-plip-") as temporary:
         workdir = Path(temporary)
         pdb_path = workdir / "input.pdb"
         options_path = workdir / "options.json"
@@ -159,7 +159,7 @@ def _run_plip_isolated(
             )
         )
         environment = os.environ.copy()
-        plip_pythonpath = environment.get("PIPELINES_PLIP_PYTHONPATH")
+        plip_pythonpath = environment.get("CHAPERONE_PLIP_PYTHONPATH")
         if plip_pythonpath:
             environment["PYTHONPATH"] = plip_pythonpath + (
                 os.pathsep + environment["PYTHONPATH"]

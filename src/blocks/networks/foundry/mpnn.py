@@ -8,10 +8,10 @@ from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
-from pipelines import CompiledBlockFunction, PipelineDataHandler, JobArgs
-from pipelines.block_config import TIER_PRIMARY, ScriptSpec
-from pipelines.common import glob_designs_in_dir, is_apple_silicon
-from pipelines.data import make_row
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone.block_config import TIER_PRIMARY, ScriptSpec
+from chaperone.common import glob_designs_in_dir, is_apple_silicon
+from chaperone.data import make_row
 
 from blocks.networks.mpnn_io import (
     load_manifest,
@@ -184,7 +184,7 @@ class FoundryMPNNBlock(CompiledBlockFunction):
 
         # Leave the checkpoint unset so the Foundry process resolves its own
         # registry default inside FOUNDRY_CONTAINER. Importing that registry in
-        # this outer Pipelines worker fails because rc-foundry intentionally
+        # this outer Chaperone worker fails because rc-foundry intentionally
         # lives only in the nested scientific image. An explicit override is
         # still passed through unchanged.
         if self.checkpoint_path is not None:

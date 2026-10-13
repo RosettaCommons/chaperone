@@ -8,9 +8,9 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_CONFIG_HOME="$HOME/.config"
 export MPLCONFIGDIR="$XDG_CONFIG_HOME/matplotlib"
 export PYTHONPYCACHEPREFIX="$WORKSPACE/.pycache"
-export PYTHONPATH="$WORKSPACE/pipelines/src${PYTHONPATH:+:$PYTHONPATH}"
-export PIPELINES_COMPUTE_BACKEND=auto
-export PIPELINES_CONTAINER_BACKEND=apptainer
+export PYTHONPATH="$WORKSPACE/chaperone/src${PYTHONPATH:+:$PYTHONPATH}"
+export CHAPERONE_COMPUTE_BACKEND=auto
+export CHAPERONE_CONTAINER_BACKEND=apptainer
 
 mkdir -p \
   "$HOME/.cache" \
@@ -21,13 +21,13 @@ mkdir -p \
   "$TMPDIR" \
   "$WORKSPACE/submission"
 
-if [[ -f "$WORKSPACE/pipelines/.env" ]]; then
+if [[ -f "$WORKSPACE/chaperone/.env" ]]; then
   set -a
-  source "$WORKSPACE/pipelines/.env"
-  [[ ! -f "$WORKSPACE/pipelines/.env.ipd" ]] || \
-    source "$WORKSPACE/pipelines/.env.ipd"
+  source "$WORKSPACE/chaperone/.env"
+  [[ ! -f "$WORKSPACE/chaperone/.env.ipd" ]] || \
+    source "$WORKSPACE/chaperone/.env.ipd"
   set +a
-  export PIPELINES_CONTAINER_BACKEND=apptainer
+  export CHAPERONE_CONTAINER_BACKEND=apptainer
 fi
 
 export QHOP=false

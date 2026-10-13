@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 import polars as pl
 import pytest
-from pipelines_cli.campaign_inspect import InspectError, inspect_campaign
+from chaperone_cli.campaign_inspect import InspectError, inspect_campaign
 import os
 import subprocess
 import sys
 from unittest.mock import patch
-from pipelines_cli import job_wait
+from chaperone_cli import job_wait
 
 
 # test_campaign_inspect.py
@@ -186,7 +186,7 @@ def test_init_cli_supports_conventional_help_flags():
                 sys.executable,
                 "-c",
                 (
-                    "from pipelines import init_cli; "
+                    "from chaperone import init_cli; "
                     f"init_cli(['campaign.py', {help_flag!r}], blocks=[])"
                 ),
             ],
@@ -297,7 +297,7 @@ def test_python_launch_rejects_code_modules_and_outside_scripts(tmp_path: Path):
             job_wait._validated_argv(argv, tmp_path, tmp_path)
 
 
-def test_mcp_exposes_wait_launch_and_inspect_from_pipelines(tmp_path: Path):
+def test_mcp_exposes_wait_launch_and_inspect_from_chaperone(tmp_path: Path):
     marker = tmp_path / "done"
     marker.touch()
     campaign = tmp_path / "campaigns" / "example"
@@ -334,7 +334,7 @@ def test_mcp_exposes_wait_launch_and_inspect_from_pipelines(tmp_path: Path):
         [
             sys.executable,
             "-m",
-            "pipelines_cli.main",
+            "chaperone_cli.main",
             "monitor-mcp",
             "--server-name",
             "campaign-monitor",

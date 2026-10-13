@@ -12,8 +12,8 @@ from typing import List
 
 from pydantic import Field
 
-from pipelines import BlockFunction, PipelineDataHandler
-from pipelines.data.schema import make_row
+from chaperone import BlockFunction, PipelineDataHandler
+from chaperone.data.schema import make_row
 
 logger = logging.getLogger(__name__)
 

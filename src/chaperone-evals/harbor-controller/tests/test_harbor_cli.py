@@ -97,8 +97,8 @@ class ReadableTrialNameTests(unittest.TestCase):
         for required_name in (
             "HARBOR_HOST_WORKSPACE",
             "HARBOR_SBATCH_SOCKET",
-            "PIPELINES_SLURM_PYTHON",
-            "PIPELINES_SLURM_ARRAY_PARALLELISM",
+            "CHAPERONE_SLURM_PYTHON",
+            "CHAPERONE_SLURM_ARRAY_PARALLELISM",
             "FOUNDRY_CHECKPOINT_DIRS",
             "HBPLUS_COPY",
             "CCD_MIRROR_PATH",
