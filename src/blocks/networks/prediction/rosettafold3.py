@@ -771,7 +771,6 @@ if __name__ == "__main__":
     block = RosettaFold3Block(
         num_diffusion_samples=1,
         diffusion_batch_size=1,
-        ckpt_path="/projects/ml/pipelines/weights/foundry/checkpoints/rf3_foundry_01_24_latest_remapped.ckpt",
     )
     handler = PipelineDataHandler.from_paths(
         [str(TEST_DATA / "design_0.pdb")], name="mpnn"
