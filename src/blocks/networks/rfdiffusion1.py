@@ -215,7 +215,7 @@ class RFD1Block(CompiledBlockFunction):
     )
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:small:1",
+        gpu_class="small",
         mem_gb=16,
         rows_per_job=32,
     )

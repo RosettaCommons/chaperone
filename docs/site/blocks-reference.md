@@ -3,6 +3,8 @@
 Auto-generated parameter reference for all pipeline blocks.
 Parameters marked with **★** are *primary* — they directly affect output count, quality, or runtime.
 
+Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see *Slurm Site Configuration* in the syntax guide.
+
 ---
 
 **Network Blocks**
@@ -104,7 +106,7 @@ Folding oracles are listed newest first. **When in doubt, use the latest model �
 
 *ESMFold2 structure prediction with optional MSA conditioning.*
 
-Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`48GB`, time=`5:00:00`
+Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`48GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -137,7 +139,7 @@ Class: `ESMFold2Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu
 
 *OpenFold 3 biomolecular structure prediction.*
 
-Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`64GB`, time=`5:00:00`
+Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`64GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -172,7 +174,7 @@ Class: `OpenFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=`gp
 > Passaro, Corso, Wohlwend et al. (2025) — Boltz-2: Towards Accurate and Efficient Binding Affinity Prediction
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.06.14.659707v1) · [Code](https://github.com/jwohlwend/boltz)
 
-Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -209,7 +211,7 @@ Class: `Boltz2Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:s
 
 *Boltz-2 prediction with helix-steering from Protein Hunter.*
 
-Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
+Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -252,7 +254,7 @@ Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gres
 > Krishna et al. (2025) — Accelerating Biomolecular Modeling with AtomWorks and RF3
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.08.14.670328v1) · [Code](https://github.com/RosettaCommons/foundry)
 
-Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -290,7 +292,7 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=
 
 *RF3 via local foundry-dev installation with CFG and auto-templating.*
 
-Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -337,7 +339,7 @@ Class: `RF3DevBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:s
 
 *Protenix biomolecular structure prediction (v2).*
 
-Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -377,7 +379,7 @@ Class: `ProtenixBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu
 
 *Chai-1 biomolecular structure prediction.*
 
-Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -412,7 +414,7 @@ Class: `Chai1Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:sm
 > Abramson et al. (2024) — Accurate structure prediction of biomolecular interactions with AlphaFold 3
 > [Paper](https://doi.org/10.1038/s41586-024-07487-w) · [Code](https://github.com/google-deepmind/alphafold3)
 
-Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -454,7 +456,7 @@ Class: `AlphaFold3Block` · Input: `True` · Resources: partition=`gpu`, gres=`g
 
 *AF3 with the design's target chain attached as a structural template.*
 
-Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -499,7 +501,7 @@ Class: `AF3WithTargetTemplate` · Input: `True` · Resources: partition=`gpu`, g
 
 *ColabFold (AlphaFold2) monomer and multimer structure prediction.*
 
-Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -542,7 +544,7 @@ Class: `ColabFoldBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gp
 > Pacesa et al. (2024) — BindCraft: one-shot design of functional protein binders
 > [Paper](https://www.biorxiv.org/content/10.1101/2024.09.30.615802) · [Code](https://github.com/martinpacesa/BindCraft)
 
-Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:large:1`, mem=`48GB`, time=`24:00:00`
+Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`48GB`, time=`24:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -570,7 +572,7 @@ Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gp
 > Stark et al. (2025) — BoltzGen: Toward Universal Binder Design
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.11.20.689494v1) · [Code](https://github.com/HannesStark/boltzgen)
 
-Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -597,7 +599,7 @@ Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gres=`gp
 
 *DISCO: Diffusion for Sequence-Structure Co-design.*
 
-Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00`
+Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -623,7 +625,7 @@ Class: `DISCOBlock` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:s
 > Jain et al. (2025) — E1: Retrieval-Augmented Protein Encoder Models
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.11.12.688125v1) · [Code](https://github.com/Profluent-AI/E1)
 
-Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`16GB`, time=`5:00:00`
+Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -644,7 +646,7 @@ Class: `E1Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small
 > Lin et al. (2023) — Evolutionary-scale prediction of atomic-level protein structure with a language model
 > [Paper](https://doi.org/10.1126/science.ade2574) · [Code](https://github.com/facebookresearch/esm)
 
-Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`16GB`, time=`5:00:00`
+Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -733,7 +735,7 @@ Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 > Cho et al. (2025) — Protein Hunter: exploiting structure hallucination within diffusion for protein design
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1) · [Code](https://github.com/yehlincho/Protein-Hunter)
 
-Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
+Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `protein_hunter`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -777,7 +779,7 @@ Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gre
 
 *RFdiffusion v1 block for backbone-level protein design.*
 
-Class: `RFD1Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`16GB`, time=`5:00:00`
+Class: `RFD1Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -831,7 +833,7 @@ Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:sm
 > Butcher, Krishna et al. (2025) — De novo Design of All-atom Biomolecular Interactions with RFdiffusion3
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Code](https://github.com/RosettaCommons/foundry)
 
-Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`16GB`, time=`5:00:00`
+Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -853,7 +855,7 @@ Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:sm
 
 *RFdiffusion3 partial diffusion. Useful for diversifying structures.*
 
-Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`16GB`, time=`5:00:00`
+Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -881,7 +883,7 @@ Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gres=`
 > Butcher, Krishna et al. (2025) — RFdiffusion3NA multipolymer design
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Code](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na)
 
-Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gres=`gpu:small:1`, mem=`32GB`, time=`6:00:00`
+Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`6:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -923,7 +925,7 @@ Class: `ScoreValStructuresBlock` · Input: `True` · Resources: Not specified
 
 *Apple SimpleFold single-sequence, protein-monomer structure prediction.*
 
-Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gres=`gpu:large:1`, mem=`96GB`, time=`24:00:00`
+Class: `SimpleFoldBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`96GB`, time=`24:00:00`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|

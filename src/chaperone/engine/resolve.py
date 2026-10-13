@@ -5,6 +5,7 @@ from the various input formats (str, dict, instances, CLI overrides, etc.).
 """
 
 import logging
+import shlex
 from dataclasses import asdict, dataclass, fields as dc_fields, replace
 from typing import List, Literal
 
@@ -12,6 +13,7 @@ from chaperone.block_config.base import BlockFunction
 from chaperone.common import get_console
 from chaperone.data import PipelineDataHandler
 from chaperone.orchestration import JobArgs, SlurmTaskRunner
+from chaperone.orchestration.job_args import site_gres, site_partition
 
 logger = logging.getLogger(__name__)
 console = get_console()
@@ -299,10 +301,26 @@ def _resolve_default_mode(backend: str, use_local_gpus: bool = True) -> Executio
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _strip_gres_type(gres: str | None) -> str | None:
+    """Drop the GPU type from a typed gres: ``gpu:a4000:1`` -> ``gpu:1``.
+
+    Used when ``--partition`` retargets a block, so the job can run on any GPU
+    in the new partition. Untyped values are returned unchanged.
+    """
+    parts = (gres or "").split(":")
+    if len(parts) == 3:
+        return f"{parts[0]}:{parts[2]}"
+    return gres
+
+
 def _resolve_job_args(
     job_args: JobArgs | dict | None, block: BlockFunction, run_args: RuntimeArgs
 ) -> JobArgs | None:
     """Merge user job_args with block's resource defaults.
+
+    Precedence, highest first: CLI flags, caller ``job_args``, the block's
+    ``_resources``, then the site settings (``CHAPERONE_*``) that turn a block's
+    abstract CPU/GPU class into a partition and gres.
 
     If a local CUDA GPU is detected and use_local_gpus=True (default),
     automatically routes to local execution instead of SLURM.
@@ -349,6 +367,14 @@ def _resolve_job_args(
     defaults = asdict(block_resources)
     defaults["job_name"] = block.name
 
+    # A block's ``_resources`` names resource *classes*, not cluster resources:
+    # partition "cpu"/"gpu" and a ``gpu_class`` size. They are resolved through
+    # the site settings (CHAPERONE_*_PARTITION, CHAPERONE_GRES_MAP) below, only
+    # for values the block supplied. Caller-supplied values are used verbatim.
+    block_partition = (defaults["partition"] or "").lower()
+    block_is_gpu = "gpu" in block_partition or bool(defaults.get("gpu_class"))
+    cli_partition_applied = False
+
     # Apply global --partition flag to block defaults (only for GPU blocks)
     try:
         from absl import flags as absl_flags
@@ -357,40 +383,55 @@ def _resolve_job_args(
         if cli_partition is not None and absl_flags.FLAGS.partition is not None:
             # Only override partition for blocks that already target a GPU partition;
             # CPU-only blocks (e.g. MPNN) should keep their default.
-            if (
-                "gpu" in defaults["partition"].lower()
-                or defaults["partition"].lower() == "local"
-            ):
+            if "gpu" in block_partition or block_partition == "local":
                 defaults["partition"] = absl_flags.FLAGS.partition
-                # When --partition overrides, strip the GPU model from gres so
-                # the job can run on any GPU in the target partition.  E.g.
-                # "gpu:a4000:1" → "gpu:1".  An explicit --gres still wins.
-                if defaults.get("gres") and ":" in (defaults["gres"] or ""):
-                    parts = defaults["gres"].split(":")
-                    if len(parts) == 3:  # "gpu:a4000:1" → "gpu:1"
-                        defaults["gres"] = f"{parts[0]}:{parts[2]}"
+                cli_partition_applied = True
+    except (ImportError, absl_flags.UnparsedFlagAccessError):
+        pass
+
+    if not cli_partition_applied and block_partition in ("cpu", "gpu"):
+        defaults["partition"] = site_partition(block_partition == "gpu")
+    if not defaults.get("gres") and (
+        defaults.get("gpu_class") or block_partition == "gpu"
+    ):
+        defaults["gres"] = site_gres(defaults.get("gpu_class"))
+    if cli_partition_applied:
+        defaults["gres"] = _strip_gres_type(defaults.get("gres"))
+
+    try:
+        from absl import flags as absl_flags
+
         cli_gres = getattr(absl_flags.FLAGS, "gres", None)
         if cli_gres is not None and absl_flags.FLAGS.gres is not None:
             # Only GPU blocks take a gres. Applying it to a CPU-partition block
             # (e.g. MPNN) yields "--partition=cpu --gres=gpu:...", which SLURM
             # rejects with "Requested node configuration is not available".
-            if "gpu" in defaults["partition"].lower():
+            if block_is_gpu:
                 defaults["gres"] = absl_flags.FLAGS.gres
     except (ImportError, absl_flags.UnparsedFlagAccessError):
         pass
 
     if job_args is None:
-        resolved = JobArgs(**defaults)
+        user: dict = {}
     elif isinstance(job_args, dict):
-        resolved = JobArgs(**{**defaults, **job_args})
+        user = dict(job_args)
     else:
         # JobArgs instance — extract only user-set overrides, merge with defaults
-        overrides = {
+        user = {
             f.name: getattr(job_args, f.name)
             for f in dc_fields(job_args)
             if getattr(job_args, f.name) != f.default
         }
-        resolved = JobArgs(**{**defaults, **overrides})
+    resolved = JobArgs(**{**defaults, **user})
+    if user.get("gpu_class") and not user.get("gres"):
+        # The caller asked for a size class: map it, whatever the block had. A
+        # job_args shared across blocks gives GPU blocks the class and leaves CPU
+        # blocks alone, unless the caller also names a partition for them.
+        if block_is_gpu or user.get("partition"):
+            gres = site_gres(user["gpu_class"])
+            resolved.gres = _strip_gres_type(gres) if cli_partition_applied else gres
+        else:
+            resolved.gpu_class = None
 
     # Documented priority is "CLI flags > script kwargs", but the merges above
     # let an explicit ``job_args`` dict/instance shadow --partition/--gres. Only
@@ -399,31 +440,36 @@ def _resolve_job_args(
     try:
         from absl import flags as absl_flags
 
-        for flag_name in ("partition", "gres"):
+        for flag_name in ("partition", "gres", "account", "qos", "extra_sbatch"):
             flag = (
                 absl_flags.FLAGS[flag_name] if flag_name in absl_flags.FLAGS else None
             )
             if flag is None or not flag.present or flag.value is None:
                 continue
             # Never drag a CPU-only block (e.g. MPNN) onto a GPU partition.
-            if flag_name == "partition" and "gpu" not in defaults["partition"].lower():
+            if flag_name == "partition" and not (
+                "gpu" in block_partition or cli_partition_applied
+            ):
                 continue
-            if flag_name == "gres" and "gpu" not in resolved.partition.lower():
+            if flag_name == "gres" and not (block_is_gpu or resolved.wants_gpu):
                 continue
-            setattr(resolved, flag_name, flag.value)
+            value = flag.value
+            if flag_name == "extra_sbatch":
+                value = shlex.split(value)
+            setattr(resolved, flag_name, value)
     except (ImportError, KeyError, absl_flags.UnparsedFlagAccessError):
         pass
 
     if resolved.rows_per_job is None:
         resolved.rows_per_job = block._rows_per_job
 
-    if resolved.partition.lower() == "local":
+    if (resolved.partition or "").lower() == "local":
         if run_args.mode != "local":
             logger.info("partition='local' — forcing mode='local'")
             run_args.mode = "local"
         return resolved
 
-    if "gpu" in resolved.partition.lower():
+    if resolved.wants_gpu:
         if run_args.use_local_gpus:
             local_gpus = detect_cuda_gpus()
             if local_gpus:

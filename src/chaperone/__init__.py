@@ -182,15 +182,39 @@ _GLOBAL_FLAG_DEFS = [
         "partition",
         "string",
         None,
-        "Default SLURM partition for all blocks (e.g. gpu, gpu-bf, local). "
-        "If unset, uses each block's own default.",
+        "SLURM partition for all GPU blocks, or 'local' (e.g. --partition=gpu). "
+        "If unset, GPU blocks use CHAPERONE_GPU_PARTITION, then "
+        "CHAPERONE_DEFAULT_PARTITION, then the cluster default. CPU blocks are "
+        "not affected. A partition override drops the GPU type from the block's "
+        "gres (gpu:a100:1 becomes gpu:1) unless --gres is also given.",
     ),
     (
         "gres",
         "string",
         None,
-        "Default SLURM gres for all blocks (e.g. gpu:a4000:1, gpu:a100:1, gpu:1). "
-        "If unset, uses each block's own default.",
+        "SLURM --gres for all GPU blocks, passed to sbatch as-is (e.g. gpu:1, "
+        "gpu:a100:1). Valid GPU types depend on the cluster. If unset, uses "
+        "each block's size class mapped through CHAPERONE_GRES_MAP, else gpu:1.",
+    ),
+    (
+        "account",
+        "string",
+        None,
+        "SLURM --account for all blocks. If unset, uses CHAPERONE_DEFAULT_ACCOUNT.",
+    ),
+    (
+        "qos",
+        "string",
+        None,
+        "SLURM --qos for all blocks. If unset, uses CHAPERONE_DEFAULT_QOS.",
+    ),
+    (
+        "extra_sbatch",
+        "string",
+        None,
+        "Extra sbatch long options for all blocks, space-separated and quoted, "
+        "e.g. --extra_sbatch='--reservation=mine --mail-type=END'. Replaces "
+        "CHAPERONE_DEFAULT_EXTRA_SBATCH.",
     ),
     (
         "config",

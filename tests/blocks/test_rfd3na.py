@@ -13,7 +13,8 @@ def test_registry_discovers_rfd3na_generation_block():
     assert Blocks["rfd3na"] is RFD3NABlock
     assert RFD3NABlock._get_image() is FOUNDRY_CONTAINER
     assert RFD3NABlock._resources.partition == "gpu"
-    assert RFD3NABlock._resources.gres == "gpu:small:1"
+    assert RFD3NABlock._resources.gpu_class == "small"
+    assert RFD3NABlock._resources.gres is None
 
     definition = FOUNDRY_CONTAINER.to_singularity()
     assert "pip install -e '.[all]'" in definition

@@ -9,7 +9,7 @@ Usage:
     from chaperone.orchestration import SlurmTaskRunner, JobArgs
 
     runner = SlurmTaskRunner(
-        job_args=JobArgs(partition="gpu", mem_gb=8, job_name="my_pipeline")
+        job_args=JobArgs(gpu_class="small", mem_gb=8, job_name="my_pipeline")
     )
     with runner:
         futures = runner.map(my_fn, items=[1, 2, 3])
@@ -109,7 +109,9 @@ class SlurmTaskRunner(TaskRunner):
     """TaskRunner that submits tasks to SLURM via submitit.
 
     Configure SLURM parameters via JobArgs. Use partition='local' for local execution.
-    GPUs are auto-detected (1 GPU if partition contains 'gpu', else 0).
+    Without a gres, a job that wants a GPU (a gpu-named partition) gets one GPU per node;
+    otherwise none. Partition, gres, account, qos and extra sbatch options that JobArgs
+    leaves unset come from the CHAPERONE_* site settings.
 
     Args:
         job_args: SLURM job configuration (partition, mem_gb, time_limit, job_name).
@@ -168,20 +170,20 @@ class SlurmTaskRunner(TaskRunner):
 
         self._job_args = job_args
 
-        self.partition = job_args.partition
+        self.partition = job_args.effective_partition()
         self.time_limit = job_args.time_limit
         self.mem_gb = job_args.mem_gb
         self.job_name = job_args.job_name
-        self.gres = job_args.gres
+        self.gres = job_args.effective_gres()
         self.constraint = job_args.constraint
         self.cpus_per_task = job_args.cpus_per_task
 
-        if self.partition.lower() == "local":
+        if (self.partition or "").lower() == "local":
             self.compute_backend = ComputeBackend.LOCAL
         else:
             self.compute_backend = ComputeBackend.SLURM
 
-        self.gpus_per_node = 1 if "gpu" in self.partition.lower() else 0
+        self.gpus_per_node = 1 if job_args.wants_gpu else 0
 
         self.log_folder = log_folder
         self.slurm_array_parallelism = job_args.effective_slurm_array_parallelism(
@@ -212,7 +214,7 @@ class SlurmTaskRunner(TaskRunner):
 
     def _format_resources(self) -> str:
         """Format resource specification for logging."""
-        parts = [f"partition={self.partition}"]
+        parts = [f"partition={self.partition or '(cluster default)'}"]
         if self.gres:
             parts.append(f"gres={self.gres}")
         parts.append(f"cpus={self.cpus_per_task}")
@@ -254,7 +256,6 @@ class SlurmTaskRunner(TaskRunner):
             self._executor = _create_slurm_executor(folder=f"{self.log_folder}/%j")
 
             params = {
-                "slurm_partition": self.partition,
                 "timeout_min": self._job_args.timeout_min,
                 "mem_gb": self.mem_gb,
                 "cpus_per_task": self.cpus_per_task,
@@ -262,6 +263,9 @@ class SlurmTaskRunner(TaskRunner):
                 "slurm_srun_args": ["--export=ALL"],
                 **self.slurm_kwargs,
             }
+
+            if self.partition:
+                params.setdefault("slurm_partition", self.partition)
 
             if self.gres is not None:
                 params["slurm_gres"] = self.gres
@@ -279,6 +283,7 @@ class SlurmTaskRunner(TaskRunner):
                     self._job_args.nice
                 )
 
+            self._job_args.add_site_sbatch_params(params)
             self._executor.update_parameters(**params)
 
         return self
@@ -297,6 +302,9 @@ class SlurmTaskRunner(TaskRunner):
                 mem_gb=self.mem_gb,
                 job_name=self.job_name,
                 gres=self.gres,
+                account=self._job_args.account,
+                qos=self._job_args.qos,
+                extra_sbatch=self._job_args.extra_sbatch,
                 constraint=self.constraint,
                 cpus_per_task=self.cpus_per_task,
                 exclude=self._job_args.exclude,

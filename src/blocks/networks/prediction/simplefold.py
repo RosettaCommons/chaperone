@@ -122,7 +122,7 @@ class SimpleFoldBlock(AF3LikePredictionBlock):
     )
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:large:1",
+        gpu_class="large",
         mem_gb=96,
         time_limit="24:00:00",
         rows_per_job=50,

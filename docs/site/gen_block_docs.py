@@ -237,6 +237,8 @@ def _resources_str(resources: JobArgs | None) -> str:
     parts = []
     if resources.partition:
         parts.append(f"partition=`{resources.partition}`")
+    if resources.gpu_class:
+        parts.append(f"gpu_class=`{resources.gpu_class}`")
     if resources.gres:
         parts.append(f"gres=`{resources.gres}`")
     if resources.mem_gb:
@@ -352,6 +354,8 @@ def generate_block_docs() -> str:
         "",
         "Auto-generated parameter reference for all pipeline blocks.",
         "Parameters marked with **★** are *primary* — they directly affect output count, quality, or runtime.",
+        "",
+        "Resources list what a block requests: `partition` is the class `cpu` or `gpu`, and `gpu_class` is the GPU size (`small` or `large`). Each site maps these to a real partition and `--gres` through its `CHAPERONE_*` settings; see *Slurm Site Configuration* in the syntax guide.",
         "",
         "---",
         "",

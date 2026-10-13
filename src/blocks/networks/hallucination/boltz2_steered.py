@@ -46,7 +46,7 @@ class Boltz2SteeredBlock(Boltz2Block):
     _image = PROTEIN_HUNTER_CONTAINER
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:small:1",
+        gpu_class="small",
         mem_gb=32,
         rows_per_job=200,
     )

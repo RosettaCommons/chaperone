@@ -40,7 +40,7 @@ class RFD3NABlock(RFD3Block):
     )
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:small:1",
+        gpu_class="small",
         mem_gb=32,
         cpus_per_task=2,
         time_limit="6:00:00",

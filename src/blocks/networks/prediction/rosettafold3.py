@@ -125,7 +125,7 @@ class RosettaFold3Block(AF3LikePredictionBlock):
     )
     _resources = JobArgs(
         partition="gpu",
-        gres="gpu:small:1",
+        gpu_class="small",
         mem_gb=32,
         # RF3 preprocessing and compilation retain substantial per-complex
         # state. A 77-row production chunk exceeded 32 GB of worker RAM on an
