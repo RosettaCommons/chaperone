@@ -15,7 +15,6 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.top
-    - navigation.instant
     - toc.follow
     - search.suggest
     - search.highlight
@@ -34,7 +33,7 @@ theme:
         name: Switch to light mode
 
 extra_css:
-  - stylesheets/claude.css
+  - stylesheets/claude.css?v=2cab4243
 
 plugins:
   - search:
@@ -58,4 +57,4 @@ nav:
   - Syntax Reference: syntax.md
   - Validation: validation.md
   - Evaluations: evaluations.md
-  - Claude Skills: skills.md
+  - Agent Skills: skills.md

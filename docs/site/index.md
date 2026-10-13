@@ -38,4 +38,4 @@ Each pipeline follows a composable block pattern:
 
 Advanced patterns include **cycling** (iterative MPNN → oracle loops), **parallel submission** (`engine.submit()` + `gather()`), and **branching** (multiple prediction configurations).
 
-See the [Simple Example](simple.md) for a complete pipeline, and [Claude Skills](skills.md) for the guided workflows (`/setup` configures containers and compute).
+See the [Simple Example](simple.md) for a complete pipeline, and [Agent Skills](skills.md) for the guided workflows (`/setup` configures containers and compute).

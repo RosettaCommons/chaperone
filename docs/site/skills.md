@@ -1,4 +1,4 @@
-# Claude Skills
+# Agent Skills
 
 Chaperone ships with a collection of [Claude Code](https://claude.com/claude-code) **skills** — domain-specific guides and workflows that Claude loads on demand. Skills live under `.agents/skills/` in the repo and are invoked either automatically (when the user's request matches the skill description) or explicitly via `/<skill-name>`.
 

@@ -24,3 +24,6 @@ The custom light/dark formatting is ported from the original Pipelines site's
 `gh-pages:stylesheets/claude.css` (blob `2cab424389278d28d85f3445f70737b833c21d84`).
 Keep this stylesheet checked in: MkDocs does not fail when a configured CSS file
 is missing, and the site would silently revert to Material's default appearance.
+The stylesheet URL includes its revision to avoid reusing an earlier cached
+response. Update that revision when changing the CSS. Navigation uses full page
+loads so an open tab does not keep serving MkDocs' cached pages across deploys.
