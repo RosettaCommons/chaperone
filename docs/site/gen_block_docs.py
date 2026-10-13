@@ -337,12 +337,12 @@ def _render_block(name: str, cls) -> list[str]:
     lines.extend(_reference_lines(name, cls))
     if name == "foundry_mpnn":
         lines.extend([
-            "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the legacy MPNN backend. The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
+            "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (public LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
             "",
         ])
     if name == "mpnn":
         lines.extend([
-            "**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `legacy` selects it explicitly (existing site SIF). See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.",
+            "**Backend:** `mpnn` runs the public MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between public LigandMPNN and `foundry_mpnn`.",
             "",
         ])
     if name in METRIC_NOTES:

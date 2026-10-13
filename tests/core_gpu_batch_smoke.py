@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 """Bounded multi-input check of the core design and prediction stack.
 
-    CHAPERONE_MPNN_CONTAINER=public python tests/core_gpu_batch_smoke.py \
+    python tests/core_gpu_batch_smoke.py \
         --test --local --rundir=/absolute/new/run
 
-Two independent 40-residue RFD3 batches produce two backbones; classic MPNN
+Two independent 40-residue RFD3 batches produce two backbones; MPNN
 produces two sequences each. RF3, AF3 and ESMFold2 independently predict that
 same four-sequence cohort with one sample and normal sampling schedules.
 This checks execution and data integrity, not scientific accuracy or production
 throughput. RF3 early stopping is disabled here to require a completed prediction
 for every input; its normal recycle and diffusion schedules are unchanged. This
 execution diagnostic does not promote designs based on confidence.
-Select CHAPERONE_MPNN_CONTAINER=public for the public LigandMPNN image or
-legacy for the site classic-MPNN image; select it explicitly for a build check.
+MPNN runs from the public LigandMPNN image (`chaperone install ligandmpnn_public`).
 
 Use --predictors=rf3,af3 (or none) to select stages. Reuse the same run directory
 to add predictors later: generation and sequences use the engine's normal cache.
@@ -184,7 +183,6 @@ def main(argv=None):
             block.name: block.model_dump() for block in [*generation, *predictors]},
             "runtime": asdict(runtime), "resources": asdict(resources)}, default=str, sort_keys=True))
         return
-    assert os.environ.get("CHAPERONE_MPNN_CONTAINER") in {"public", "legacy"}, "Select the public or legacy MPNN image explicitly"
     rundir = get_runtime_overrides().get("rundir")
     if not rundir:
         raise ValueError("Supply --rundir=/absolute/path/to/core-batch-smoke")

@@ -20,7 +20,6 @@ def test_public_packing_smoke_respects_site_and_explicit_mode(tmp_path, local, m
     }
     env.update(
         CHAPERONE_SITE="portable",
-        CHAPERONE_MPNN_CONTAINER="public",
         PYTHONPATH=str(ROOT / "src"),
     )
     if mapping:

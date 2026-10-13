@@ -49,8 +49,7 @@ The MIT license on Chaperone's eval code does not replace the output notices.
 
 Container recipes install separate upstream projects; their software and assets
 retain their own terms. In particular, the public LigandMPNN backend uses the
-upstream MIT-licensed source and public checkpoints, while the legacy fused_mpnn
-backend runs only from a supplied site image. PyRosetta/Rosetta, model
+upstream MIT-licensed source and public checkpoints. PyRosetta/Rosetta, model
 parameters, and databases may have separate access or use requirements.
 
 See the [container guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/containers.md)

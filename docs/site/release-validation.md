@@ -76,7 +76,6 @@ sinfo -o '%P %G %l'
 export CHAPERONE_SITE=portable
 export CHAPERONE_CONTAINER_BACKEND=apptainer
 export CHAPERONE_CONTAINER_DIRS=/shared/chaperone/containers
-export CHAPERONE_MPNN_CONTAINER=public
 # Optional when the Slurm default is unsuitable:
 # export CHAPERONE_GPU_PARTITION=your-gpu-partition
 # export CHAPERONE_GRES_MAP='{"default":"gpu:h200:1"}'
@@ -103,7 +102,7 @@ python tests/public_mpnn_packing_smoke.py \
 ```
 
 This helper requests the configured GPU partition and large-class GRES explicitly
-because classic MPNN otherwise defaults to CPU. It checks eight packed structures,
+because MPNN otherwise defaults to CPU. It checks eight packed structures,
 fixed residues, restored multi-character chains, parent lineage, finite coordinates,
 one allocated GPU and cache replay. `--local` instead uses an existing allocation.
 
@@ -128,7 +127,7 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. Six official checkpoints passed checksums and load checks. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
+| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
 | Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with public MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
 | DISCO | Transformers-repaired full build passed; final architecture repair not rebuilt | The first GPU failure was a Transformers 5 checkpoint-layout mismatch. The corrected rebuild reached a second upstream failure: a comma-delimited CUDA architecture list. The final recipe repairs that assignment and passes parser/regression checks; final GPU validation is deferred. |
@@ -178,9 +177,8 @@ normally and permits only that exact mismatch in its dependency check. This is
 an explicit compatibility override, not a clean `pip check` result; the repaired image passed the bounded GPU smoke described above.
 
 Public recipes do not grant access to private repositories, licensed software or
-model weights. The legacy MPNN validation required authorized private-source
-access; the new public LigandMPNN backend supplies a separate public installation
-path with official public weights. Third-party
+model weights. The `mpnn` block installs from public source with official public
+weights. Third-party
 software and weights retain their own terms despite Chaperone's MIT license.
 The [third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md)
 identify the bundled AF3 runner (CC BY-NC-SA 4.0) and nine eval example structures
@@ -190,8 +188,8 @@ Held-out scorers/reference material in public repository history remain accessib
 to network-enabled agents; snapshot and wheel isolation cannot make that history
 private. Separate private material/history or describe these as public tasks.
 
-Older IPD modelhub images failed on Blackwell with unsupported GPU kernels. Use
-the rebuilt portable runtime as described in the [container guide](containers.md).
+Older prebuilt images failed on Blackwell with unsupported GPU kernels. Rebuild
+the image as described in the [container guide](containers.md).
 Do not interpret a CPU substitution as successful GPU validation.
 
 ## Repeat the CPU functional smoke
@@ -252,7 +250,7 @@ export CHAPERONE_REPO="$(pwd)"
 export SMOKE_ROOT=/absolute/path/to/release-smokes
 
 python examples/benchmarks/ppi/pipeline_foundry.py --test --local --rundir="$SMOKE_ROOT/ppi-foundry"
-python examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test --local --rundir="$SMOKE_ROOT/ppi-legacy"
+python examples/benchmarks/ppi/pipeline_mpnn.py --test --local --rundir="$SMOKE_ROOT/ppi-mpnn"
 python examples/benchmarks/disco/pipeline.py --test --local --rundir="$SMOKE_ROOT/disco"
 python examples/benchmarks/ame/pipeline.py --test --local --rundir="$SMOKE_ROOT/ame"
 python examples/benchmarks/ame/pipeline_full.py --test --local --rundir="$SMOKE_ROOT/ame-full"

@@ -1,4 +1,4 @@
-# Classic MPNN block for inverse folding
+# MPNN block for inverse folding, backed by public LigandMPNN
 import json
 import logging
 import os
@@ -9,13 +9,12 @@ from pathlib import Path
 from typing import Literal
 
 from atomworks.io.utils.chain import create_chain_id_generator
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from chaperone import (
     CompiledBlockFunction,
     PipelineDataHandler,
     JobArgs,
-    get_setting_field,
 )
 from chaperone.block_config import TIER_PRIMARY
 from chaperone.containers import Image
@@ -35,18 +34,84 @@ logger = logging.getLogger(__name__)
 
 _PUBLIC_MPNN_REVISION = "26ec57ac976ade5379920dbd43c7f97a91cf82de"
 _PUBLIC_MPNN_ROOT = "/opt/ligandmpnn"
+# Every official checkpoint of the pinned revision (get_model_params.sh), keyed by
+# model_type, then by the backbone noise (Angstrom) the model was trained with:
+# {filename: sha256}. All are baked into the image and verified at build time.
+# The first group is also published in dauparas/ProteinMPNN; the rest come from
+# files.ipd.uw.edu, the host get_model_params.sh downloads from.
 _PUBLIC_MPNN_CHECKPOINTS = {
-    "protein_mpnn": ("proteinmpnn_v_48_020.pt", "c9cb4a671d79604111231f8dbfc7c590e06f1197453b7a6854ac6661a642f5bd"),
-    "ligand_mpnn": ("ligandmpnn_v_32_010_25.pt", "161cd264061fda9680cbb940255522ae42f2966c552d045d87913d9452a80970"),
-    "soluble_mpnn": ("solublempnn_v_48_020.pt", "7af52d090172c230c7f0e9d21e02203f6b3a38b16db58d3c7a3960e0a9a6e31a"),
-    "per_residue_label_membrane_mpnn": ("per_residue_label_membrane_mpnn_v_48_020.pt", "1e62e193bee12f1b64fff87ae3ca9da95b0f60b15839ae3cbe48e4983ef055ba"),
-    "global_label_membrane_mpnn": ("global_label_membrane_mpnn_v_48_020.pt", "89ef0abddbfb956c4c7c02dcba6523c0b5152733055f7509292365eaecc38b21"),
-    "path_sc": ("ligandmpnn_sc_v_32_002_16.pt", "799a9de6c1c72bb0c7ceb37998391a6fd0e3e21cb42928ee31a28313a3b1b46a"),
+    "protein_mpnn": {
+        0.02: ("proteinmpnn_v_48_002.pt", "925f2ca1007bf9b02e0e7f420ff00eb91f50fcc2722f64b42e644ae95adaa131"),
+        0.10: ("proteinmpnn_v_48_010.pt", "db866fae956a28661f926053d630610c55e9fc4bc03922f2aeeb98a37435ccce"),
+        0.20: ("proteinmpnn_v_48_020.pt", "c9cb4a671d79604111231f8dbfc7c590e06f1197453b7a6854ac6661a642f5bd"),
+        0.30: ("proteinmpnn_v_48_030.pt", "c34b7bfb38418ea30989fda3314f4781ac4e3920f9825731cf555f1fed44ac66"),
+    },
+    "ligand_mpnn": {
+        0.05: ("ligandmpnn_v_32_005_25.pt", "ee07a7afb53bce98a0b1d33996bbe3b46b0831df5ce0684d3cbd55eed1aa9263"),
+        0.10: ("ligandmpnn_v_32_010_25.pt", "161cd264061fda9680cbb940255522ae42f2966c552d045d87913d9452a80970"),
+        0.20: ("ligandmpnn_v_32_020_25.pt", "42caaa5cdb380867d2b31c30de4ab53ea89171279b3a0732ddf94bc4d3cb6981"),
+        0.30: ("ligandmpnn_v_32_030_25.pt", "ed13e130787f70b6c385efba56949220d16a1d1a98073ada3002b3701a6a8ecf"),
+    },
+    "soluble_mpnn": {
+        0.02: ("solublempnn_v_48_002.pt", "0877f840978fe770be6fcec025784d8f50c438571db3260c05e41aa207a7c448"),
+        0.10: ("solublempnn_v_48_010.pt", "79562f7444f72c84595a1c96010713864865a616f4f3967633493041e169fa6e"),
+        0.20: ("solublempnn_v_48_020.pt", "7af52d090172c230c7f0e9d21e02203f6b3a38b16db58d3c7a3960e0a9a6e31a"),
+        0.30: ("solublempnn_v_48_030.pt", "1dd63f1e9fc68a133cc9ef859edf43b489e5ac581cb5624e0b9ec848ff062421"),
+    },
+    "per_residue_label_membrane_mpnn": {
+        0.20: ("per_residue_label_membrane_mpnn_v_48_020.pt", "1e62e193bee12f1b64fff87ae3ca9da95b0f60b15839ae3cbe48e4983ef055ba"),
+    },
+    "global_label_membrane_mpnn": {
+        0.20: ("global_label_membrane_mpnn_v_48_020.pt", "89ef0abddbfb956c4c7c02dcba6523c0b5152733055f7509292365eaecc38b21"),
+    },
 }
+# The upstream run.py defaults, used when noise_level is not given.
+_PUBLIC_MPNN_DEFAULT_NOISE = {
+    "protein_mpnn": 0.20,
+    "ligand_mpnn": 0.10,
+    "soluble_mpnn": 0.20,
+    "per_residue_label_membrane_mpnn": 0.20,
+    "global_label_membrane_mpnn": 0.20,
+}
+_PUBLIC_MPNN_PACKER = (
+    "ligandmpnn_sc_v_32_002_16.pt",
+    "799a9de6c1c72bb0c7ceb37998391a6fd0e3e21cb42928ee31a28313a3b1b46a",
+)
+_PUBLIC_MPNN_ALL_CHECKPOINTS = [
+    entry
+    for versions in _PUBLIC_MPNN_CHECKPOINTS.values()
+    for entry in versions.values()
+] + [_PUBLIC_MPNN_PACKER]
 
 
-def _public_checkpoint(kind: str) -> str:
-    return f"{_PUBLIC_MPNN_ROOT}/model_params/{_PUBLIC_MPNN_CHECKPOINTS[kind][0]}"
+def _available_versions() -> str:
+    return "; ".join(
+        f"{model_type}: {', '.join(f'{noise:g}' for noise in versions)}"
+        for model_type, versions in _PUBLIC_MPNN_CHECKPOINTS.items()
+    )
+
+
+def _public_checkpoint(model_type: str, noise_level: float | None = None) -> str:
+    """Image path of the checkpoint for ``model_type`` at ``noise_level``.
+
+    Raises ``ValueError`` listing every valid combination if there is none.
+    """
+    versions = _PUBLIC_MPNN_CHECKPOINTS.get(model_type)
+    if versions is None:
+        raise ValueError(
+            f"Unknown MPNN model_type {model_type!r}; "
+            f"choose one of {sorted(_PUBLIC_MPNN_CHECKPOINTS)}."
+        )
+    noise = _PUBLIC_MPNN_DEFAULT_NOISE[model_type] if noise_level is None else round(noise_level, 2)
+    if noise not in versions:
+        raise ValueError(
+            f"model_type={model_type!r} has no checkpoint with noise_level={noise_level}. "
+            f"Available noise_level values by model_type: {_available_versions()}."
+        )
+    return f"{_PUBLIC_MPNN_ROOT}/model_params/{versions[noise][0]}"
+
+
+_PUBLIC_MPNN_PACKER_PATH = f"{_PUBLIC_MPNN_ROOT}/model_params/{_PUBLIC_MPNN_PACKER[0]}"
 
 
 # These removed NumPy aliases were aliases of the corresponding Python types.
@@ -69,32 +134,15 @@ for filename, alias, expected in [
 """
 
 
-def _configured_mpnn_weights_dir() -> str | None:
-    value = get_setting_field("MPNN_WEIGHTS_DIR", default=None)
-    if not value:
-        return None
-    path = Path(value).expanduser().absolute()
-    # Older supplied .env.ipd files name the container alias. Resolve only this
-    # known mapping, and use the resolved path for mounts AND every checkpoint.
-    # A real host directory at the configured path always takes precedence.
-    if (
-        path == Path("/databases/mpnn")
-        and not path.is_dir()
-        and Path("/net/databases/mpnn").is_dir()
-    ):
-        path = Path("/net/databases/mpnn")
-    return str(path)
-
-
 @dataclass(frozen=True)
 class ChainRename:
     """Single-letter stand-ins for the multi-character chain ids of one structure.
 
-    RFD3 names unindexed residues with chain ids such as ``X1``, which fused_mpnn's
-    PDB writer rejects. The structure is handed to MPNN with those chains renamed
-    (``rename``), fixed-position strings follow the rename (``apply``), and the
-    outputs get the original ids back (``restore_cif``), so the block's outputs use
-    the same chain ids as its inputs.
+    RFD3 names unindexed residues with chain ids such as ``X1``, which the PDB format
+    MPNN reads and writes cannot hold. The structure is handed to MPNN with those
+    chains renamed (``rename``), fixed-position strings follow the rename (``apply``),
+    and the outputs get the original ids back, so the block's outputs use the same
+    chain ids as its inputs.
     """
 
     mapping: dict[str, str] = field(default_factory=dict)  # original -> stand-in
@@ -163,90 +211,14 @@ class ChainRename:
         present = {str(chain) for chain in chain_ids}
         return set(self.mapping.values()) <= present and not set(self.mapping) & present
 
-    def restore_cif(self, path: Path) -> None:
-        """Rewrite every chain-id column of a CIF in place, stand-ins back to originals."""
-        import gzip
-
-        import numpy as np
-        from biotite.structure.io.pdbx import CIFColumn, CIFFile
-
-        original_of = {new: old for old, new in self.mapping.items()}
-        compressed = str(path).endswith(".gz")
-        if compressed:
-            with gzip.open(path, "rt") as handle:
-                cif = CIFFile.read(handle)
-        else:
-            cif = CIFFile.read(path)
-        changed = False
-        for block in cif.values():
-            for category in block.values():
-                for name in list(category.keys()):
-                    # atom_site.auth_asym_id / label_asym_id, entity_poly.pdbx_strand_id, ...
-                    if not re.search(r"(asym_id|strand_id)$", name):
-                        continue
-                    values = category[name].as_array(str)
-                    restored = np.array(
-                        [
-                            ",".join(
-                                original_of.get(part, part) for part in v.split(",")
-                            )
-                            for v in values
-                        ]
-                    )
-                    if not np.array_equal(values, restored):
-                        category[name] = CIFColumn(restored)
-                        changed = True
-        if changed:
-            if compressed:
-                with gzip.open(path, "wt") as handle:
-                    cif.write(handle)
-            else:
-                cif.write(path)
-
-
-def _chain_ids_in_cif(path: Path) -> set[str]:
-    """Chain ids of a CIF, read from its atom_site table without building atoms."""
-    import gzip
-
-    from biotite.structure.io.pdbx import CIFFile
-
-    if str(path).endswith(".gz"):
-        with gzip.open(path, "rt") as handle:
-            cif = CIFFile.read(handle)
-    else:
-        cif = CIFFile.read(path)
-    return {str(c) for c in cif.block["atom_site"]["auth_asym_id"].as_array(str)}
-
 
 # ── Container ───────────────────────────────────────────────────────────
 #
-# Classic ProteinMPNN (the fused_mpnn fork) runs from a prebuilt on-prem
-# "modelhub" SIF; there is no buildable recipe for it. Public LigandMPNN is
-# built from source (below) and is the default when no site weights are set.
+# Public LigandMPNN (dauparas/LigandMPNN, MIT) built from source with every official
+# checkpoint baked in, so a model_type / noise_level choice never needs a weights
+# directory on the host. Install it with ``chaperone install ligandmpnn_public``.
 
-_ONPREM_MODELHUB_CANDIDATES = (
-    "/projects/ml/modelhub/apptainer/frozen_modelhub_datahub_cifutils_2025-02-05.sif",
-    "/projects/ml/modelhub/apptainer/test_modelhub_2025-05-01.sif",
-)
-_ONPREM_MODELHUB_SIF = next(
-    (path for path in _ONPREM_MODELHUB_CANDIDATES if Path(path).is_file()),
-    _ONPREM_MODELHUB_CANDIDATES[0],
-)
-
-_MODELHUB_SIF_CONTAINER = Image.from_existing(
-    "modelhub", _ONPREM_MODELHUB_SIF
-).template_command(
-    exec_mode="exec",
-    # The on-prem SIF deliberately keeps code and weights outside the image.
-    # These sources are first allowlisted into the isolated worker by the
-    # controller, then explicitly rebound across this nested container layer.
-    binds=[
-        ("/net/software/lab/fused_mpnn", "/net/software/lab/fused_mpnn"),
-        ("/net/databases/mpnn", "/databases/mpnn"),
-    ],
-)
-
-_PUBLIC_MPNN_CONTAINER = (
+LIGANDMPNN_PUBLIC_CONTAINER = (
     Image("ligandmpnn_public")
     .base_image("ubuntu:24.04")
     .packages("build-essential", "git", "wget", "ca-certificates", "python3.12", "python3.12-dev", "python3.12-venv")
@@ -265,7 +237,7 @@ _PUBLIC_MPNN_CONTAINER = (
             f"wget -q https://files.ipd.uw.edu/pub/ligandmpnn/{filename} "
             f"-O {_PUBLIC_MPNN_ROOT}/model_params/{filename} && "
             f"echo '{checksum}  {_PUBLIC_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -"
-            for filename, checksum in _PUBLIC_MPNN_CHECKPOINTS.values()
+            for filename, checksum in _PUBLIC_MPNN_ALL_CHECKPOINTS
         ],
         "/opt/mpnn-env/bin/pip check",
         f"cd {_PUBLIC_MPNN_ROOT} && /opt/mpnn-env/bin/python -c "
@@ -282,39 +254,8 @@ _PUBLIC_MPNN_CONTAINER = (
 )
 
 
-def _pick_modelhub_container() -> Image:
-    """Use public source by default; an explicit site weights profile selects the classic SIF."""
-    preference = get_setting_field("CHAPERONE_MPNN_CONTAINER", "auto")
-    if preference == "legacy" and get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer") == "docker":
-        raise ValueError(
-            "CHAPERONE_MPNN_CONTAINER=legacy requires Apptainer; use public with Docker."
-        )
-    if preference == "public" or (
-        preference == "auto" and not get_setting_field("MPNN_WEIGHTS_DIR", None)
-    ):
-        return _PUBLIC_MPNN_CONTAINER
-    return _MODELHUB_SIF_CONTAINER
-
-
-def _require_classic_sif() -> None:
-    """Fail early, and say what to use instead, when classic ProteinMPNN has no SIF."""
-    backend = get_setting_field("CHAPERONE_CONTAINER_BACKEND", "apptainer")
-    if backend != "docker" and Path(_ONPREM_MODELHUB_SIF).is_file():
-        return
-    raise FileNotFoundError(
-        "Classic ProteinMPNN needs an Apptainer image (SIF) that is not available "
-        f"here (expected {_ONPREM_MODELHUB_SIF}; Docker cannot run it). Use public "
-        "LigandMPNN instead: set CHAPERONE_MPNN_CONTAINER=public (the default when "
-        "MPNN_WEIGHTS_DIR is unset), or use the foundry_mpnn block."
-    )
-
-
-MODELHUB_CONTAINER = _pick_modelhub_container()
-LIGANDMPNN_PUBLIC_CONTAINER = _PUBLIC_MPNN_CONTAINER
-
-
 class MPNNArgs(BaseModel):
-    """Arguments passed to LigandMPNN/ProteinMPNN run.py CLI.
+    """Arguments passed to the LigandMPNN ``run.py`` CLI.
 
     User-supplied values override defaults — unset fields keep their safe defaults.
     These are serialized as ``--{field_name} {value}`` CLI flags.
@@ -412,19 +353,11 @@ class MPNNArgs(BaseModel):
         ),
     )
     checkpoint_path_sc: str = Field(
-        default_factory=lambda: (
-            _public_checkpoint("path_sc")
-            if MODELHUB_CONTAINER is _PUBLIC_MPNN_CONTAINER
-            else
-            f"{wd.rstrip('/')}/packer_weights/s_300756.pt"
-            if (wd := _configured_mpnn_weights_dir())
-            else "/databases/mpnn/packer_weights/s_300756.pt"
-        ),
+        _PUBLIC_MPNN_PACKER_PATH,
         description=(
-            "Path to side chain packer weights. Public LigandMPNN uses its bundled "
-            "MIT checkpoint. Legacy backends use MPNN_WEIGHTS_DIR/packer_weights/"
-            "s_300756.pt when configured, otherwise /databases/mpnn/packer_weights/"
-            "s_300756.pt."
+            "Path to side chain packer weights. The default is the official "
+            "checkpoint baked into the image; a custom host file is bound in "
+            "read-only when output_mode='structures'."
         ),
     )
     number_of_packs_per_design: int = Field(
@@ -505,12 +438,20 @@ class MPNNArgs(BaseModel):
 
 
 class ClassicMPNNBlock(CompiledBlockFunction):
-    """Classic MPNN block for inverse folding."""
+    """Inverse folding with public LigandMPNN.
+
+    ``model_type`` picks the model family and ``noise_level`` the checkpoint
+    version within it (see ``_PUBLIC_MPNN_CHECKPOINTS``).
+    """
+
+    # An option this block no longer has (such as one for a removed model) must fail
+    # loudly instead of being ignored.
+    model_config = ConfigDict(extra="forbid")
 
     _name = "mpnn"
     _display_name = "ProteinMPNN"
-    _description = "Classic MPNN block for inverse folding"
-    _image = MODELHUB_CONTAINER
+    _description = "Inverse folding with public LigandMPNN (protein, ligand, soluble and membrane models)"
+    _image = LIGANDMPNN_PUBLIC_CONTAINER
     _resources = JobArgs(
         partition="cpu",
         mem_gb=8,
@@ -520,95 +461,54 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     _chunked = True
     _emits_sequence_table = True
 
-    def _get_image(self=None):
-        return MODELHUB_CONTAINER
-
     def get_command_template(self) -> list[str]:
-        """Build the command for public LigandMPNN or a selected legacy runtime.
+        """The ``run.py`` command with every checkpoint flag spelled out.
 
-        Public: pinned official code and MIT checkpoints are baked into the image.
-        Legacy MPNN_WEIGHTS_DIR settings are deliberately not used by this backend.
-
-        Classic: the SIF exposes run.py via a bind mount at
-        ``/net/software/lab/fused_mpnn/v1.1.1/run.py`` and weights at
-        ``/databases/mpnn/...``. Host database roots vary by machine
-        (``/databases`` vs ``/net/databases``), so we bind whichever exists.
+        All five model checkpoints are passed, each at its upstream default noise
+        level; ``noise_level`` overrides the one for ``model_type``. Code and
+        checkpoints are baked into the image, so nothing is mounted for them.
         """
         # Host environment prefixes are discarded by --cleanenv / Docker.
         runtime_env = {"CUDA_VISIBLE_DEVICES": ""} if self.device == "cpu" else None
-        if self._get_image() is _PUBLIC_MPNN_CONTAINER:
-            if self.lddt_enhanced:
-                raise ValueError("The public LigandMPNN backend does not support lddt_enhanced; select an authorized legacy runtime for that model.")
-            binds = []
-            packer = self.args.checkpoint_path_sc
-            if packer != _public_checkpoint("path_sc") and self.output_mode == "structures":
-                path = Path(packer).expanduser().absolute()
-                if not path.is_file():
-                    raise FileNotFoundError(f"Public MPNN custom packer checkpoint does not exist: {path}")
-                binds.append((str(path), f"{path}:ro"))
-            cmd = self._get_image().build_command("python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds, env=runtime_env)
-            for kind in _PUBLIC_MPNN_CHECKPOINTS:
-                if kind != "path_sc":
-                    cmd += [f"--checkpoint_{kind}", _public_checkpoint(kind)]
-            return cmd
-        _require_classic_sif()
-        configured_weights = _configured_mpnn_weights_dir()
-        if configured_weights and not Path(configured_weights).is_dir():
-            raise FileNotFoundError(
-                f"MPNN_WEIGHTS_DIR is not an existing host directory: {configured_weights}. "
-                "Set the host checkpoint path (on digs, /net/databases/mpnn); "
-                "/databases/mpnn is a legacy container alias."
-            )
-        host_databases = (
-            "/databases"
-            if Path("/databases").is_dir()
-            else "/net/databases"
-            if Path("/net/databases").is_dir()
-            else "/databases"
+        binds = []
+        packer = self.args.checkpoint_path_sc
+        if packer != _PUBLIC_MPNN_PACKER_PATH and self.output_mode == "structures":
+            path = Path(packer).expanduser().absolute()
+            if not path.is_file():
+                raise FileNotFoundError(f"MPNN custom packer checkpoint does not exist: {path}")
+            binds.append((str(path), f"{path}:ro"))
+        cmd = LIGANDMPNN_PUBLIC_CONTAINER.build_command(
+            "python", "-u", f"{_PUBLIC_MPNN_ROOT}/run.py", binds=binds, env=runtime_env
         )
-        binds = [
-            (host_databases, "/databases"),
-            ("/net/software", "/net/software"),
-        ]
-        if configured_weights:
-            binds.append((configured_weights, configured_weights))
-
-        cmd = self._get_image().build_command("python", "-u", "/net/software/lab/fused_mpnn/v1.1.1/run.py", binds=binds, env=runtime_env)
-
-        if not configured_weights:
-            return cmd
-
-        # Spell out the common checkpoint paths. run.py looks up a
-        # single path based on --model_type so unused entries are harmless.
-        wd = configured_weights.rstrip("/")
-        cmd += [
-            "--checkpoint_protein_mpnn",
-            f"{wd}/vanilla_model_weights/v_48_020.pt",
-            "--checkpoint_ligand_mpnn",
-            f"{wd}/ligand_mpnn_model_weights/s25_r010_t300_p.pt",
-            "--checkpoint_per_residue_label_membrane_mpnn",
-            f"{wd}/tmd_per_residue_weights/tmd_v_48_020.pt",
-            "--checkpoint_global_label_membrane_mpnn",
-            f"{wd}/tmd_weights/v_48_020.pt",
-            "--checkpoint_soluble_mpnn",
-            f"{wd}/no_transmembrane/v_48_020.pt",
-        ]
+        for model_type in _PUBLIC_MPNN_CHECKPOINTS:
+            noise = self.noise_level if model_type == self.model_type else None
+            cmd += [f"--checkpoint_{model_type}", _public_checkpoint(model_type, noise)]
         return cmd
 
-    # Checkpoint type
+    # Model family and version
     model_type: Literal[
         "protein_mpnn",
         "ligand_mpnn",
         "soluble_mpnn",
+        "per_residue_label_membrane_mpnn",
+        "global_label_membrane_mpnn",
     ] = Field(
         default="ligand_mpnn",
         json_schema_extra={"tier": TIER_PRIMARY},
-        description="Model type to use for inverse folding",
+        description=(
+            "Model family: protein_mpnn, ligand_mpnn, soluble_mpnn, or a membrane "
+            "model (per_residue_label_membrane_mpnn, global_label_membrane_mpnn)."
+        ),
     )
-    lddt_enhanced: bool = Field(
-        default=False,
-        json_schema_extra={"tier": TIER_PRIMARY},
-        description="Use lddt-enhanced model (Fanglei's masterpiece)",
+    noise_level: Literal[0.02, 0.05, 0.1, 0.2, 0.3] | None = Field(
+        default=None,
+        json_schema_extra={"tier": TIER_PRIMARY, "cli_type": float},
+        description=(
+            "Checkpoint version: backbone noise (Angstrom) the model was trained "
+            "with. None uses the upstream default. Valid values depend on "
+            "model_type: protein_mpnn and soluble_mpnn 0.02/0.1/0.2/0.3, "
+            "ligand_mpnn 0.05/0.1/0.2/0.3, membrane models 0.2."
+        ),
     )
 
     # Sequence generation parameters
@@ -665,6 +565,24 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         if isinstance(values, dict) and isinstance(values.get("args"), dict):
             values["args"] = MPNNArgs(**values["args"])
         return values
+
+    @model_validator(mode="after")
+    def validate_model_version(self):
+        # Also raised by get_command_template when the template is built; this
+        # keeps the check when a command_template is supplied explicitly.
+        _public_checkpoint(self.model_type, self.noise_level)
+        membrane_only = {
+            "transmembrane_buried": "per_residue_label_membrane_mpnn",
+            "transmembrane_interface": "per_residue_label_membrane_mpnn",
+            "global_transmembrane_label": "global_label_membrane_mpnn",
+        }
+        for name, model_type in membrane_only.items():
+            if getattr(self.args, name) not in ("", 0) and self.model_type != model_type:
+                raise ValueError(
+                    f"args.{name} only applies to model_type={model_type!r}, "
+                    f"not {self.model_type!r}."
+                )
+        return self
 
     @model_validator(mode="after")
     def validate_output_mode(self):
@@ -733,24 +651,8 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         return data.load_array().atom_array
 
     @staticmethod
-    def _write_renamed(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
-        """Write ``atoms`` with the renamed chains as a new file; the input is untouched."""
-        from atomworks.io.utils.io_utils import to_cif_file
-
-        from chaperone.io import ensure_bonds
-
-        stem = Path(input_path).name
-        for suffix in (".gz", ".cif", ".pdb"):
-            stem = stem.removesuffix(suffix)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / f"{stem}.cif"
-        to_cif_file(ensure_bonds(rename.rename(atoms)), str(out_path))
-        logger.info("Renamed chains %s in %s for MPNN", rename.mapping, input_path)
-        return str(out_path)
-
-    @staticmethod
     def _write_portable_pdb(input_path, atoms, rename: ChainRename, out_dir: Path) -> str:
-        """Stage a PDB for upstream main, preserving the original CIF as parent."""
+        """Stage a PDB for LigandMPNN, preserving the original CIF as parent."""
         from chaperone.io import write_pdb
 
         stem = Path(input_path).name
@@ -774,8 +676,9 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         """Give outputs the chain ids of the inputs they came from.
 
         ``create_command`` renames multi-character chains for MPNN and records each
-        rename under ``inputs/``; this undoes it, so the block's outputs use the same
-        chain ids as its inputs and the metadata they inherit still matches.
+        rename under ``inputs/``; this undoes it on the packed PDBs (written back as
+        CIF), so the block's outputs use the same chain ids as its inputs and the
+        metadata they inherit still matches.
         """
         renames = {}
         for sidecar in sorted(
@@ -804,8 +707,6 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                         atoms.chain_id[original_chains == stand_in] = original
                     path = path.with_suffix(".cif")
                     to_cif_file(ensure_bonds(atoms), str(path))
-            elif rename.restorable_in(_chain_ids_in_cif(path)):
-                rename.restore_cif(path)
             restored_paths.append(path)
         return list(dict.fromkeys(restored_paths))
 
@@ -832,10 +733,9 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         needs_load = (
             self.hbond_fix or self.aromatic_fix or self.output_mode == "sequences"
         )
-        public = self._get_image() is _PUBLIC_MPNN_CONTAINER
         manifest = {}
         renames: dict[str, dict[str, str]] = {}  # input stem -> chain rename
-        public_options: dict[str, str] = {}
+        chain_options: dict[str, str] = {}
         for data in handler.get_data(which="last", load=needs_load):
             # get path and design_metadata - contains motif, interface, hbond, aromatics_near_ligand.
             # Materialize archived structures; ordinary local paths pass through.
@@ -864,63 +764,55 @@ class ClassicMPNNBlock(CompiledBlockFunction):
 
             design_metadata = data.metadata
 
-            # The site's CIF-aware sequence runner accepts original identifiers.
-            # Public LigandMPNN needs a PDB even in sequence mode; its manifest maps
-            # the resulting FASTA back to the original chain identifiers.
-            rename = ChainRename()
-            if public or self.output_mode != "sequences":
-                atoms = self._atoms_of(data)
-                rename = ChainRename.for_atoms(atoms)
-                selected_chains = None
-                if public:
-                    original_chains = set(map(str, atoms.chain_id))
-                    options = {}
-                    for option in ("chains_to_design", "parse_these_chains_only"):
-                        value = getattr(self.args, option)
-                        if not value:
-                            continue
-                        chains = value.split(",")
-                        if option == "parse_these_chains_only" and "," not in value and value not in original_chains:
-                            chains = list(value)  # accept the old concatenated single-letter spelling
-                        if not set(chains) <= original_chains:
-                            raise ValueError(f"{option} refers to missing chains: {set(chains) - original_chains}")
-                        options[option] = ",".join(rename.mapping.get(chain, chain) for chain in chains)
-                        if option == "parse_these_chains_only":
-                            selected_chains = set(chains)
-                    for option in ("redesigned_residues", "symmetry_residues", "transmembrane_buried", "transmembrane_interface"):
-                        value = getattr(self.args, option)
-                        if value:
-                            options[option] = "".join(
-                                part if re.fullmatch(r"[\s,|]+", part) else rename.apply(part)
-                                for part in re.split(r"([\s,|]+)", value)
-                            )
-                    if rename and self.args.bias_AA_per_residue:
-                        raise ValueError("Public MPNN residue bias with renamed chains is unsupported; supply single-character input chain IDs for bias_AA_per_residue.")
-                    for option, value in options.items():
-                        if option in public_options and public_options[option] != value:
-                            raise ValueError(f"Public MPNN {option} needs different chain mappings across inputs; run those inputs in separate chunks.")
-                        public_options[option] = value
-                if public:
-                    input_path = self._write_portable_pdb(
-                        input_path, atoms, rename, inputdir / "portable_pdb"
+            # LigandMPNN reads PDB, so the structure is staged as one with
+            # single-letter chain ids. The manifest maps the resulting FASTA back
+            # to the original chain identifiers.
+            atoms = self._atoms_of(data)
+            rename = ChainRename.for_atoms(atoms)
+            selected_chains = None
+            original_chains = set(map(str, atoms.chain_id))
+            options = {}
+            for option in ("chains_to_design", "parse_these_chains_only"):
+                value = getattr(self.args, option)
+                if not value:
+                    continue
+                chains = value.split(",")
+                if option == "parse_these_chains_only" and "," not in value and value not in original_chains:
+                    chains = list(value)  # accept the old concatenated single-letter spelling
+                if not set(chains) <= original_chains:
+                    raise ValueError(f"{option} refers to missing chains: {set(chains) - original_chains}")
+                options[option] = ",".join(rename.mapping.get(chain, chain) for chain in chains)
+                if option == "parse_these_chains_only":
+                    selected_chains = set(chains)
+            for option in ("redesigned_residues", "symmetry_residues", "transmembrane_buried", "transmembrane_interface"):
+                value = getattr(self.args, option)
+                if value:
+                    options[option] = "".join(
+                        part if re.fullmatch(r"[\s,|]+", part) else rename.apply(part)
+                        for part in re.split(r"([\s,|]+)", value)
                     )
-                    if self.output_mode == "sequences":
-                        # Upstream writes FASTA chains in sorted PDB-chain order.
-                        # Keep original identifiers in that same order for compile.
-                        chain_ids = sorted(
-                            (chain for chain in chain_sequences if selected_chains is None or chain in selected_chains),
-                            key=lambda chain: rename.mapping.get(chain, chain),
-                        )
-                        manifest[input_name]["chain_ids"] = chain_ids
-                        manifest[input_name]["chain_lengths"] = [
-                            len(chain_sequences[chain]) for chain in chain_ids
-                        ]
-                elif rename:
-                    input_path = self._write_renamed(
-                        input_path, atoms, rename, inputdir / "chain_ids_renamed"
-                    )
-                if rename:
-                    renames[Path(input_path).stem] = rename.mapping
+            if rename and self.args.bias_AA_per_residue:
+                raise ValueError("MPNN residue bias with renamed chains is unsupported; supply single-character input chain IDs for bias_AA_per_residue.")
+            for option, value in options.items():
+                if option in chain_options and chain_options[option] != value:
+                    raise ValueError(f"MPNN {option} needs different chain mappings across inputs; run those inputs in separate chunks.")
+                chain_options[option] = value
+            input_path = self._write_portable_pdb(
+                input_path, atoms, rename, inputdir / "portable_pdb"
+            )
+            if self.output_mode == "sequences":
+                # LigandMPNN writes FASTA chains in sorted PDB-chain order.
+                # Keep original identifiers in that same order for compile.
+                chain_ids = sorted(
+                    (chain for chain in chain_sequences if selected_chains is None or chain in selected_chains),
+                    key=lambda chain: rename.mapping.get(chain, chain),
+                )
+                manifest[input_name]["chain_ids"] = chain_ids
+                manifest[input_name]["chain_lengths"] = [
+                    len(chain_sequences[chain]) for chain in chain_ids
+                ]
+            if rename:
+                renames[Path(input_path).stem] = rename.mapping
 
             # Build fixed positions list from design_metadata
             fixed_positions = []
@@ -946,7 +838,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 fixed_positions.extend(aromatics)
             # ``run.py`` ignores the scalar ``--fixed_residues`` option whenever
             # ``--fixed_residues_multi`` is present. Chaperone always supplies
-            # the latter, so merge the public MPNNArgs constraint into each
+            # the latter, so merge the MPNNArgs constraint into each
             # per-input entry rather than silently dropping it.
             fixed_positions.extend(self.args.fixed_residues.split())
             fixed_position_dict[input_path] = sorted(
@@ -985,8 +877,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
         # Write JSON file
         with open(fix_pos_json, "w") as f:
             json.dump(
-                {path: " ".join(positions) for path, positions in fixed_position_dict.items()}
-                if public else fixed_position_dict,
+                {path: " ".join(positions) for path, positions in fixed_position_dict.items()},
                 f,
             )
             f.write("\n")
@@ -1008,15 +899,13 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             "--batch_size",
             self.num_seq_per_pdb,
         ]
-        cmd += ["--enhance", "plddt_3_20240930-f9c9ea0f"] if self.lddt_enhanced else []
         cli_args = self.args.to_cli_dict()
-        if public:
-            cli_args.update(public_options)
-            cli_args["fasta_seq_separation"] = "/"
-            cli_args["number_of_packs_per_design"] = self.args.number_of_packs_per_design
-            cli_args["pack_with_ligand_context"] = self.args.pack_with_ligand_context
-            if self.args.checkpoint_path_sc != _public_checkpoint("path_sc"):
-                cli_args["checkpoint_path_sc"] = str(Path(self.args.checkpoint_path_sc).expanduser().absolute())
+        cli_args.update(chain_options)
+        cli_args["fasta_seq_separation"] = "/"
+        cli_args["number_of_packs_per_design"] = self.args.number_of_packs_per_design
+        cli_args["pack_with_ligand_context"] = self.args.pack_with_ligand_context
+        if self.args.checkpoint_path_sc != _PUBLIC_MPNN_PACKER_PATH:
+            cli_args["checkpoint_path_sc"] = str(Path(self.args.checkpoint_path_sc).expanduser().absolute())
         cli_args["pack_side_chains"] = 0 if self.output_mode == "sequences" else 1
         bias_path = cli_args.get("bias_AA_per_residue")
         if bias_path:
@@ -1046,7 +935,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             for fasta_path in fasta_paths:
                 parent = manifest_entry_for_fasta(fasta_path, manifest)
                 for index, (header, sequence) in enumerate(parse_fasta(fasta_path)):
-                    # fused_mpnn writes the native/input sequence first. Only
+                    # run.py writes the native/input sequence first. Only
                     # sampled records carry the generated-design id field.
                     if "id=" not in header:
                         continue

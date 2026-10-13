@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Run public LigandMPNN packing on two small existing backbones.
 
-    CHAPERONE_MPNN_CONTAINER=public python tests/public_mpnn_packing_smoke.py \
+    python tests/public_mpnn_packing_smoke.py \
         --inputs=/path/to/core-run/rfd3/output.parquet --test --local \
         --rundir=/path/to/new/public-packing-run
 
@@ -10,7 +10,7 @@ renames it X1 and fixes its first two residues, requests two sequences and two
 packs per sequence (eight outputs total), and verifies fixed identities,
 restored chain IDs, finite coordinates, side chains, lineage and cache replay.
 Normal model sampling defaults are retained. This is an execution check,
-not an accuracy benchmark or a comparison with the private fork.
+not an accuracy benchmark.
 
 Omit --local to submit one engine-managed Slurm GPU job using the site's GPU
 mapping (or gpu:1 on the default partition). Requests are bounded to 16 GB RAM,
@@ -66,9 +66,7 @@ def resolve_plan(argv):
         {},
         None,
     )
-    assert (
-        block._get_image() is LIGANDMPNN_PUBLIC_CONTAINER
-    ), "Select CHAPERONE_MPNN_CONTAINER=public before Python starts"
+    assert block._get_image() is LIGANDMPNN_PUBLIC_CONTAINER
     assert block.output_mode == "structures" and block.num_seq_per_pdb == 2
     assert (
         block.args.number_of_packs_per_design == 2 and block.args.pack_side_chains == 1
@@ -99,7 +97,7 @@ def resolve_plan(argv):
         )
     )
     resources = _resolve_job_args(
-        # Classic MPNN defaults to CPU, so explicitly opt this GPU smoke in.
+        # MPNN defaults to CPU, so explicitly opt this GPU smoke in.
         # A shared gpu_class override alone intentionally leaves CPU blocks alone.
         dict(
             partition=site_partition(gpu=True),

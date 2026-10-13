@@ -29,7 +29,7 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [esm2](#esm2) — ESM-2 protein language model for sequence embeddings [[paper](https://doi.org/10.1126/science.ade2574)]
 - [foundry_mpnn](#foundry_mpnn) — Foundry MPNN for inverse folding [[paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1)]
 - [manifest_val_structures](#manifest_val_structures) — Manifest reference PDB assemblies for prediction validation
-- [mpnn](#mpnn) — Classic MPNN block for inverse folding [[paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1)]
+- [mpnn](#mpnn) — Inverse folding with public LigandMPNN (protein, ligand, soluble and membrane models) [[paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1)]
 - [protein_hunter](#protein_hunter) — De novo binder design via Boltz structure hallucination [[paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1)]
 - [rfd1](#rfd1) — RFdiffusion v1 backbone-level protein design
 - [rfd2](#rfd2) — RFdiffusion2 (rf_diffusion) block for atomic-level protein design
@@ -638,7 +638,7 @@ Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`sm
 > Foundry Protein/LigandMPNN implementation; paper describes the underlying LigandMPNN method
 > [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/mpnn.py)
 
-**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the legacy MPNN backend. The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.
+**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (public LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.
 
 Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `foundry_public`
 
@@ -679,19 +679,19 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 
 ### mpnn
 
-*Classic MPNN block for inverse folding.*
+*Inverse folding with public LigandMPNN.*
 
 > Dauparas et al. (2023) — Atomic context-conditioned protein sequence design using LigandMPNN
 > [Paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1) · [Upstream code / documentation](https://github.com/dauparas/LigandMPNN) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/mpnn.py)
 
-**Backends:** Without a legacy site weights profile, `mpnn` uses the public MIT-licensed `dauparas/LigandMPNN` source and bundled public checkpoints (`ligandmpnn_public`). Set `CHAPERONE_MPNN_CONTAINER=public` explicitly to select it. A supplied legacy weights profile preserves the private `baker-laboratory/fused_mpnn` backend; `legacy` selects it explicitly (existing site SIF). See the [container guide](containers.md) for supported options and validation status. No scientific equivalence is asserted between public LigandMPNN, the private fork, and `foundry_mpnn`.
+**Backend:** `mpnn` runs the public MIT-licensed `dauparas/LigandMPNN` source with every official checkpoint baked into the `ligandmpnn_public` image (`chaperone install ligandmpnn_public`). `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, and the two membrane models) and `noise_level` the checkpoint version; the [container guide](containers.md) lists the valid combinations. No scientific equivalence is asserted between public LigandMPNN and `foundry_mpnn`.
 
 Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn_public`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_type`</span> | `Literal` | `'ligand_mpnn'` | Model type to use for inverse folding |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`lddt_enhanced`</span> | `bool` | `False` | Use lddt-enhanced model (Fanglei's masterpiece) |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`model_type`</span> | `Literal` | `'ligand_mpnn'` | Model family: protein_mpnn, ligand_mpnn, soluble_mpnn, or a membrane model (per_residue_label_membrane_mpnn, global_l... |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`noise_level`</span> | `Optional[Literal]` | `None` | Checkpoint version: backbone noise (Angstrom) the model was trained with. None uses the upstream default. Valid value... |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`num_seq_per_pdb`</span> | `int` | `8` | Number of sequences to generate per structure |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`output_mode`</span> | `Literal` | `'sequences'` | Return compact sequence rows (default) or legacy side-chain-packed structures. Sequence mode disables packing. |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |

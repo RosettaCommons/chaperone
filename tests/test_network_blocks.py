@@ -22,7 +22,7 @@ from blocks.networks.design.bindcraft import BindCraftBlock
 from chaperone import PipelineDataHandler
 from chaperone.data import make_row
 from blocks.networks.design.boltzgen import BoltzGenBlock
-from blocks.networks.mpnn import ClassicMPNNBlock, MODELHUB_CONTAINER
+from blocks.networks.mpnn import ClassicMPNNBlock
 from blocks.networks.hallucination.protein_hunter import (
     PROTEIN_HUNTER_CONTAINER,
     ProteinHunterBlock,
@@ -230,26 +230,7 @@ def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path, monkeypatch) -> N
 # test_mpnn_container.py
 
 
-def test_existing_modelhub_image_uses_exec_not_runscript():
-    if not MODELHUB_CONTAINER.is_existing:
-        return
-
-    command = ClassicMPNNBlock(num_seq_per_pdb=1).get_command_template()
-
-    assert command[:2] == ["apptainer", "exec"]
-    assert command[-3:-1] == ["python", "-u"]
-    assert command[-1].endswith("/fused_mpnn/v1.1.1/run.py")
-
-
-@pytest.mark.parametrize("backend,expected", [("legacy", ["A1", "A7"]), ("public", "A1 A7")])
-def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
-    tmp_path, monkeypatch, backend, expected,
-):
-    import blocks.networks.mpnn as mpnn
-    sif = tmp_path / "modelhub.sif"
-    sif.touch()
-    monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(sif))
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.LIGANDMPNN_PUBLIC_CONTAINER if backend == "public" else mpnn._MODELHUB_SIF_CONTAINER)
+def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(tmp_path):
     structure = tmp_path / "input.pdb"
     structure.write_text(
         "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\n"
@@ -269,7 +250,7 @@ def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
         (tmp_path / "chunk_0" / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     assert constraints.endswith("pdb_position_fixed_chunk0.json")
-    assert next(iter(payload.values())) == expected
+    assert next(iter(payload.values())) == "A1 A7"
 
 
 # test_protein_hunter.py
