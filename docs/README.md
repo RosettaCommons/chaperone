@@ -19,3 +19,8 @@ Actions. Repository Settings → Pages must use **GitHub Actions** as its source
 private dependencies, or model weights. After changing block parameters,
 regenerate it in a configured Chaperone development environment with
 `python docs/site/gen_block_docs.py`, then commit the updated Markdown.
+
+The custom light/dark formatting is ported from the original Pipelines site's
+`gh-pages:stylesheets/claude.css` (blob `2cab424389278d28d85f3445f70737b833c21d84`).
+Keep this stylesheet checked in: MkDocs does not fail when a configured CSS file
+is missing, and the site would silently revert to Material's default appearance.
