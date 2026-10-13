@@ -19,7 +19,7 @@ People have used Chaperone for PPI, symmetric design, and enzyme design — reac
 This repo ships with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills and project context (`AGENTS.md`) that make Claude a first-class interface for writing, running, and debugging pipelines. If you hit an issue, ask Claude — it knows the codebase and will typically self-correct.
 
 > [!TIP]
-> Check out the documentation website [here](https://expert-disco-5vk634e.pages.github.io/)!
+> Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/).
 
 > [!NOTE]
 > Please DO distribute this software to others for use! External collaborators welcome (but please note the license!).
