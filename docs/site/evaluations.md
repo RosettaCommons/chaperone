@@ -93,8 +93,10 @@ CPU partition, matching Chaperone core settings. Empty `gpu_type` requests `gpu:
 `--constraint`. The controller alone applies account, QoS and constraint.
 
 `runtime_binds` is the complete read-only allowlist of host runtime/asset paths;
-entries are absolute paths or `[source, target]` pairs. Include the Slurm libraries
-and socket for your installation as well as the scientific assets. `environment`
+entries are absolute paths or `[source, target]` pairs. Include `/dev/fuse` and the
+required scientific assets. Slurm authentication stays on the host: native Slurm
+clients, libraries, configuration and MUNGE sockets are rejected as runtime mounts.
+Agent scheduler requests use the trial-scoped broker. `environment`
 contains allowlisted scientific settings. `capabilities` names the paths used by
 preflight to verify the task's required tools; declaring a capability does not
 install it or mount it. Paths must also be covered by `runtime_binds`. Never mount
