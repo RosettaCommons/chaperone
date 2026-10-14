@@ -55,3 +55,16 @@ parameters, and databases may have separate access or use requirements.
 See the [container guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/containers.md)
 and each block's upstream links for the selected runtime. Build and GPU test
 results describe installation and execution, not a change to upstream terms.
+
+## Public structural example inputs
+
+The antibody example's `8s6z_fv_cd28.pdb` is a cropped, consecutively numbered
+protein-only derivative of PDB **8S6Z**, obtained from the public Foundry
+binder-design tutorial. Its adjacent residue mapping preserves source author
+labels and insertion codes. The RCSB PDB entry and associated publication should
+be cited when using this structure scientifically.
+
+Other ported example fixtures retain the inputs of the original
+`baker-laboratory/pipelines` examples at snapshot `95ef0b6`. Workflow guides
+identify their provenance and any changes. These fixtures are example inputs,
+not newly generated validation results or evidence of experimental activity.

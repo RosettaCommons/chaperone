@@ -56,7 +56,11 @@ def rounds(config: Path):
             seed_offset=42,
         ),
         MPNN(
-            num_seq_per_pdb=2, model_type="ligand_mpnn", keep_motif_sequences_fixed=True
+            num_seq_per_pdb=2,
+            model_type="ligand_mpnn",
+            output_mode="structures",
+            args={"number_of_packs_per_design": 1},
+            keep_motif_sequences_fixed=True,
         ),
         AF3(diffusion_batch_size=1),
         RMSD(
@@ -78,6 +82,8 @@ def rounds(config: Path):
             name="mpnn_2",
             num_seq_per_pdb=2,
             model_type="ligand_mpnn",
+            output_mode="structures",
+            args={"number_of_packs_per_design": 1},
             keep_motif_sequences_fixed=True,
         ),
         AF3(name="af3_2", diffusion_batch_size=1),

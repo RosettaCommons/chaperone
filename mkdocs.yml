@@ -53,7 +53,17 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Simple Example: simple.md
-  - Core Examples: core-examples.md
+  - Core Examples:
+      - Overview: core-examples.md
+      - Nanoparticle scaffolds: workflows/nanoparticle-design.md
+      - Peptide binders: workflows/peptide-binder.md
+      - Biotin binders: workflows/biotin-binder.md
+      - DNA binders: workflows/dna-binder.md
+      - Antibody design: workflows/antibody-design.md
+      - Glycosidase design: workflows/enzyme-glycosidase.md
+      - Protease design: workflows/enzyme-protease.md
+      - Hammerhead ribozymes: workflows/ribozyme-hammerhead.md
+      - Multi-MPNN comparison: workflows/multi-mpnn.md
   - All Blocks: blocks-reference.md
   - Container Installation: containers.md
   - Cloud Execution: cloud.md

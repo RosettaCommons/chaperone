@@ -67,7 +67,16 @@ jobs:
             tests/test_container_gpu_resources.py tests/test_container_portability.py \
             tests/test_site_settings.py tests/test_slurm_resources.py \
             tests/test_distribution.py tests/test_pdb_io.py tests/test_modal_backend.py \
-            tests/blocks/test_mpnn.py tests/test_nanoparticle.py tests/test_example_ports.py
+            tests/blocks/test_mpnn.py tests/test_nanoparticle.py tests/test_example_ports.py \
+            tests/test_remaining_example_ports.py tests/test_enzyme_ports.py \
+            tests/test_biotin_dna_ports.py tests/test_ribozyme_ports.py tests/test_ccd_detection.py \
+            tests/test_smoke_mode.py tests/test_rmsd_symmetry_annotations.py \
+            tests/test_rfd1_motif_mapping.py
+      - name: Keep worked examples out of the agent benchmark workspace
+        run: |
+          PYTHONPATH=src/chaperone-evals/harbor-controller \
+            "$RUNNER_TEMP/install/bin/python" -m pytest -o pythonpath= -q \
+            src/chaperone-evals/harbor-controller/tests/test_examples_isolation.py
       - name: Run a CPU Docker container without NVIDIA support
         if: matrix.artifact == 'wheel'
         env:

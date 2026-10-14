@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--nout", type=int, default=1)
     parser.add_argument("--beam-size", type=int, default=10000)
+    parser.add_argument("--ignored-aas", default="CGP")
     args = parser.parse_args()
     if args.nout < 1 or args.beam_size < 1:
         parser.error("nout and beam-size must be positive")
@@ -64,6 +65,8 @@ def main():
         str(args.beam_size),
         "--ncpu",
         "1",
+        "--ignored_aas",
+        args.ignored_aas,
         "--output_prefix",
         str(args.output_dir / "search"),
     ]

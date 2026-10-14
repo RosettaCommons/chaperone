@@ -24,7 +24,8 @@ def pipeline_blocks():
             clash_ref_pdb=str(FILES / "dn5b_stalk.pdb"),
             max_clashes=8,
         ),
-        Blocks["rpxdock"](nout_top=1),
+        # RFD1 emits glycine placeholders; score their backbone geometry too.
+        Blocks["rpxdock"](nout_top=1, ignored_aas=""),
         Blocks["filter"](
             name="rpxdock_filter", filters={"rpxdock.rpx_score": MetricFilter(min=70.0)}
         ),
@@ -32,7 +33,8 @@ def pipeline_blocks():
             keep_motif_sequences_fixed=True,
             num_seq_per_pdb=2,
             model_type="protein_mpnn",
-            args={"homo_oligomer": 1},
+            output_mode="structures",
+            args={"homo_oligomer": 1, "number_of_packs_per_design": 1},
         ),
         Blocks["af3"](diffusion_batch_size=1),
         Blocks["rmsd"](

@@ -1,11 +1,12 @@
-"""Public example inputs and native sequence branch contracts."""
+"""Public example inputs and packed structure branch contracts."""
 
 import json
 from pathlib import Path
 import runpy
+import shutil
 
 from chaperone import PipelineDataHandler
-from chaperone.data.schema import make_sequence_row
+from chaperone.data.schema import make_row
 from chaperone.io import parse_to_atom_array
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,34 +42,69 @@ def test_peptide_is_sequence_conditioned_with_unfixed_coordinates(tmp_path):
     assert Path(spec["input"]).parent == tmp_path
 
 
-def test_three_sequence_branches_keep_context_identity_and_payload_after_repack():
+def test_three_packed_branches_keep_lineage_and_distinct_structures_after_repack(
+    tmp_path,
+):
     example = runpy.run_path(str(ROOT / "examples/benchmarks/multi-mpnn/pipeline.py"))
     blocks = example["sequence_blocks"]()
     path = next(example["FILES"].glob("*.cif"))
-    outputs = [
-        PipelineDataHandler(
+    source = PipelineDataHandler(
+        [
+            make_row(
+                name="input",
+                path=path,
+                design_id="shared_backbone",
+                metadata={"motif": ["A1"]},
+            )
+        ]
+    )
+    outputs = []
+    output_paths = []
+    for block in blocks:
+        assert block.output_mode == "structures"
+        assert block.args.number_of_packs_per_design == 1
+        assert block.args.file_ending == f"_{block.model_type}"
+        # Stand-ins for independently produced packed files: this tests the
+        # example's branch merge/repack contract, not MPNN inference itself.
+        packed = tmp_path / block.name / "shared_backbone__0_1.cif"
+        packed.parent.mkdir()
+        shutil.copyfile(path, packed)
+        output_paths.append(str(packed))
+        child = PipelineDataHandler(
             [
-                make_sequence_row(
+                make_row(
+                    name=block.name,
+                    path=packed,
+                    path_handle=path,
                     design_id=block.name,
                     parent_design_id="shared_backbone",
-                    sequences={"A": seq},
-                    context_path=path,
-                    context_name="input",
-                    context_metadata={"motif": ["A1"]},
+                    metadata={"motif": ["A1"]},
                     metrics={block.name: {"score": 1.0}},
                 )
             ]
         )
-        for block, seq in zip(blocks, ["GAS", "GAL", "GAV"])
-    ]
+        outputs.append(PipelineDataHandler.merge(source, child))
     combined = outputs[0] + outputs[1] + outputs[2]
     repacked = PipelineDataHandler(combined.unpack())
     rows = repacked.unpack().to_dict("records")
-    assert [row["sequence_A"] for row in rows] == ["GAS", "GAL", "GAV"]
-    assert repacked.sequence_dataframe().equals(combined.sequence_dataframe())
+    assert len(rows) == 3
     assert [row["parent_design_id"] for row in rows] == ["shared_backbone"] * 3
     assert [row["design_id"] for row in rows] == [block.name for block in blocks]
-    assert all(
-        item.path == str(path) and item.metadata["motif"] == ["A1"]
-        for item in repacked.get_data(which="first")
-    )
+    assert all(item.path == str(path) for item in repacked.get_data(which="first"))
+    final = list(repacked.get_data(which="last"))
+    assert [item.path for item in final] == output_paths
+    assert all(item.metadata["motif"] == ["A1"] for item in final)
+    for block, item in zip(blocks, final):
+        assert item.metrics[block.name]["score"] == 1.0
+
+
+def test_multi_mpnn_refolding_uses_separate_input_directories_per_model():
+    example = runpy.run_path(str(ROOT / "examples/benchmarks/multi-mpnn/pipeline.py"))
+    branches = [example["refolding_blocks"](model) for model in example["MODELS"]]
+    assert len({branch[0].name for branch in branches}) == 3
+    assert len({branch[1].name for branch in branches}) == 3
+    for af3, rmsd, gate in branches:
+        assert set(gate.filters) == {
+            f"{af3.name}.ranking_score",
+            f"{rmsd.name}.bkbn_align.bkbn_rmsd",
+        }

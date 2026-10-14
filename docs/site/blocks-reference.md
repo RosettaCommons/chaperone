@@ -36,6 +36,7 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [rfd3](#rfd3) — RFdiffusion3 block [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
 - [rfd3_partial](#rfd3_partial) — RFdiffusion3 partial diffusion
 - [rfd3na](#rfd3na) — RFdiffusion3NA block (all-atom protein/DNA/RNA design) [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
+- [rpxdock](#rpxdock) — CPU docking of a C3 asymmetric unit into an I3 cage
 - [score_val_structures](#score_val_structures) — Score predictions against manifested validation references
 - [simplefold](#simplefold) — Apple SimpleFold sequence-only protein monomer prediction
 - [tmol_interface](#tmol_interface) — tmol protein-ligand interface ddG + per-term breakdown
@@ -84,11 +85,13 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [ingest](#ingest) — Ingest data from various sources
 - [materialize](#materialize) — Write stored structures to disk
 - [mutate_residues](#mutate_residues) — Create named protein sequence variants with explicit lineage
+- [nanoparticle_prepare](#nanoparticle_prepare) — Prepare a C3 asymmetric unit with aligned antigen clash checks
 - [order_collection](#order_collection) — Extract sequences, check ordered status, collect metrics
 - [package_submission](#package_submission) — Validate and write a sequence-only design submission
 - [remap_ligand](#remap_ligand) — Rename predicted ligand atom/residue names to match a reference CIF
 - [restore_sidechains](#restore_sidechains) — Restore selected motif rotamers from an upstream structure
 - [rotamer_sweep](#rotamer_sweep) — Enumerate explicit functional side-chain chi combinations
+- [select_chains](#select_chains) — Keep explicit structure chains and their motif metadata
 - [select_diverse](#select_diverse) — Select a diverse design subset under sequence/structure cutoffs
 - [select_motif](#select_motif) — Apply a function to select motif residues for downstream fixing
 - [selective_sidechain_repack](#selective_sidechain_repack) — Repack only explicitly selected protein sidechains
@@ -686,6 +689,17 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 
 **Backend:** `mpnn` runs LigandMPNN (`dauparas/LigandMPNN`) from the `ligandmpnn` image, with every official checkpoint baked in; install it with `chaperone install ligandmpnn`. No settings are needed. `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, `per_residue_label_membrane_mpnn` or `global_label_membrane_mpnn`) and `noise_level` selects the checkpoint version; the [container guide](containers.md) lists the valid combinations.
 
+**Packed structures:** Use `output_mode="structures"` and, for one structure per
+sampled sequence, `args={"number_of_packs_per_design": 1}`. The worked examples
+set these explicitly. The block default remains compact sequence output.
+With packed output and `args.repack_everything=0`, Chaperone restores observed
+coordinates of fixed protein residues after packing: the upstream packer can
+reconstruct and move these atoms even when their sequences are fixed.
+Newly completed atoms remain packed. Set `args.repack_everything=1` to allow fixed
+residues to be repacked, or `preserve_fixed_coordinates=False` to retain native
+packer reconstructions. Sequence fixing and coordinate preservation are distinct
+from subsequent refolding, which can move the structure.
+
 Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn`
 
 | Parameter | Type | Default | Description |
@@ -699,6 +713,7 @@ Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 | `skip_existing` | `bool` | `True` | Skip processing if outputs already exist |
 | `device` | `Optional[str]` | `None` | Force device for MPNN inference (e.g. 'cpu'). Default: auto-detect. |
 | `keep_motif_sequences_fixed` | `bool` | `True` | Keep sequences of motifs fixed (if read into the dataframe) |
+| `preserve_fixed_coordinates` | `bool` | `True` | Restore observed fixed protein atom coordinates after packing when `repack_everything=0`. |
 | `fix_interface_residues` | `bool` | `False` | Fix the sequence at the interfaces |
 | `hbond_fix` | `bool` | `False` | Fix residues involved in hydrogen bonds |
 | `aromatic_fix` | `bool` | `False` | Fix aromatic residues near ligand |
@@ -886,6 +901,26 @@ Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=
 | `low_memory_mode` | `bool` | `False` | Use memory-efficient tokenization when GPU memory is constrained. |
 | `dump_trajectories` | `bool` | `False` | Write large noisy and denoised diffusion trajectory files. |
 | `skip_existing` | `bool` | `True` | Skip designs whose output file already exists. |
+
+---
+
+### rpxdock
+
+*Dock a z-oriented C3 asymmetric unit into an I3 cage and emit C3 trimers.*
+
+Class: `RPXDockBlock` · Container: `rpxdock` · Resources: CPU, 8 GB, one core
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `nout_top` | `int` | `1` | Highest-scoring C3 trimers retained per input. |
+| `beam_size` | `int` | `10000` | Hierarchical search beam size. |
+| `ignored_aas` | `str` | `'CGP'` | Residue types excluded from scoring; an empty string includes glycine-placeholder backbone frames. |
+
+Input geometry must use the C3 symmetry axis as its z axis and retain the
+asymmetric unit's radial displacement. Outputs retain
+motif correspondence, input lineage and each model's RPX score. Changing scoring
+residue selection requires checking score thresholds; the score alone does not
+validate a complete cage or experimental assembly.
 
 ---
 
@@ -1743,6 +1778,25 @@ Class: `MutateResiduesBlock` · Input: `True` · Resources: partition=`cpu`, mem
 
 ---
 
+### nanoparticle_prepare
+
+*Align an antigen clash reference and preserve a C3 scaffold's symmetry axis.*
+
+Class: `NanoparticlePrepareBlock`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `motif_pdb` | `str` | Required | Original C3 antigen stub. |
+| `clash_ref_pdb` | `str` | Required | Full antigen stalk in the stub's coordinate frame. |
+| `max_clashes` | `int` | `8` | Maximum permitted aligned stalk clashes. |
+| `max_c3_rmsd` | `float` | `2.0` | Maximum C3 CA deviation in Å. |
+
+Requires RFdiffusion motif correspondence. Emits an asymmetric unit with motif
+metadata and preserved radial placement; rows exceeding the clash limit are
+removed. Invalid symmetry or missing correspondence fails explicitly.
+
+---
+
 ### order_collection
 
 *Extract sequences, check ordered status, and collect prediction metrics.*
@@ -1833,6 +1887,23 @@ Class: `SidechainRotamerSweepBlock` · Input: `True` · Resources: partition=`cp
 | `mutations` | `dict` | **required** | Residue identities to install, e.g. {'A12': 'PHE'}. |
 | `rotamers` | `dict` | **required** | Per-position chi vectors in degrees. Every Cartesian combination is emitted as a separate structure. |
 | `max_combinations` | `int` | `1000` | Safety cap on emitted combinations per input structure. |
+
+---
+
+### select_chains
+
+*Keep specified structure chains, preserving residue IDs and parent lineage.*
+
+Class: `SelectChainsBlock` · Execution: inline
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chains` | `list[str]` | Required | Nonempty list of chain IDs to retain. |
+
+Missing chains raise an error. The output is a new CIF; motif residues, atom
+selections and diffusion correspondence are restricted to retained chains.
+This supports a true protein-only prediction branch when a complex also contains
+a protein or peptide partner, which ligand removal alone would retain.
 
 ---
 

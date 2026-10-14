@@ -81,6 +81,11 @@ class RPXDockBlock(CompiledBlockFunction):
         10000, ge=1, description="RPXdock hierarchical search beam size"
     )
 
+    ignored_aas: str = Field(
+        "CGP",
+        description="Residue types excluded from RPX scoring; use an empty string for glycine-placeholder backbones.",
+    )
+
     def get_command_template(self):
         return self._image.build_command(
             "python", "/opt/run_rpxdock.py", exec_mode="exec"
@@ -120,6 +125,8 @@ class RPXDockBlock(CompiledBlockFunction):
                         str(self.nout_top),
                         "--beam-size",
                         str(self.beam_size),
+                        "--ignored-aas",
+                        self.ignored_aas,
                     ]
                 )
             )

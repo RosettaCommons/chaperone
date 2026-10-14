@@ -204,3 +204,21 @@ def test_single_pose_upstream_patch_preserves_dimension_and_is_guarded(tmp_path)
     assert "numpy==1.26.4" in recipe
     assert "Unexpected RPXdock" in recipe
     assert "PYTHONPATH=/opt/rpxdock:/opt/willutil" in recipe
+
+
+def test_rpx_command_preserves_empty_residue_exclusion(tmp_path):
+    import shlex
+
+    atoms = trimer()
+    monomer = atoms[atoms.chain_id == "A"]
+    path = tmp_path / "monomer.pdb"
+    write_pdb(monomer, path)
+    handler = PipelineDataHandler(
+        [make_row("prepare", path, metadata={"motif": ["A10", "A11", "A12"]})]
+    )
+    block = RPXDockBlock(ignored_aas="", command_template=["python", "runner.py"])
+    command = block.create_command(handler, tmp_path / "sandbox", 0)
+    argv = shlex.split(command[2])
+    assert argv[argv.index("--ignored-aas") + 1] == ""
+    staged = json.loads((tmp_path / "sandbox/inputs.json").read_text())
+    assert staged[0]["motif_ordinals"] == [0, 1, 2]

@@ -90,3 +90,6 @@ analysis/
 # Distribution build products
 build/
 dist/
+
+# Local GPU example runs, downloaded model assets, and runtime environments.
+/validation/example-gpu/

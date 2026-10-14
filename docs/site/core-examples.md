@@ -2,15 +2,22 @@
 
 The worked scripts live in the repository's
 [`examples/` folder](https://github.com/RosettaCommons/chaperone/tree/main/examples).
-The links below open their source and run instructions. They demonstrate pipeline
+Each worked guide below explains its inputs, pipeline stages, prerequisites,
+selection criteria, and validation limits. They demonstrate pipeline
 composition; inclusion here does not certify scientific performance or successful
 execution on every supported cluster.
 
 | Example | What it demonstrates or measures |
 |---|---|
-| [Nanoparticle scaffold](https://github.com/RosettaCommons/chaperone/tree/main/examples/nanoparticle-design) | C3 RFdiffusion, public I3 RPXdock, tied sequence design, and AF3 trimer refolding; full-cage checks remain required. |
-| [Peptide binder](https://github.com/RosettaCommons/chaperone/tree/main/examples/peptide-binder) | Sequence-conditioned flexible peptide design and two rounds of AF3 selection. |
-| [Multi-MPNN comparison](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/multi-mpnn) | Three model families on a shared backbone, with optional AF3 refolding. |
+| [Nanoparticle scaffold](workflows/nanoparticle-design.md) | C3 RFdiffusion, public I3 RPXdock, tied sequence design, and AF3 trimer refolding; full-cage checks remain required. |
+| [Peptide binder](workflows/peptide-binder.md) | Sequence-conditioned flexible peptide design and two rounds of AF3 selection. |
+| [Multi-MPNN comparison](workflows/multi-mpnn.md) | Three model families on a shared backbone, with optional AF3 refolding. |
+| [Biotin binder](workflows/biotin-binder.md) | Ligand-conditioned generation, polar sequence design, AF3 refolding and Rosetta interface analysis. |
+| [DNA binder](workflows/dna-binder.md) | Explicit DNA coordinates and donor/acceptor conditioning with public RFD3. |
+| [Antibody design](workflows/antibody-design.md) | Antibody framework conditioning and sequence/refold validation; see the guide for required inputs. |
+| [Glycosidase](workflows/enzyme-glycosidase.md) | Catalytic motif scaffolding and apo, covalent-intermediate, and ligand-bound refolding branches. |
+| [Protease](workflows/enzyme-protease.md) | Substrate-conditioned design, sequence/refinement cycles, and separate enzyme-only/complex predictions. |
+| [Hammerhead ribozyme](workflows/ribozyme-hammerhead.md) | RNA motif rescaffolding and crystal-reference catalytic geometry after AF3 refolding. |
 | [FGFR2 binder campaign](https://github.com/RosettaCommons/chaperone/tree/main/examples/fgfr2-binder) | Backbone generation, sequence design, AF3 refolding, and interface confidence ranking with ipSAE for FGFR2. |
 | [PPI benchmark](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) | Two inverse-folding backends in an RFD3 → MPNN → RF3 workflow for the insulin receptor; compare refolding RMSD and interface confidence under matched inputs and sampling. |
 | [DISCO benchmark](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/disco) | Heme B ligand-conditioned co-design followed by AF3; measures backbone and ligand pose recovery after refolding. |
@@ -62,3 +69,12 @@ expected output fields, scientific metrics, and an honest record of what was
 actually tested. Keep large generated outputs and site credentials out of the
 repository, and put generally reusable operations into blocks rather than
 copying orchestration into each example.
+
+## Agent benchmark isolation
+
+These worked examples and workflow documentation are public learning material.
+The Harbor benchmark's agent snapshot excludes `examples/` and these pages; its
+only included documentation page is the generic block reference. The benchmark
+therefore does not hand these task-specific recipes to agents as workspace
+context. This filesystem boundary does not prevent an agent with external network
+access from discovering publicly available material.

@@ -529,6 +529,16 @@ class ClassicMPNNBlock(CompiledBlockFunction):
             "structures. Sequence mode disables packing."
         ),
     )
+    preserve_fixed_coordinates: bool = Field(
+        default=True,
+        description=(
+            "For packed structures with repack_everything=0, restore observed "
+            "finite heavy-atom coordinates of fixed protein residues from staged "
+            "inputs. Newly completed atoms keep their packed coordinates. False "
+            "retains the packer's reconstructed geometry; repack_everything=1 "
+            "also disables restoration. Has no effect on sequence-only outputs."
+        ),
+    )
 
     skip_existing: bool = Field(
         default=True, description="Skip processing if outputs already exist"
@@ -713,6 +723,177 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                     to_cif_file(ensure_bonds(atoms), str(path))
             restored_paths.append(path)
         return list(dict.fromkeys(restored_paths))
+
+    def _restore_fixed_coordinates(self, paths, sandbox_dir) -> list[Path]:
+        """Keep observed fixed-residue coordinates, not idealized reconstructions.
+
+        LigandMPNN's packer reconstructs atom positions from torsions even for
+        residues outside its design mask. Resolve that same mask from the input
+        constraints and actual CLI, then restore only the observed heavy atoms
+        of fixed protein residues. Missing input atoms stay newly packed.
+        """
+        import numpy as np
+        from biotite.structure import filter_amino_acids
+        from chaperone.io import parse_to_atom_array, write_pdb
+
+        # Older compiles may have emitted chain-restored CIFs beside the raw
+        # PDBs. Always prefer the native PDB when both copies exist.
+        native_stems = {
+            Path(path).stem for path in paths if Path(path).suffix == ".pdb"
+        }
+        paths = [
+            Path(path)
+            for path in paths
+            if Path(path).suffix == ".pdb" or Path(path).stem not in native_stems
+        ]
+        if self.args.repack_everything or not self.preserve_fixed_coordinates:
+            return paths
+        sandbox_dir = Path(sandbox_dir)
+        command_file = sandbox_dir / "manifest.json"
+        command = (
+            json.loads(command_file.read_text()).get("command", [])
+            if command_file.is_file()
+            else []
+        )
+
+        def option(name, default):
+            flag = "--" + name
+            return str(command[command.index(flag) + 1]) if flag in command else default
+
+        if option("repack_everything", "0") == "1":
+            return paths
+        renames = {}
+        for path in (sandbox_dir / "inputs").glob("chain_renames_chunk*.json"):
+            renames.update(json.loads(path.read_text()))
+        records = {}
+        for path in (sandbox_dir / "inputs").glob("pdb_position_fixed_chunk*.json"):
+            for source, fixed in json.loads(path.read_text()).items():
+                records[Path(source).stem] = {
+                    "source": source,
+                    "fixed": fixed.split() if isinstance(fixed, str) else fixed,
+                }
+        if not records:
+            raise ValueError(
+                "Packed MPNN coordinate restoration requires staged input constraints"
+            )
+
+        def atom_keys(atoms):
+            insertions = (
+                atoms.ins_code
+                if "ins_code" in atoms.get_annotation_categories()
+                else [""] * len(atoms)
+            )
+            return [
+                (f"{chain}{int(residue)}{str(ins).strip()}", str(name))
+                for chain, residue, ins, name in zip(
+                    atoms.chain_id, atoms.res_id, insertions, atoms.atom_name
+                )
+            ]
+
+        restored_paths = []
+        for path in paths:
+            # Native outputs are PDB. Previously restored CIFs are regenerated
+            # from these PDBs by _restore_chain_ids below on every recompile.
+            if path.suffix != ".pdb":
+                try:
+                    manifest_entry_for_fasta(path, records)
+                except ValueError:
+                    # Preserve the existing compiler's handling of unrelated
+                    # CIFs; never apply another input's constraints by prefix.
+                    restored_paths.append(path)
+                    continue
+                raise ValueError(
+                    f"Fixed-coordinate restoration requires the native packed PDB; "
+                    f"only a converted output remains: {path}. Re-run MPNN to "
+                    "restore its native output or explicitly disable restoration."
+                )
+            record = manifest_entry_for_fasta(path, records)
+            source = parse_to_atom_array(record["source"])
+            packed = parse_to_atom_array(path)
+            rename = ChainRename(renames.get(Path(record["source"]).stem, {}))
+            design_chains = option(
+                "chains_to_design",
+                ",".join(
+                    rename.mapping.get(c, c)
+                    for c in self.args.chains_to_design.split(",")
+                    if c
+                ),
+            )
+            redesigned = set(
+                option(
+                    "redesigned_residues",
+                    " ".join(
+                        rename.apply(r) for r in self.args.redesigned_residues.split()
+                    ),
+                ).split()
+            )
+            inverse = {value: key for key, value in rename.mapping.items()}
+            original_chains = {
+                inverse.get(str(chain), str(chain)) for chain in source.chain_id
+            }
+            parse_default = self.args.parse_these_chains_only
+            parse_chains = (
+                list(parse_default)
+                if parse_default
+                and "," not in parse_default
+                and parse_default not in original_chains
+                else parse_default.split(",")
+            )
+            parsed_chains = option(
+                "parse_these_chains_only",
+                ",".join(rename.mapping.get(c, c) for c in parse_chains if c),
+            )
+            chain_filter = set(parsed_chains.split(",")) if parsed_chains else None
+            design_chains = set(design_chains.split(",")) if design_chains else None
+            fixed = set(record["fixed"])
+            protein = filter_amino_acids(source)
+            source_keys, packed_keys = atom_keys(source), atom_keys(packed)
+            if len(set(source_keys)) != len(source_keys):
+                raise ValueError(
+                    f"Ambiguous staged atom identities: {record['source']}"
+                )
+            packed_lookup = {key: i for i, key in enumerate(packed_keys)}
+            if len(packed_lookup) != len(packed_keys):
+                raise ValueError(f"Ambiguous packed atom identities: {path}")
+            restored = 0
+            for i, (residue, name) in enumerate(source_keys):
+                chain = str(source.chain_id[i])
+                if not protein[i] or (
+                    chain_filter is not None and chain not in chain_filter
+                ):
+                    continue
+                designable = (design_chains is None or chain in design_chains) and (
+                    residue in redesigned if redesigned else residue not in fixed
+                )
+                if (
+                    designable
+                    or source.element[i] in ("H", "D")
+                    or not np.isfinite(source.coord[i]).all()
+                ):
+                    continue
+                j = packed_lookup.get((residue, name))
+                if j is None:
+                    raise ValueError(
+                        f"Packed MPNN output is missing observed fixed atom {residue}/{name}: {path}"
+                    )
+                if source.res_name[i] != packed.res_name[j]:
+                    raise ValueError(
+                        f"Packed MPNN output changed fixed residue {residue}: {source.res_name[i]} -> {packed.res_name[j]}"
+                    )
+                packed.coord[j] = source.coord[i]
+                restored += 1
+            if restored:
+                output_dir = sandbox_dir / "fixed"
+                output_dir.mkdir(exist_ok=True)
+                path = output_dir / path.name
+                write_pdb(packed, path)
+                logger.info(
+                    "Restored %d observed fixed heavy-atom coordinates in %s",
+                    restored,
+                    path,
+                )
+            restored_paths.append(path)
+        return restored_paths
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
         if self.hbond_fix or self.aromatic_fix:
@@ -972,6 +1153,7 @@ class ClassicMPNNBlock(CompiledBlockFunction):
                 path = new_path
             cleaned_paths.append(path)
 
+        cleaned_paths = self._restore_fixed_coordinates(cleaned_paths, sandbox_dir)
         cleaned_paths = self._restore_chain_ids(cleaned_paths, sandbox_dir)
 
         # Single path per row - parent metadata inherited during compile_chunk_job
