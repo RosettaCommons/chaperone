@@ -113,6 +113,14 @@ EXAMPLES = [
     "benchmarks/ame/pipeline_full.py",
     "fgfr2-binder/pipeline.py",
     "tests/catcif-storage/pipeline.py",
+    "nanoparticle-design/pipeline.py",
+    "antibody-design/pipeline.py",
+    "enzyme-protease/pipeline.py",
+    "enzyme-glycosidase/pipeline.py",
+    "biotin-binder/pipeline.py",
+    "ribozyme-hammerhead/pipeline.py",
+    "peptide-binder/pipeline.py",
+    "benchmarks/multi-mpnn/pipeline.py",
 ]
 
 
@@ -134,6 +142,7 @@ seen, exports = [], []
 class Handler:
     names = ["example"]
     def __add__(self, other): return self
+    def rewind_to(self, step): return self
     def __len__(self): return 1
     def unpack(self, **kwargs):
         return PipelineDataHandler([make_row(
@@ -164,12 +173,16 @@ Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default
         values = block["config"]
         if block["type"] == "rfd3":
             assert values["batch_size"] == values["n_batches"] == 1
-            assert len(block["input_keys"]) == 1
+            assert len(block["input_keys"]) == (2 if "enzyme-" in example else 1)
         if block["type"] in {"mpnn", "foundry_mpnn"}:
             assert values["num_seq_per_pdb"] == 1
         if block["type"] in {"af3", "af3_with_target_template", "rf3"}:
             assert values["diffusion_batch_size"] == 1
             assert len(values["model_seeds"]) == 1
+        if block["type"] == "rfd1":
+            assert values["num_designs"] == 1
+        if block["type"] == "rpxdock":
+            assert values["nout_top"] == 1
         if block["type"] == "disco":
             assert values["num_seeds"] == values["n_batches"] == 1
     if "ame" in example:

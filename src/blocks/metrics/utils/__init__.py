@@ -4,6 +4,11 @@ import copy
 import logging
 import numpy as np
 from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_RNA
+from atomworks.io.transforms.atom_array import (
+    add_pn_unit_id_annotation,
+    add_pn_unit_iid_annotation,
+)
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.transforms.atomize import AtomizeByCCDName
 from atomworks.ml.transforms.symmetry import FindAutomorphismsWithNetworkX
 
@@ -219,6 +224,17 @@ def find_automorphisms(atom_array):
     """
     try:
         temp_array = copy.deepcopy(atom_array)
+        # Minimal I/O arrays do not carry the assembly/unit annotations now
+        # required by AtomWorks 3's automorphism transform. Derive them on our
+        # copy, preserving any existing assembly instance identities.
+        ensure_annotations(temp_array, "is_polymer")
+        if "pn_unit_iid" not in temp_array.get_annotation_categories():
+            if "transformation_id" not in temp_array.get_annotation_categories():
+                temp_array.set_annotation(
+                    "transformation_id", np.full(len(temp_array), "1")
+                )
+            add_pn_unit_id_annotation(temp_array, overwrite=False)
+            add_pn_unit_iid_annotation(temp_array)
         atomizer = AtomizeByCCDName(
             atomize_by_default=True,
             res_names_to_ignore=STANDARD_AA + STANDARD_RNA + STANDARD_DNA,

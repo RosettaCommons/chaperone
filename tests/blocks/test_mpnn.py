@@ -378,3 +378,142 @@ def test_pdb_missing_optional_fields_preserves_source_and_finite_values(tmp_path
         mpnn.ClassicMPNNBlock._write_pdb(
             "invalid.cif", source, mpnn.ChainRename.for_atoms(source), tmp_path / "invalid",
         )
+
+
+def fixed_coordinate_case(tmp_path, *, args=None, missing_cb=False):
+    """Multi-chain, ligand-containing input plus a packer-like reconstruction."""
+    import numpy as np
+    from biotite.structure import filter_amino_acids
+    from chaperone.io import write_pdb
+
+    atoms = []
+    for chain, residue in [("Z", 1), ("Z", 2), ("X1", 5)]:
+        for name in ("N", "CA", "C", "O", "CB"):
+            if missing_cb and chain == "X1" and name == "CB":
+                continue
+            atoms.append(Atom([len(atoms), 1., 2.], chain_id=chain, res_id=residue,
+                              res_name="ALA", atom_name=name, element=name[0]))
+    atoms.append(Atom([20., 3., 4.], chain_id="L", res_id=8, res_name="UNL",
+                      atom_name="C1", element="C", hetero=True))
+    source = tmp_path / "fixed_case.cif"
+    to_cif_file(ensure_bonds(array(atoms)), str(source))
+    handler = PipelineDataHandler([make_row("rfd3", source, metadata={"motif": ["X15"]})])
+    block = mpnn.ClassicMPNNBlock(output_mode="structures", args=args or {})
+    sandbox = tmp_path / "chunk"
+    block.create_command(handler, sandbox, 0)
+    staged = parse_to_atom_array(sandbox / "inputs/pdb_inputs/fixed_case.pdb")
+    raw = staged.copy()
+    raw.coord[filter_amino_acids(raw)] += np.array([3., 4., 0.])
+    raw_dir = sandbox / "packed"
+    raw_dir.mkdir()
+    path = raw_dir / "fixed_case__0_1.pdb"
+    write_pdb(raw, path)
+    return block, sandbox, staged, path
+
+
+def test_packed_fixed_coordinates_survive_chain_remapping_and_recompile(tmp_path):
+    import numpy as np
+
+    block, sandbox, staged, native = fixed_coordinate_case(tmp_path, args={"fixed_residues": "Z1"})
+    # A pre-fix compile left an uncorrected chain-restored CIF beside its PDB.
+    block._restore_chain_ids([native], sandbox)
+    result = block.compile(sandbox)
+    assert len(result) == 1
+    first = next(result.get_data(load=True))
+    assert first.path.endswith("fixed/fixed_case__0_1.cif")
+    output = first.atom_array
+    for chain, residue in [("Z", 1), ("X1", 5)]:
+        old_chain = "A" if chain == "X1" else chain
+        before = staged.coord[(staged.chain_id == old_chain) & (staged.res_id == residue)]
+        after = output.coord[(output.chain_id == chain) & (output.res_id == residue)]
+        np.testing.assert_array_equal(before, after)
+    designable = output.chain_id == "Z"
+    designable &= output.res_id == 2
+    np.testing.assert_allclose(output.coord[designable], staged.coord[(staged.chain_id == "Z") & (staged.res_id == 2)] + [3., 4., 0.])
+    np.testing.assert_array_equal(output.coord[output.chain_id == "L"], staged.coord[staged.chain_id == "L"])
+    assert set(output.res_name[output.chain_id == "L"]) == {"UNL"}
+    # Keep the raw upstream reconstruction for inspection and opt-in repacking.
+    assert not np.array_equal(parse_to_atom_array(native).coord, staged.coord)
+    repeated = next(block.compile(sandbox).get_data(load=True))
+    assert repeated.path == first.path
+    np.testing.assert_array_equal(repeated.atom_array.coord, output.coord)
+
+
+@pytest.mark.parametrize("mode", ["chains", "redesigned", "actual_command"])
+def test_restoration_uses_upstream_design_mask_precedence(tmp_path, mode):
+    import numpy as np
+
+    args = {"chains_to_design": "Z"} if mode == "chains" else {"redesigned_residues": "X15"}
+    block, sandbox, staged, _ = fixed_coordinate_case(tmp_path, args=args)
+    if mode == "actual_command":
+        # The executed CLI, not a changed in-memory block, is authoritative.
+        (sandbox / "manifest.json").write_text(json.dumps({"command": ["python", "run.py", "--redesigned_residues", "Z2"]}))
+    output = next(block.compile(sandbox).get_data(load=True)).atom_array
+    for chain, residue in [("Z", 1), ("Z", 2), ("X1", 5)]:
+        original = staged.coord[(staged.chain_id == ("A" if chain == "X1" else chain)) & (staged.res_id == residue)]
+        expected_designable = chain == "Z" if mode == "chains" else (chain == "X1" if mode == "redesigned" else (chain == "Z" and residue == 2))
+        expected = original + [3., 4., 0.] if expected_designable else original
+        np.testing.assert_allclose(output.coord[(output.chain_id == chain) & (output.res_id == residue)], expected)
+
+
+def test_explicit_repack_everything_keeps_native_reconstruction(tmp_path):
+    import numpy as np
+
+    block, sandbox, staged, _ = fixed_coordinate_case(tmp_path, args={"repack_everything": 1})
+    output = next(block.compile(sandbox).get_data(load=True)).atom_array
+    np.testing.assert_allclose(output.coord[output.chain_id == "X1"], staged.coord[staged.chain_id == "A"] + [3., 4., 0.])
+    assert not (sandbox / "fixed").exists()
+
+
+@pytest.mark.parametrize("damage", ["missing_atom", "changed_identity"])
+def test_fixed_coordinates_fail_closed_for_corrupt_packed_outputs(tmp_path, damage):
+    from chaperone.io import write_pdb
+
+    block, sandbox, _, native = fixed_coordinate_case(tmp_path)
+    atoms = parse_to_atom_array(native)
+    if damage == "missing_atom":
+        atoms = atoms[~((atoms.chain_id == "A") & (atoms.atom_name == "CB"))]
+    else:
+        atoms.res_name[atoms.chain_id == "A"] = "GLY"
+    write_pdb(atoms, native)
+    with pytest.raises(ValueError, match="missing observed fixed atom|changed fixed residue"):
+        block.compile(sandbox)
+
+
+def test_packer_can_complete_missing_input_atoms_without_fabricated_restoration(tmp_path):
+    import numpy as np
+    from biotite.structure import concatenate
+    from chaperone.io import write_pdb
+
+    block, sandbox, staged, native = fixed_coordinate_case(tmp_path, missing_cb=True)
+    atoms = parse_to_atom_array(native)
+    added = array([Atom([30., 40., 50.], chain_id="A", res_id=5, res_name="ALA", atom_name="CB", element="C")])
+    atoms = concatenate([atoms, added])
+    write_pdb(atoms, native)
+    output = next(block.compile(sandbox).get_data(load=True)).atom_array
+    cb = (output.chain_id == "X1") & (output.atom_name == "CB")
+    np.testing.assert_array_equal(output.coord[cb], [[30., 40., 50.]])
+    observed = (output.chain_id == "X1") & (output.atom_name != "CB")
+    np.testing.assert_array_equal(output.coord[observed], staged.coord[staged.chain_id == "A"])
+
+
+def test_fixed_coordinate_policy_is_explicit_and_part_of_cache_identity(tmp_path):
+    import numpy as np
+
+    restored = mpnn.ClassicMPNNBlock(output_mode="structures")
+    native = mpnn.ClassicMPNNBlock(output_mode="structures", preserve_fixed_coordinates=False)
+    assert restored.model_dump()["preserve_fixed_coordinates"] is True
+    assert ExecutionEngine._cache_fingerprint([restored]) != ExecutionEngine._cache_fingerprint([native])
+    block, sandbox, staged, _ = fixed_coordinate_case(tmp_path)
+    block.preserve_fixed_coordinates = False
+    output = next(block.compile(sandbox).get_data(load=True)).atom_array
+    np.testing.assert_allclose(output.coord[output.chain_id == "X1"], staged.coord[staged.chain_id == "A"] + [3., 4., 0.])
+    assert not (sandbox / "fixed").exists()
+
+
+def test_restoration_rejects_missing_native_output_instead_of_returning_stale_cif(tmp_path):
+    block, sandbox, _, native = fixed_coordinate_case(tmp_path)
+    block._restore_chain_ids([native], sandbox)
+    native.unlink()
+    with pytest.raises(ValueError, match="requires the native packed PDB"):
+        block.compile(sandbox)

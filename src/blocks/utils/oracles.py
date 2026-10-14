@@ -35,9 +35,19 @@ import os
 
 
 def is_ccd_name(name):
-    """Checks if the name is a CCD code based on whether the path exists"""
+    """Recognize CCD identifiers without requiring a site-specific mirror.
+
+    A configured mirror may contain newer components than Biotite's bundled
+    dictionary. Check it first, then fall back to the installed dictionary.
+    """
+    from biotite.structure.info import all_residues
     from chaperone import get_setting_field
 
-    ccd_path = get_setting_field("CCD_MIRROR_PATH")
-    path = os.path.join(ccd_path, name[0], name, f"{name}.cif")
-    return os.path.exists(path)
+    if not isinstance(name, str) or not name:
+        return False
+    ccd_path = get_setting_field("CCD_MIRROR_PATH", None)
+    if ccd_path:
+        path = os.path.join(ccd_path, name[0], name, f"{name}.cif")
+        if os.path.isfile(path):
+            return True
+    return name in all_residues()

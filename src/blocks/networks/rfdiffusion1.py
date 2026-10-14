@@ -77,17 +77,19 @@ logger = logging.getLogger(__name__)
 
 # Model weight URLs from IPD file server
 _RFD1_WEIGHTS = {
-    "Base_ckpt.pt": "http://files.ipd.uw.edu/pub/RFdiffusion/6f5902ac237024bdd0c176cb93063dc4/Base_ckpt.pt",
-    "Complex_base_ckpt.pt": "http://files.ipd.uw.edu/pub/RFdiffusion/e29311f6f1bf1af907f9ef9f44b8328b/Complex_base_ckpt.pt",
-    "Complex_Fold_base_ckpt.pt": "http://files.ipd.uw.edu/pub/RFdiffusion/60f09a193fb5e5ccdc4980417708dbab/Complex_Fold_base_ckpt.pt",
-    "InpaintSeq_ckpt.pt": "http://files.ipd.uw.edu/pub/RFdiffusion/74f51cfb8b440f50d70878e05361d8f0/InpaintSeq_ckpt.pt",
-    "ActiveSite_ckpt.pt": "http://files.ipd.uw.edu/pub/RFdiffusion/5532d2e1f3a4738decd58b19d633b3c3/ActiveSite_ckpt.pt",
+    "Base_ckpt.pt": "https://files.ipd.uw.edu/pub/RFdiffusion/6f5902ac237024bdd0c176cb93063dc4/Base_ckpt.pt",
+    "Complex_base_ckpt.pt": "https://files.ipd.uw.edu/pub/RFdiffusion/e29311f6f1bf1af907f9ef9f44b8328b/Complex_base_ckpt.pt",
+    "Complex_Fold_base_ckpt.pt": "https://files.ipd.uw.edu/pub/RFdiffusion/60f09a193fb5e5ccdc4980417708dbab/Complex_Fold_base_ckpt.pt",
+    "InpaintSeq_ckpt.pt": "https://files.ipd.uw.edu/pub/RFdiffusion/74f51cfb8b440f50d70878e05361d8f0/InpaintSeq_ckpt.pt",
+    "ActiveSite_ckpt.pt": "https://files.ipd.uw.edu/pub/RFdiffusion/5532d2e1f3a4738decd58b19d633b3c3/ActiveSite_ckpt.pt",
 }
 
 _WEIGHT_DOWNLOADS = " && ".join(
     f"wget -q -O /opt/RFdiffusion/models/{name} {url}"
     for name, url in _RFD1_WEIGHTS.items()
 )
+
+RFD1_REVISION = "86507b6538f51fce57b5a72477165f03999ed7ae"
 
 RFD1_CONTAINER = (
     Image("rfdiffusion1")
@@ -115,11 +117,12 @@ RFD1_CONTAINER = (
         "https://github.com/RosettaCommons/RFdiffusion.git",
         "/opt/RFdiffusion",
     )
+    .run(f"git -C /opt/RFdiffusion checkout {RFD1_REVISION}")
     .run(
-        # Install PyTorch 2.4 + DGL (pinned for compatibility)
+        # DGL 2.4 requires torch 2.4.0; pin the CUDA build in the same solve.
         ". /opt/rfd1-env/bin/activate && "
-        "pip install --no-cache-dir torch==2.4.1 --index-url https://download.pytorch.org/whl/cu124 && "
-        "pip install --no-cache-dir dgl -f https://data.dgl.ai/wheels/torch-2.4/cu124/repo.html",
+        "pip install --no-cache-dir torch==2.4.0+cu124 dgl==2.4.0+cu124 "
+        "--extra-index-url https://download.pytorch.org/whl/cu124 -f https://data.dgl.ai/wheels/torch-2.4/cu124/repo.html",
     )
     .run(
         # Install SE3-Transformer: install requirements first (skip pinned e3nn
@@ -132,7 +135,12 @@ RFD1_CONTAINER = (
     .run(
         # Install RFdiffusion dependencies (e3nn after SE3Transformer to get newer version)
         ". /opt/rfd1-env/bin/activate && "
-        "pip install --no-cache-dir hydra-core pyrsistent icecream opt-einsum e3nn",
+        "pip install --no-cache-dir hydra-core pyrsistent icecream opt-einsum 'numpy==1.26.4' 'e3nn==0.5.1'",
+    )
+    .run(
+        ". /opt/rfd1-env/bin/activate && DGLBACKEND=pytorch PYTHONPATH=/opt/RFdiffusion "
+        "python -c 'import torch, dgl; import rfdiffusion.inference.model_runners; "
+        'assert torch.__version__ == "2.4.0+cu124"; assert dgl.__version__ == "2.4.0+cu124"\'',
     )
     .run(
         # Create model directory (weights mounted at runtime via RFDIFFUSION_WEIGHTS_DIR)
@@ -177,7 +185,39 @@ def _extract_trb_info(pdb_path: str, raise_on_missing: bool = True) -> dict:
     """
     from blocks.networks.rfdiffusion2 import _extract_trb_info as _rfd2_extract_trb
 
-    return _rfd2_extract_trb(pdb_path, raise_on_missing=raise_on_missing)
+    metadata = _rfd2_extract_trb(pdb_path, raise_on_missing=raise_on_missing)
+    trb_path = str(pdb_path).replace(".pdb", ".trb")
+    if not os.path.isfile(trb_path):
+        return metadata
+
+    import json
+    import numpy as np
+    from chaperone.io import parse_to_atom_array
+
+    trb = np.load(trb_path, allow_pickle=True)
+    if "con_hal_idx0" not in trb:
+        return metadata
+    # RFD1 writes each symmetric PDB chain starting at residue 1, while its
+    # con_hal_pdb_idx can retain global sequence numbering (B158, C315, ...).
+    # The zero-based output ordinals refer to the actual emitted residue order.
+    atoms = parse_to_atom_array(str(pdb_path))
+    ca = atoms[atoms.atom_name == "CA"]
+    keys = [f"{chain}{int(res)}" for chain, res in zip(ca.chain_id, ca.res_id)]
+    indices = np.asarray(trb["con_hal_idx0"], dtype=int)
+    refs = trb["con_ref_pdb_idx"]
+    if (
+        len(keys) != len(set(keys))
+        or len(indices) != len(refs)
+        or np.any(indices < 0)
+        or np.any(indices >= len(keys))
+    ):
+        raise ValueError(f"Invalid RFdiffusion output motif ordinals in {trb_path}")
+    motif = [keys[index] for index in indices]
+    metadata["motif"] = motif
+    metadata["diffused_index_map"] = json.dumps(
+        {f"{chain}{int(res)}": target for (chain, res), target in zip(refs, motif)}
+    )
+    return metadata
 
 
 # ──────────────────────────────────────────────────────────
@@ -453,8 +493,7 @@ class RFD1Block(CompiledBlockFunction):
         if len(paths) == 0:
             raise RuntimeError(
                 f"RFD1 execution completed but no output files were generated in {sandbox_dir}. "
-                f"Check sandbox directory for logs."
-                + tail_block_log(sandbox_dir)
+                f"Check sandbox directory for logs." + tail_block_log(sandbox_dir)
             )
 
         rows = []
