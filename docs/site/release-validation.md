@@ -313,3 +313,23 @@ isolated installed-package CPU/cache smoke. Production PyPI was not used for
 publication. This TestPyPI version is consumed; another upload requires a version
 increment. At recording time GitHub CI execution awaited workflow-write access;
 local validation is not a claim of a completed hosted CI run.
+
+### Corrected candidate: 1.5.1rc1
+
+The post-upload CLI probe found that 1.5.0's `list-blocks` command assumed a
+source checkout. Candidate **[1.5.1rc1](https://test.pypi.org/project/chaperone-pipelines/1.5.1rc1/)**
+from commit `9492bf5` fixes installed CLI startup. The smoke now checks CLI help,
+block discovery, and container recipe discovery as well as CPU execution/cache.
+Both wheel and sdist installations pass. Focused installed-wheel regressions:
+**165 passed, 8 skipped**. A forced reinstall from TestPyPI passed the expanded
+smoke, and both published hashes match the validated artifacts. Use 1.5.1rc1;
+the original 1.5.0 rehearsal is superseded.
+
+GitHub accepted the workflow files after refreshing the credential's workflow
+scope. Hosted runs still fail before creating any jobs (`BuildFailed`,
+`startup_failure`, no logs/check runs). This also occurs on pre-existing main,
+for example [run 38491906790](https://github.com/RosettaCommons/chaperone/actions/runs/38491906790),
+before this PR. Actions are enabled and repository policy allows all actions;
+`actionlint` validates all three workflow files locally. The root cause of the
+hosted startup failure is not established. No hosted CI success or real CPU
+Docker run is claimed for this PR; Docker is unavailable on the local host.
