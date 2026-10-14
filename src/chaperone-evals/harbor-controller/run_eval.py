@@ -1847,7 +1847,7 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
         if on_compute:
             prefix = [
                 "srun", "--nodes=1", "--ntasks=1", "--cpus-per-task=1",
-                "--mem=4G", "--time=00:03:00", "--immediate=60",
+                "--mem=4G", "--time=00:03:00", "--immediate=300",
                 "--job-name=chaperone-eval-preflight",
             ]
             for option, key in (("partition", "cpu_partition"), ("account", "account"), ("qos", "qos")):
@@ -1856,7 +1856,7 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
             command = prefix + command
         try:
             completed = subprocess.run(
-                command, text=True, capture_output=True, timeout=240 if on_compute else 60
+                command, text=True, capture_output=True, timeout=510 if on_compute else 60
             )
         except subprocess.TimeoutExpired as exc:
             raise SystemExit("Apptainer agent-runtime preflight timed out.") from exc

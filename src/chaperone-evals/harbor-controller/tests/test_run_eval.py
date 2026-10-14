@@ -873,6 +873,8 @@ class RunEvalTest(unittest.TestCase):
             self.assertEqual(command[0], "srun")
             self.assertIn("--partition=hpc-mid", command)
             self.assertIn("--account=science", command)
+            self.assertIn("--immediate=300", command)
+            self.assertEqual(run.call_args.kwargs["timeout"], 510)
             self.assertFalse(any(arg.startswith("--gres") for arg in command))
             source = next(arg.rsplit(":", 1)[0] for arg in command if arg.endswith(":/tmp"))
             self.assertEqual(Path(source).parent, root / ".runtime-probes")

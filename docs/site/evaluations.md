@@ -216,7 +216,8 @@ make those external assets available by itself.
 
 If the login host cannot execute Apptainer, set `"runtime_probe_on_compute": true`
 in the site JSON. Runtime preflight then uses a short CPU-only `srun` allocation
-in the configured CPU partition/account/QoS, with temporary files under the shared
+in the configured CPU partition/account/QoS (up to five minutes queued and three
+minutes running), with temporary files under the shared
 run directory. The main controller still launches from the submission host.
 
 ### Building runtime images outside digs
