@@ -25,6 +25,7 @@ from environments.slurm_broker import (
 )
 from environments.health_watchdog import ControllerHealthWatchdog
 from scripts.snapshot_harness import validate_snapshot
+from scheduler_isolation import BROKER_COMMANDS, WORKER_SLURM_ENV
 from site_config import get_site, ENV_NAMES
 
 
@@ -277,10 +278,11 @@ class ApptainerEnvironment(SingularityEnvironment):
                 ]
             )
             resolved_mounts.extend(self._runtime_mounts())
-            # The outer agent sees scoped broker clients for mutating/control
-            # commands. The generated compute-node wrapper still binds the
-            # node's real Slurm binaries inside broker-approved allocations.
-            for command in ("scancel", "scontrol", "srun"):
+            # All agent scheduler commands use the host broker. Scientific
+            # workers receive no native Slurm binaries or authentication.
+            for command in BROKER_COMMANDS:
+                if command == "sbatch":
+                    continue
                 resolved_mounts.append(
                     {
                         "type": "bind",
@@ -535,6 +537,10 @@ class ApptainerEnvironment(SingularityEnvironment):
                 "tmp",
                 "--no-mount",
                 "bind-paths",
+                "--no-mount",
+                "hostfs",
+                "--no-mount",
+                "cwd",
                 "--writable-tmpfs",
                 "--pwd",
                 str(workspace),
@@ -551,6 +557,7 @@ class ApptainerEnvironment(SingularityEnvironment):
             (
                 "#!/usr/bin/env bash",
                 "set -euo pipefail",
+                'while IFS= read -r name; do unset "$name"; done < <(compgen -A variable APPTAINER; compgen -A variable SINGULARITY; true)',
                 "gpu_args=()",
                 "env_args=()",
                 "runtime_bind_args=()",
@@ -588,7 +595,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                 "for name in " + " ".join(sorted(ENV_NAMES)) + "; do",
                 '  if declare -p "$name" >/dev/null 2>&1; then env_args+=(--env "$name=${!name}"); fi',
                 "done",
-                'while IFS= read -r name; do env_args+=(--env "$name=${!name}"); done < <(compgen -A variable SLURM_)',
+                'for name in ' + ' '.join(WORKER_SLURM_ENV) + '; do if [[ -v $name ]]; then env_args+=(--env "$name=${!name}"); fi; done',
                 command.replace(
                     "apptainer exec",
                     'apptainer exec "${gpu_args[@]}" "${env_args[@]}" "${runtime_bind_args[@]}"',
@@ -858,8 +865,9 @@ class ApptainerEnvironment(SingularityEnvironment):
         disabled_mount_args: list[str] = []
         disabled_mounts = self._singularity_no_mount
         if disabled_mounts is None:
-            disabled_mounts = "home,tmp,bind-paths"
-        for mount_type in disabled_mounts.split(","):
+            disabled_mounts = "home,tmp,bind-paths,hostfs,cwd"
+        disabled_mounts += ",hostfs,cwd"
+        for mount_type in dict.fromkeys(disabled_mounts.split(",")):
             mount_type = mount_type.strip()
             if mount_type:
                 disabled_mount_args.extend(["--no-mount", mount_type])
@@ -873,7 +881,7 @@ class ApptainerEnvironment(SingularityEnvironment):
             if name in os.environ and name not in container_env:
                 container_env[name] = os.environ[name]
         for name, value in os.environ.items():
-            if name.startswith("SLURM_") and name not in container_env:
+            if name in WORKER_SLURM_ENV and name not in container_env:
                 container_env[name] = value
         # Values travel to apptainer through its own environment
         # (APPTAINERENV_<NAME>, honoured under --cleanenv), never as --env
@@ -906,7 +914,7 @@ class ApptainerEnvironment(SingularityEnvironment):
         process_env = {
             name: value
             for name, value in os.environ.items()
-            if not name.startswith(("APPTAINER_", "SINGULARITY_"))
+            if not name.startswith(("APPTAINER", "SINGULARITY"))
         }
         process_env.update(container_env_vars)
         process = await asyncio.create_subprocess_exec(

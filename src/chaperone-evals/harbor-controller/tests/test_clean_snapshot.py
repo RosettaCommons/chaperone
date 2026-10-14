@@ -689,7 +689,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
+def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path, monkeypatch):
     """The bundle has no dotenv files; the controller must supply its site map."""
     import json
     import os
@@ -700,6 +700,12 @@ def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
     from scripts.slurm_gpu_guard import validate_request
     from scripts.snapshot_harness import build
 
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "audit_hints.json").write_text(json.dumps([{
+        "label": "synthetic", "pattern": "HELD_OUT_TEST_SENTINEL_48723"
+    }]))
+    monkeypatch.setenv("CHAPERONE_EVALS_PRIVATE", str(private))
     root = Path(__file__).resolve().parents[4]
     snapshot = build(root, tmp_path / "snapshots")
     assert not list(snapshot.glob(".env*"))
@@ -708,6 +714,9 @@ def test_sanitized_snapshot_resources_match_the_scheduler_guard(tmp_path):
         **get_site()["environment"],
         "PYTHONPATH": str(snapshot / "src"),
     }
+    # The scheduling test must not require a digs CCD mount on the CI host.
+    env.pop("CCD_MIRROR_PATH", None)
+    env.pop("PDB_MIRROR_PATH", None)
     code = """
 import json
 import chaperone

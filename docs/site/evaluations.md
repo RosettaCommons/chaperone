@@ -27,7 +27,8 @@ what Chaperone adds.
 
 Each task is a folder under `src/chaperone-evals/evals_task/<task>/`. `prompt.md` and
 `inputs/` are exactly what the agent receives. `score/` and `example/` (the scorer and
-a reference submission) stay on the host and are never shown to the agent. The prompt
+a reference submission) live in a separate private repository on the controller
+host and are never shown to the agent. The prompt
 states what a design must achieve. The scorer applies its own gates on top, and does
 not disclose them.
 
@@ -37,10 +38,24 @@ You need a Slurm cluster with Apptainer, and a submission host that provides `uv
 `apptainer`, `sbatch`, `squeue` and `sacct`. Run everything from the login or
 submission host.
 
-The scorers, reference submissions and audit patterns ship in the task folders, so
-no extra checkout is needed. Keep this repository private while they are in it,
-because an agent with network access could read anything public. To keep them
-elsewhere, point `CHAPERONE_EVALS_PRIVATE` at a separate `evals_task/` directory.
+The scorers, reference submissions and audit patterns are held in the private
+[Ubiquinone-dot/chaperone-evals repository](https://github.com/Ubiquinone-dot/chaperone-evals).
+Clone it on the trusted controller, outside this checkout and every agent/worker
+mount, verify its checksums, and configure the controller:
+
+```bash
+umask 077
+git clone https://github.com/Ubiquinone-dot/chaperone-evals.git /private/chaperone-evals
+(cd /private/chaperone-evals && sha256sum --check SHA256SUMS)
+export CHAPERONE_EVALS_PRIVATE=/private/chaperone-evals/evals_task
+```
+
+Access requires authorization to the private repository. The private Harbor Hub
+dataset `ubiquinone-dot/chaperone-evals@release-split-20261014` is an alternative;
+download and restore instructions are in `src/chaperone-evals/README.md`.
+Keep private data and registry credentials outside all agent mounts. Removing
+answers from the current Chaperone tree does not remove copies in old commits
+or retained pull-request refs; clean those before making the repository public.
 
 ## One-time setup
 
@@ -51,7 +66,7 @@ cd src/chaperone-evals
 
 Bootstrap installs the harness project (`uv pip install -e src/chaperone-evals`) into the
 checkout's `.venv`, on top of anything already installed, and links the controller to
-it. That project depends on the checkout's own `chaperone` package, so there is no
+it. That project depends on the checkout's own `chaperone-pipelines` package, so there is no
 separate environment. Then authenticate:
 
 ```bash
@@ -78,8 +93,10 @@ CPU partition, matching Chaperone core settings. Empty `gpu_type` requests `gpu:
 `--constraint`. The controller alone applies account, QoS and constraint.
 
 `runtime_binds` is the complete read-only allowlist of host runtime/asset paths;
-entries are absolute paths or `[source, target]` pairs. Include the Slurm libraries
-and socket for your installation as well as the scientific assets. `environment`
+entries are absolute paths or `[source, target]` pairs. Include `/dev/fuse` and the
+required scientific assets. Slurm authentication stays on the host: native Slurm
+clients, libraries, configuration and MUNGE sockets are rejected as runtime mounts.
+Agent scheduler requests use the trial-scoped broker. `environment`
 contains allowlisted scientific settings. `capabilities` names the paths used by
 preflight to verify the task's required tools; declaring a capability does not
 install it or mount it. Paths must also be covered by `runtime_binds`. Never mount
@@ -110,17 +127,24 @@ selected arm's image and `--worker-image` overrides the scoring/scientific worke
 
 Scoring reads `HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`, `X3DNA_BIN_DIR`, and
 `X3DNA_DIR` from the selected profile, with shell overrides, and verifies the paths
-before starting. No checkout `.env.ipd` is required. Scientific tasks still need
+before starting. Biotin requires only `HBPLUS_COPY` from that list; other configured
+paths are checked when supplied. Other tasks retain the full preflight requirements.
+No checkout `.env.ipd` is required. Scientific tasks still need
 licensed tools, model weights, and their block containers; the controller cannot
 make those external assets available by itself.
+
+If the login host cannot execute Apptainer, set `"runtime_probe_on_compute": true`
+in the site JSON. Runtime preflight then uses a short CPU-only `srun` allocation
+in the configured CPU partition/account/QoS, with temporary files under the shared
+run directory. The main controller still launches from the submission host.
 
 ### Building runtime images outside digs
 
 From the repository root on a Linux host with Apptainer build support:
 
 ```bash
-apptainer build --fakeroot agent.sif src/chaperone-evals/harbor-controller/containers/agent.def
-apptainer build --fakeroot baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
+apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' agent.sif src/chaperone-evals/harbor-controller/containers/agent.def
+apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
 ```
 
 These recipes copy only framework packages into the scientific image and no

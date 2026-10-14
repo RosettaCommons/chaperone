@@ -193,7 +193,11 @@ def _build_apptainer(
         # access and an installed runtime are not required to inspect a recipe.
         spec.to_singularity()
         print(f"  [DRY RUN] Would write definition to {def_path}")
-        print(f"  [DRY RUN] Would run: apptainer build {output_path} {def_path}")
+        print(
+            "  [DRY RUN] Would run: apptainer build "
+            "--mksquashfs-args '-processors 2 -mem 1G' "
+            f"{output_path} {def_path}"
+        )
         return
 
     clone_dir = None
@@ -214,7 +218,12 @@ def _build_apptainer(
     # Build to a temporary file first, then move into place on success.
     tmp_path = output_dir / f"{name}-tmp.sif"
 
-    cmd = ["apptainer", "build", "--force", str(tmp_path), str(def_path)]
+    # mksquashfs can size its buffers/threads from the entire host rather than
+    # the Slurm allocation, killing a successful build during final packing.
+    cmd = [
+        "apptainer", "build", "--force", "--mksquashfs-args",
+        "-processors 2 -mem 1G", str(tmp_path), str(def_path),
+    ]
 
     print(f"  Building: {' '.join(cmd)}")
     try:

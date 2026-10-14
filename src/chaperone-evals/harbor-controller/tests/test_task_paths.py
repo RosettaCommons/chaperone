@@ -43,26 +43,28 @@ def test_missing_scorers_explain_how_to_set_the_private_root(monkeypatch, tmp_pa
         task_scorer("demo")
 
 
-def test_scorer_defaults_to_the_task_folder_in_the_repository(monkeypatch, tmp_path):
+def test_scorer_never_defaults_to_an_in_repository_answer(monkeypatch, tmp_path):
     (tmp_path / "demo" / "score").mkdir(parents=True)
     (tmp_path / "demo" / "score" / "score.py").write_text("")
     monkeypatch.setattr(task_paths, "PUBLIC_TASKS_ROOT", tmp_path)
     monkeypatch.delenv(PRIVATE_TASKS_ENV, raising=False)
 
-    assert task_scorer("demo") == tmp_path.resolve() / "demo" / "score" / "score.py"
+    with pytest.raises(SystemExit, match=PRIVATE_TASKS_ENV):
+        task_scorer("demo")
 
 
-def test_every_shipped_task_has_a_scorer_and_a_reference_submission():
+def test_shipped_tasks_have_no_held_out_answers():
     shipped = sorted(
         path for path in task_paths.PUBLIC_TASKS_ROOT.iterdir() if path.is_dir()
     )
 
     assert shipped
     for task in shipped:
-        assert (task / "score" / "score.py").is_file(), task.name
+        assert not (task / "score").exists(), task.name
         assert (task / "inputs").is_dir(), task.name
         assert (task / "prompt.md").is_file(), task.name
-        assert (task / "example").is_dir(), task.name
+        assert not (task / "example").exists(), task.name
+    assert not (task_paths.PUBLIC_TASKS_ROOT / "audit_hints.json").exists()
 
 
 def test_explicit_root_wins_over_the_environment(private_tree, tmp_path):
@@ -166,3 +168,23 @@ def test_a_symlinked_alias_of_a_bound_path_is_still_refused(tmp_path):
 
     with pytest.raises(SystemExit):
         assert_private_tree_unreachable(private, [alias])
+
+
+def test_evaluation_dependency_matches_release_distribution():
+    import tomllib
+    root = task_paths.EVALS_ROOT.parent.parent
+    main = tomllib.loads((root / 'pyproject.toml').read_text())
+    evaluation = tomllib.loads((task_paths.EVALS_ROOT / 'pyproject.toml').read_text())
+    name = main['project']['name']
+    assert name in evaluation['project']['dependencies']
+    assert name in evaluation['tool']['uv']['sources']
+    assert 'chaperone' not in evaluation['project']['dependencies']
+
+
+def test_private_file_bind_is_rejected_even_without_parent_mount(tmp_path):
+    private = tmp_path / 'private'
+    private.mkdir()
+    answer = private / 'answer.txt'
+    answer.write_text('held out')
+    with pytest.raises(SystemExit):
+        task_paths.assert_private_tree_unreachable(private, [answer])

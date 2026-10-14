@@ -301,7 +301,7 @@ def main() -> None:
         missing = ", ".join(str(path) for path in missing_worker_paths)
         raise SystemExit(f"Worker read-only path does not exist: {missing}")
     host_python = _host_scoring_python(chaperone_repo)
-    site_environment = _scoring_site_environment(chaperone_repo)
+    site_environment = _scoring_site_environment(chaperone_repo, task_name=task.name)
     _prepare_scoring_packages(python_packages)
     # The run directory and AF3 cache must exist before the worker wrapper is
     # built, because the wrapper re-exports the cache after worker defaults are applied.

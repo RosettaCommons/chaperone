@@ -898,7 +898,7 @@ class _BrokerHandler(socketserver.StreamRequestHandler):
             sbatch_env = request.get("sbatch_env", {})
             if not isinstance(argv, list) or not all(isinstance(x, str) for x in argv):
                 raise GuardError("invalid sbatch argument list")
-            if command not in {"sbatch", "scancel", "scontrol", "squeue", "srun"}:
+            if command not in {"sbatch", "scancel", "scontrol", "squeue", "srun", "sacct"}:
                 raise GuardError(f"unsupported guarded Slurm command {command!r}")
             if server.policy == "generic" and command not in {
                 "sbatch",
@@ -983,6 +983,11 @@ class _BrokerHandler(socketserver.StreamRequestHandler):
                     raise GuardError("scontrol does not accept standard input")
                 canonical_argv = server.validate_scontrol(argv)
                 executable = server.real_scontrol
+            elif command == "sacct":
+                if stdin or server.real_sacct is None:
+                    raise GuardError("sacct requires a configured host client and no stdin")
+                canonical_argv = server.validate_sacct(argv)
+                executable = server.real_sacct
             elif command == "squeue":
                 if stdin:
                     raise GuardError("squeue does not accept standard input")
@@ -1085,12 +1090,14 @@ class _BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
         ),
         exclude_nodes: str = "",
         scheduler_policy: dict | None = None,
+        real_sacct: str | None = None,
     ) -> None:
         self.real_sbatch = real_sbatch
         self.real_scancel = real_scancel
         self.real_scontrol = real_scontrol
         self.real_srun = real_srun
         self.real_squeue = real_squeue
+        self.real_sacct = real_sacct
         self.workspace = workspace.resolve(strict=True)
         # Slurm may consult the submitted user's passwd home before starting
         # the batch script. Ensure both fixed writable locations exist even
@@ -1381,6 +1388,58 @@ class _BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
                 raise GuardError("scancel may target only jobs created by this trial")
         return argv
 
+    def validate_sacct(self, argv: list[str]) -> list[str]:
+        """Accept Submitit/Chaperone status queries, always scoped to trial jobs."""
+        with self._jobs_lock:
+            owned = set(self._job_ids)
+            names = set(self._job_names)
+        ids = []
+        options = []
+        index = 0
+        aliases = {"-j": "--jobs", "-o": "--format", "-n": "--noheader", "-P": "--parsable2"}
+        while index < len(argv):
+            raw = argv[index]
+            index += 1
+            key, separator, value = raw.partition("=")
+            key = aliases.get(key, key)
+            if key in {"--noheader", "--parsable2"} and not separator:
+                options.append(key)
+                continue
+            if key not in {"--jobs", "--format", "--name", "--state", "--starttime"}:
+                raise GuardError(f"unsupported sacct option {key}")
+            if not separator:
+                if index >= len(argv):
+                    raise GuardError(f"sacct option {key} needs a value")
+                value = argv[index]
+                index += 1
+            if key == "--jobs":
+                for job in value.split(","):
+                    match = re.fullmatch(r"([0-9]+)(?:_[0-9]+)?", job)
+                    if match is None or match.group(1) not in owned:
+                        raise GuardError("sacct may query only jobs created by this trial")
+                    ids.append(job)
+            elif key == "--name":
+                if value not in names:
+                    raise GuardError("sacct may query only job names created by this trial")
+                options.append(f"--name={value}")
+            elif key == "--format":
+                if not value or any(not re.fullmatch(
+                    r"(?:JobID|State|NodeList|JobName|ElapsedRaw|AllocTRES|ExitCode|Start|End)(?:%[1-9][0-9]?)?", field
+                ) for field in value.split(",")):
+                    raise GuardError("unsupported sacct format")
+                options.append(f"--format={value}")
+            elif key == "--state":
+                if value != "FAILED,NODE_FAIL,TIMEOUT,OUT_OF_MEMORY":
+                    raise GuardError("unsupported sacct state filter")
+                options.append(f"--state={value}")
+            elif key == "--starttime":
+                if value != "now-2hours":
+                    raise GuardError("unsupported sacct time filter")
+                options.append(f"--starttime={value}")
+        # Never issue an unscoped query, even before the first submission.
+        jobs = ",".join(ids or sorted(owned, key=int)) or "0"
+        return [f"--jobs={jobs}", *options]
+
     def validate_squeue(self, argv: list[str]) -> list[str]:
         """Return a query restricted to jobs registered by this broker."""
         with self._jobs_lock:
@@ -1563,6 +1622,7 @@ def serve(
     ),
     exclude_nodes: str = "",
     scheduler_policy: dict | None = None,
+    real_sacct: Path | None = None,
 ) -> int:
     if max_total_gpus < 1:
         raise SystemExit("--max-total-gpus must be positive")
@@ -1605,6 +1665,7 @@ def serve(
         max_requested_gpus_per_submission,
         exclude_nodes,
         scheduler_policy,
+        str(real_sacct) if real_sacct else None,
     )
     socket_path.chmod(0o600)
 
@@ -1634,6 +1695,7 @@ def main() -> int:
         parser.add_argument("--real-scontrol", type=Path, required=True)
         parser.add_argument("--real-srun", type=Path, required=True)
         parser.add_argument("--real-squeue", type=Path, required=True)
+        parser.add_argument("--real-sacct", type=Path, required=True)
         parser.add_argument("--workspace", type=Path, required=True)
         parser.add_argument("--slurm-python", type=Path)
         parser.add_argument("--max-total-gpus", type=int, default=5)
@@ -1692,6 +1754,7 @@ def main() -> int:
                     "qos",
                 )
             },
+            args.real_sacct,
         )
     return client(os.environ.get("HARBOR_SBATCH_SOCKET", DEFAULT_SOCKET), sys.argv[1:])
 

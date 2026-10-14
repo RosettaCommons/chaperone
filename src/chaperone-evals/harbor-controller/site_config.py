@@ -14,17 +14,7 @@ CAPABILITIES = (
     "Foundry RF3/RFD3 container",
     "RF3 checkpoint",
 )
-RUNTIME_BINDS = [
-    "/dev/fuse",
-    "/etc/slurm",
-    "/run/munge/munge.socket.2",
-    "/usr/lib/slurm",
-    "/usr/lib/x86_64-linux-gnu/libmunge.so.2",
-    *[
-        f"/usr/bin/{name}"
-        for name in ("sacct", "scancel", "scontrol", "squeue", "srun", "sstat")
-    ],
-]
+RUNTIME_BINDS = ["/dev/fuse"]
 ENV_NAMES = {
     "CHAPERONE_DEFAULT_PARTITION",
     "CHAPERONE_GPU_PARTITION",
@@ -67,6 +57,7 @@ def get_site() -> dict:
         worker_image="",
         baseline_image="",
         worker_python="/opt/chaperone/.venv/bin/python",
+        runtime_probe_on_compute=False,
         cpu_partition="",
         gpu_partition="",
         gpu_type="",
@@ -121,6 +112,8 @@ def get_site() -> dict:
     for key in ("max_total_gpus", "max_requested_gpus_per_submission"):
         if type(site[key]) is not int or site[key] < 1:
             raise ValueError(f"{key} must be a positive integer")
+    if type(site["runtime_probe_on_compute"]) is not bool:
+        raise ValueError("runtime_probe_on_compute must be a boolean")
     for key in ("agent_image", "worker_image", "baseline_image"):
         site[key] = os.environ.get("CHAPERONE_EVAL_" + key.upper(), site[key])
         if site[key]:
@@ -145,6 +138,9 @@ def get_site() -> dict:
             raise ValueError(
                 "runtime_binds require absolute paths or [source, target] pairs"
             )
+    from scheduler_isolation import validate_runtime_binds
+
+    validate_runtime_binds(site["runtime_binds"])
     if set(site["environment"]) - ENV_NAMES:
         raise ValueError("Unapproved scientific environment variable in site config")
     if any(not isinstance(v, str) or "\x00" in v for v in site["environment"].values()):

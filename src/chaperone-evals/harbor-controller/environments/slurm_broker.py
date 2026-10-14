@@ -12,22 +12,13 @@ from pathlib import Path
 
 
 from site_config import get_site
+from scheduler_isolation import BROKER_COMMANDS
 
 CONTROLLER_ROOT = Path(__file__).resolve().parents[1]
 SBATCH_GUARD = CONTROLLER_ROOT / "scripts" / "slurm_gpu_guard.py"
 SOCKET_TARGET = "/run/harbor-slurm/sbatch.sock"
 _SOCKET_PATH_MAX_BYTES = 107
 
-SLURM_RUNTIME_PATHS = (
-    "/etc/slurm",
-    "/run/munge/munge.socket.2",
-    "/usr/lib/slurm",
-    "/usr/lib/x86_64-linux-gnu/libmunge.so.2",
-    "/usr/bin/sacct",
-    "/usr/bin/sinfo",
-    "/usr/bin/squeue",
-    "/usr/bin/sstat",
-)
 
 
 class SlurmBrokerProcess:
@@ -75,11 +66,7 @@ class SlurmBrokerProcess:
         return directory
 
     def mounts(self) -> list[dict[str, object]]:
-        brokered_commands = (
-            ("sbatch", "scancel", "squeue")
-            if self.policy == "generic"
-            else ("sbatch", "scancel", "scontrol", "srun")
-        )
+        brokered_commands = BROKER_COMMANDS
         mounts = [
             {
                 "type": "bind",
@@ -96,17 +83,6 @@ class SlurmBrokerProcess:
                 for command in brokered_commands
             ],
         ]
-        if self.policy != "generic":
-            mounts.extend(
-                {
-                    "type": "bind",
-                    "source": path,
-                    "target": path,
-                    "read_only": True,
-                }
-                for path in SLURM_RUNTIME_PATHS
-                if Path(path).exists()
-            )
         return mounts
 
     def start(self) -> None:
@@ -114,7 +90,7 @@ class SlurmBrokerProcess:
             return
         real_commands = {
             name: shutil.which(name)
-            for name in ("sbatch", "scancel", "scontrol", "srun", "squeue")
+            for name in BROKER_COMMANDS
         }
         missing = sorted(name for name, value in real_commands.items() if value is None)
         if missing:
@@ -143,6 +119,8 @@ class SlurmBrokerProcess:
             str(real_commands["srun"]),
             "--real-squeue",
             str(real_commands["squeue"]),
+            "--real-sacct",
+            str(real_commands["sacct"]),
             "--workspace",
             str(self.workspace),
             "--submission-registry",
