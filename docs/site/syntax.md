@@ -82,9 +82,10 @@ The `CHAPERONE_COMPUTE_BACKEND` setting determines the default execution mode wh
 
 | Backend | Default Mode | Description |
 |---------|-------------|-------------|
-| `auto` (default) | auto-detected | Local GPU → `"local"`, SLURM available → `"cluster_compiled"`, fallback → `"local"` |
-| `slurm` | `"cluster_compiled"` | Always submit to HPC cluster |
+| `auto` (default) | auto-detected | Local GPU → `"local"`, SLURM available → `"slurm"`, fallback → `"local"` |
+| `slurm` | `"slurm"` | Submit to HPC cluster (local GPU routing can be disabled with `use_local_gpus=False`) |
 | `local` | `"local"` | Always run locally |
+| `modal` / `cloud` | `"modal"` | Run container commands on [Modal](cloud.md), prepare and compile locally |
 
 An explicit `mode` in `RuntimeArgs` always takes precedence over the backend setting.
 
@@ -220,7 +221,7 @@ run_args = RuntimeArgs(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `mode` | str | `"cluster_compiled"` | Execution mode (see below). When not set explicitly, resolved from `CHAPERONE_COMPUTE_BACKEND` |
+| `mode` | str | `"slurm"` | Execution mode (see below). When not set explicitly, resolved from `CHAPERONE_COMPUTE_BACKEND` |
 | `recompile` | bool | `False` | Force recompilation even if outputs exist (forces `mode="local"`) |
 | `allow_errors` | bool | `False` | Continue execution if some chunks fail |
 | `force_exec` | bool | `False` | Force full re-execution (prepare, execute, compile), bypassing all step and chunk caches. Unlike `recompile`, preserves the current execution mode |
@@ -236,9 +237,8 @@ run_args = RuntimeArgs(
 | Mode | Prepare | Execute | Compile | Use Case |
 |------|---------|---------|---------|----------|
 | `local` | local | local | local | Development, debugging |
-| `cluster_executed` | local | SLURM | local | GPU jobs with local compile |
-| `cluster_compiled` | local | SLURM | SLURM | Full SLURM execution (default) |
-| `cluster_only` | SLURM | SLURM | SLURM | Everything on cluster |
+| `slurm` | SLURM | SLURM | SLURM | Chunk jobs run on the cluster; aggregation remains local |
+| `modal` / `cloud` | local | Modal | local | Cloud containers with local lineage and caching |
 
 ## Block Configuration
 

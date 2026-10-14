@@ -293,6 +293,27 @@ def _write_execution_record(step_dir: Path, record: ExecutionRecord) -> None:
     )
 
 
+@dataclass
+class RemoteAllocation:
+    """Actual remote allocation, separate from the controller's resources."""
+
+    backend: str
+    job_id: str | None = None
+    allocated_gpus: int = 0
+    gpu_seconds: float = 0.0
+    _started: float | None = None
+
+    def start(self, job_id: str, allocated_gpus: int) -> None:
+        self.job_id = job_id
+        self.allocated_gpus = allocated_gpus
+        self._started = time.perf_counter()
+
+    def stop(self) -> None:
+        if self._started is not None:
+            self.gpu_seconds += (time.perf_counter() - self._started) * self.allocated_gpus
+            self._started = None
+
+
 @contextmanager
 def track_execution(
     *,
@@ -302,6 +323,7 @@ def track_execution(
     source: str,
     chunk_id: int | None = None,
     command: str | list[str] | None = None,
+    allocation: RemoteAllocation | None = None,
 ) -> Iterator[None]:
     """Record a durable execution attempt around an execute phase.
 
@@ -350,16 +372,16 @@ def track_execution(
             started_at=started_at,
             ended_at=ended_at,
             wall_seconds=wall_seconds,
-            allocated_gpus=allocated_gpus,
-            gpu_seconds=wall_seconds * allocated_gpus,
+            allocated_gpus=allocation.allocated_gpus if allocation else allocated_gpus,
+            gpu_seconds=allocation.gpu_seconds if allocation else wall_seconds * allocated_gpus,
             attempt=attempt,
             hostname=hostname,
             pid=pid,
             chunk_id=chunk_id,
             command=command_str,
-            backend=backend,
-            job_id=job_id,
-            gpu_ids=gpu_ids,
+            backend=allocation.backend if allocation else backend,
+            job_id=allocation.job_id if allocation else job_id,
+            gpu_ids=None if allocation else gpu_ids,
             error=error,
         )
 

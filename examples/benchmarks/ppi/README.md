@@ -39,8 +39,8 @@ Both use `FOUNDRY_CONTAINER` for RFD3 and RF3. The foundry variant
 also uses it for MPNN; the `mpnn` variant runs LigandMPNN from the
 `ligandmpnn` image (see `src/blocks/networks/mpnn.py`).
 Set `CHAPERONE_COMPUTE_BACKEND` to `slurm` or `local` to force a mode;
-containers run with Apptainer or Docker. Cloud (Modal) execution is not
-supported.
+containers run with Apptainer or Docker. For Modal, set
+`CHAPERONE_COMPUTE_BACKEND=modal` and follow the [cloud setup](../../../docs/site/cloud.md).
 
 ## Apple Silicon status
 

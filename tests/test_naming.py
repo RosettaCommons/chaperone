@@ -70,6 +70,11 @@ NOUN_USES = [
     # (The mask above covers the bare path; these lines spell it in other forms.)
     (r"^src/chaperone-evals/harbor-controller/.*", r"/opt/pipelines", "image path"),
     (r"^src/chaperone_cli/job_wait\.py$", r"/opt/pipelines", "image path"),
+    (
+        r"^docs/site/cloud\.md$",
+        r"baker-laboratory/pipelines",
+        "historical reference to the predecessor repository",
+    ),
 ]
 
 # Held-out scorers, example solutions and their notes are not edited in place

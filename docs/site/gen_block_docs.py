@@ -491,6 +491,10 @@ def generate_block_docs() -> str:
         "Pass a list of strings to run against a local install instead of the "
         "default container. Available on compiled blocks. |"
     )
+    lines.append(
+        "| `cloud` | Set `True` to request Modal execution for a compiled block. "
+        "Default: `False`; the engine backend can also select Modal. See [cloud setup](cloud.md). |"
+    )
     lines.append("")
 
     return "\n".join(lines)

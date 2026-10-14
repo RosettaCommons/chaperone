@@ -310,6 +310,12 @@ class ExecutionEngine:
         self._configure_container_binds(blocks)
         block = blocks[0]
         run_args: RuntimeArgs = _resolve_run_args(run_args, block_name=block._name)
+        from chaperone.block_config.compiled import CompiledBlockFunction
+
+        # Legacy cloud=True requests Modal even on a Slurm-equipped host.
+        if any(isinstance(b, CompiledBlockFunction) and b.cloud for b in blocks):
+            if not run_args.recompile:
+                run_args.mode = "modal"
         effective_job_args = (
             run_args.job_args if run_args.job_args is not None else job_args
         )
@@ -329,6 +335,14 @@ class ExecutionEngine:
             if run_args.job_args.job_name == block.name:
                 chain_name = "-".join(b._name for b in blocks)
                 run_args.job_args = dc_replace(run_args.job_args, job_name=chain_name)
+
+        if run_args.mode == "modal":
+            blocks = [b.model_copy(deep=True) for b in blocks]
+            for b in blocks:
+                if isinstance(b, CompiledBlockFunction):
+                    b.cloud = True
+                    b._modal_job_args = _resolve_job_args(effective_job_args, b, run_args)
+            block = blocks[0]
 
         # Local mode never retries (no SLURM nodes to exclude)
         if run_args.mode == "local":

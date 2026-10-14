@@ -27,7 +27,7 @@ scratch, internet access to the sources, and a suitable container builder.
 Configure Slurm queues, account and GPU mapping separately in the
 [syntax guide](syntax.md#slurm-site-configuration).
 
-Cloud (Modal) execution is not supported; run with `local` or `slurm` using Docker or Apptainer.
+Cloud (Modal) execution is available for compiled blocks; see [cloud setup](cloud.md). Otherwise run with `local` or `slurm` using Docker or Apptainer.
 
 Portable variants remain available even when a local IPD SIF is selected:
 `colabfold_portable`, `rfdiffusion2_portable`, `foundry`, and `foundry_public`. For a deliberate rebuild, name that variant and use
