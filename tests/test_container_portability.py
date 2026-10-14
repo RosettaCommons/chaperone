@@ -521,29 +521,6 @@ def test_engine_resolves_container_template_before_cache_fingerprint(monkeypatch
     assert prepared.cache_fingerprint == repeated.cache_fingerprint
 
 
-def test_mpnn_runtime_selection_preserves_explicit_legacy_and_docker(monkeypatch, tmp_path):
-    import blocks.networks.mpnn as mpnn
-    options = {"CHAPERONE_MPNN_CONTAINER": "auto", "CHAPERONE_CONTAINER_BACKEND": "apptainer"}
-    monkeypatch.setattr(mpnn, "get_setting_field", lambda key, default=None: options.get(key, default))
-    legacy = tmp_path / "legacy.sif"
-    legacy.touch()
-    monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(legacy))
-    assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
-    options["MPNN_WEIGHTS_DIR"] = str(tmp_path / "site-profile-weights")
-    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
-    options["CHAPERONE_MPNN_CONTAINER"] = "legacy"
-    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
-    options["CHAPERONE_CONTAINER_BACKEND"] = "docker"
-    with pytest.raises(ValueError, match="requires Apptainer"):
-        mpnn._pick_modelhub_container()
-    options["CHAPERONE_MPNN_CONTAINER"] = "auto"
-    assert mpnn._pick_modelhub_container() is mpnn._MODELHUB_SIF_CONTAINER
-    with pytest.raises(FileNotFoundError, match="Classic ProteinMPNN needs.*LigandMPNN"):
-        mpnn._require_classic_sif()
-    options.pop("MPNN_WEIGHTS_DIR")
-    assert mpnn._pick_modelhub_container() is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
-
-
 def test_disco_blackwell_recipe_resolves_torch_from_cuda128():
     import tomllib
     from blocks.networks.design.disco.disco import DISCO_CONTAINER, _DISCO_UV_CONFIG

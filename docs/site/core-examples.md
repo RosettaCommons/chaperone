@@ -25,11 +25,11 @@ cohort measures agreement with reference structures. Record model/checkpoint
 versions, seeds, sample counts, failures, and compute cost alongside scores when
 comparing runs.
 
-The PPI scripts make a comparison between FoundryMPNN and the legacy MPNN backend
-possible, but their presence does not establish matching sequence distributions
-or equivalent scientific performance. A controlled comparison must reuse the
-same generated backbones and scoring protocol and include enough samples to
-estimate uncertainty. The legacy backend also requires private upstream access.
+The PPI scripts make a comparison between FoundryMPNN and the `mpnn` block (public
+LigandMPNN) possible, but their presence does not establish matching sequence
+distributions or equivalent scientific performance. A controlled comparison must
+reuse the same generated backbones and scoring protocol and include enough
+samples to estimate uncertainty.
 
 ## Validation status and first runs
 

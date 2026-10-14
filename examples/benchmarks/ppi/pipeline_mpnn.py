@@ -1,23 +1,22 @@
 #!/usr/bin/env -S bash -c '"${CHAPERONE_REPO:-.}/.venv/bin/python" "$0" "$@"'
-"""PPI binder design using RFD3 + legacy (fused_mpnn) MPNN + RF3.
+"""PPI binder design using RFD3 + LigandMPNN (``mpnn`` block) + RF3.
 
 Sibling of ``pipeline_foundry.py`` in this directory that swaps
-Foundry MPNN for the legacy ``mpnn`` block (fused_mpnn /
-ProteinMPNN+LigandMPNN fork). Same binder target (human insulin
-receptor, 4ZXB) and shared ``files/`` so metrics between the two
-inverse-folding backends are directly comparable on identical RFD3
-scaffolds and RF3 validation.
+Foundry MPNN for the ``mpnn`` block (LigandMPNN). Same binder
+target (human insulin receptor, 4ZXB) and shared ``files/`` so metrics
+between the two inverse-folding backends are directly comparable on
+identical RFD3 scaffolds and RF3 validation.
 
-Pipeline: rfd3 -> filter -> mpnn (legacy) -> rf3 -> rmsd -> filter
+Pipeline: rfd3 -> filter -> mpnn -> rf3 -> rmsd -> filter
 
 Run:
     FOUNDRY_CHECKPOINT_DIRS=/abs/path/to/foundry/weights \
-    MPNN_WEIGHTS_DIR=/abs/path/to/mpnn/weights \
-    ./examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test
+    ./examples/benchmarks/ppi/pipeline_mpnn.py --test
 
-The legacy mpnn block runs from the site's modelhub SIF; without one it
-raises an error pointing to ``foundry_mpnn`` / public LigandMPNN. See
-``src/blocks/networks/mpnn.py`` for the selection logic.
+The ``mpnn`` block runs from the ``ligandmpnn`` image; install it with
+``chaperone install ligandmpnn``. Choose the model with ``model_type``
+(``ligand_mpnn``, ``protein_mpnn``, ``soluble_mpnn``) and the checkpoint
+version with ``noise_level``; see ``src/blocks/networks/mpnn.py``.
 """
 
 from pathlib import Path
@@ -51,8 +50,7 @@ blocks = [
             "rfd3.n_chainbreaks": MetricFilter(max=0),
         },
     ),
-    # Legacy MPNN — ligand-aware inverse folding. Uses fused_mpnn's
-    # LigandMPNN model via the site's modelhub SIF.
+    # LigandMPNN — ligand-aware inverse folding (dauparas/LigandMPNN).
     MPNN(
         model_type="ligand_mpnn",
         num_seq_per_pdb=4,

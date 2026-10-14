@@ -42,13 +42,3 @@ def make_protein(chain_id: str = "A", residue_offset: int = 1) -> AtomArray:
 def protein():
     """Factory fixture returning :func:`make_protein`."""
     return make_protein
-
-
-@pytest.fixture
-def classic_sif(monkeypatch, tmp_path_factory):
-    """Pretend the on-prem classic ProteinMPNN SIF is installed."""
-    import blocks.networks.mpnn as mpnn
-
-    sif = tmp_path_factory.mktemp("sif") / "modelhub.sif"
-    sif.touch()
-    monkeypatch.setattr(mpnn, "_ONPREM_MODELHUB_SIF", str(sif))

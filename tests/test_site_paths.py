@@ -96,11 +96,6 @@ ALLOWED: list[tuple[str, str, str]] = [
         "wrapper script resolves via /mnt/home on IPD machines; bound with /home",
     ),
     (
-        _files("src/blocks/networks/mpnn.py"),
-        r"/(?:net/(?:software|databases)|projects/ml/modelhub|databases)\b",
-        "classic ProteinMPNN: on-prem SIF candidates, binds and the legacy weights alias",
-    ),
-    (
         _files("src/blocks/networks/prediction/alphafold3.py"),
         r"/(?:net/)?databases",
         "AF3 database bind and its container-side alias",
@@ -131,11 +126,6 @@ ALLOWED: list[tuple[str, str, str]] = [
         "labelled as the default IPD checkpoint",
     ),
     # -- docs and skills that say they are IPD / digs specific ---------------
-    (
-        _files("docs/site/containers.md"),
-        r"/(?:net/)?databases/mpnn",
-        "legacy MPNN weights layout on digs",
-    ),
     (
         _files("docs/site/evaluations.md"),
         r"`/projects`|/net/scratch/\$USER/chaperone-evals",
@@ -278,7 +268,7 @@ def test_allowlist_entries_are_used():
         'binds=[("/net/databases", "/db")]',
         "cache at /home/alice/cache",
         "rundir=/projects/ml/run",
-        "ckpt=/databases/mpnn/x.pt",
+        "ckpt=/databases/weights/x.pt",
         "bin=/software/rosetta/main",
     ],
 )

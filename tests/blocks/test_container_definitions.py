@@ -20,9 +20,8 @@ BLOCKS_DIR = Path(blocks.__file__).parent
 
 # Existing-file images that deliberately have no recipe. ``colabfold`` and
 # ``rfdiffusion2`` are on-prem SIF variants with a buildable ``*_portable``
-# counterpart; ``modelhub`` (classic ProteinMPNN) has none and needs a site SIF.
+# counterpart.
 EXISTING_ALLOWLIST = {
-    "modelhub": "on-prem SIF only; no buildable counterpart (use public LigandMPNN)",
     "colabfold": "on-prem SIF variant; buildable counterpart is colabfold_portable",
     "rfdiffusion2": "on-prem SIF variant; buildable counterpart is rfdiffusion2_portable",
 }
@@ -45,6 +44,7 @@ EXPECTED_BUILDABLE = {
     "esmfold2",
     "foundry",
     "foundry_public",
+    "ligandmpnn",
     "metal3d",
     "openfold3",
     "protein_hunter",

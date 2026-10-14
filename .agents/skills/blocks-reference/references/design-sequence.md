@@ -13,8 +13,8 @@ Choose generation blocks by design scope, then use an MPNN block for fixed-backb
 | `boltzgen` | End-to-end design from a specification. Integrated but expensive, less modular, and subject to the Boltz calibration warning, also not as well aligned with oracles outside of boltz family. |
 | `protein_hunter` | Specialized binder hallucination against biomolecular targets, generally really hard to control the design outcomes and very overfitted to boltz which doens't transfer to other oracles. Integrated iteration, but Boltz-dependent and costly. |
 | `boltz2_steered` | Suppress unwanted binder helicity in Protein Hunter. Specialized and slow; verify improvement with the final scorer. |
-| `foundry_mpnn` | Default ProteinMPNN or LigandMPNN inverse folding. Clean, inexpensive wrapper; limited to fixed-backbone sequence design. |
-| `mpnn` | Use for mature ProteinMPNN, LigandMPNN, soluble checkpoints, or advanced flags. Flexible, but likelihood is not fold/function evidence. |
+| `foundry_mpnn` | MPNN from the Foundry image shared with RFD3 and RF3. Default inverse folding after `rfd3`. Clean, inexpensive wrapper; limited to fixed-backbone sequence design. |
+| `mpnn` | LigandMPNN from its own image (`chaperone install ligandmpnn`). `model_type` picks protein, ligand, soluble or membrane MPNN; `noise_level` picks the checkpoint version. Flexible, but likelihood is not fold/function evidence. |
 | `esm2` | Sequence embeddings and similarity features with selectable model sizes. Fast, but indirect, gears more towards natural rather than de novo sequence, and checkpoint-size dependent. |
 
 ## Selection shortcuts

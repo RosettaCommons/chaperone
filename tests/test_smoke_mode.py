@@ -107,7 +107,7 @@ def test_smoke_parameters_are_registered_fields():
 
 EXAMPLES = [
     "benchmarks/ppi/pipeline_foundry.py",
-    "benchmarks/ppi/pipeline_legacy_mpnn.py",
+    "benchmarks/ppi/pipeline_mpnn.py",
     "benchmarks/disco/pipeline.py",
     "benchmarks/ame/pipeline.py",
     "benchmarks/ame/pipeline_full.py",

@@ -1,6 +1,5 @@
 """Multi-character chain ids (RFD3 unindexed residues) are renamed for MPNN and restored."""
 
-import gzip
 import json
 import shutil
 
@@ -12,12 +11,6 @@ from blocks.networks.mpnn import ChainRename, ClassicMPNNBlock
 from chaperone import PipelineDataHandler
 from chaperone.data import make_row
 from chaperone.io import ensure_bonds, parse_to_atom_array
-
-
-@pytest.fixture(autouse=True)
-def use_legacy_runtime(monkeypatch, classic_sif):
-    import blocks.networks.mpnn as module
-    monkeypatch.setattr(module, "MODELHUB_CONTAINER", module._MODELHUB_SIF_CONTAINER)
 
 
 def _atoms(chains):
@@ -122,35 +115,6 @@ def test_only_files_that_look_like_this_rename_are_restorable():
     assert not rename.restorable_in(["A", "B", "X1"])  # an original is present
 
 
-# --- restoring a CIF -------------------------------------------------------
-
-
-def test_restore_cif_gives_back_the_original_chain_ids(tmp_path):
-    atoms = _atoms({"A": [1, 2], "X1": [5, 6], "X2": [9]})
-    rename = ChainRename.for_atoms(atoms)
-    path = _write(tmp_path / "out.cif", {"A": [1, 2], "B": [5, 6], "C": [9]})
-
-    rename.restore_cif(path)
-
-    restored = parse_to_atom_array(str(path))
-    assert set(restored.chain_id) == {"A", "X1", "X2"}
-    assert set(restored.res_id[restored.chain_id == "X1"]) == {5, 6}
-    assert len(restored) == len(atoms)
-
-
-def test_restore_cif_handles_gzipped_files(tmp_path):
-    rename = ChainRename({"X1": "B"})
-    plain = _write(tmp_path / "out.cif", {"A": [1], "B": [5]})
-    zipped = tmp_path / "out.cif.gz"
-    with plain.open("rb") as source, gzip.open(zipped, "wb") as target:
-        shutil.copyfileobj(source, target)
-
-    rename.restore_cif(zipped)
-
-    with gzip.open(zipped, "rt") as handle:
-        assert "X1" in handle.read()
-
-
 # --- the block, end to end -------------------------------------------------
 
 
@@ -162,20 +126,20 @@ def test_block_renames_for_mpnn_and_restores_the_outputs(tmp_path):
 
     block.create_command(PipelineDataHandler([row]), sandbox, chunk_id=0)
 
-    # MPNN is handed a renamed copy, and the fixed positions follow the rename.
+    # MPNN is handed a renamed PDB copy, and the fixed positions follow the rename.
     staged = json.loads(
         (sandbox / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     ((renamed_path, positions),) = staged.items()
-    assert renamed_path.endswith("chain_ids_renamed/design.cif")
-    assert positions == ["A1", "B5", "C9"]
+    assert renamed_path.endswith("pdb_inputs/design.pdb")
+    assert positions == "A1 B5 C9"
     assert _chain_ids(renamed_path) == {"A", "B", "C"}
     assert _chain_ids(source) == {"A", "X1", "X2"}  # the input is untouched
 
     # What MPNN would write: structures named after the input, with the stand-ins.
     packed = sandbox / "packed"
     packed.mkdir()
-    shutil.copy(renamed_path, packed / "design_packed_1_1.cif")
+    shutil.copy(renamed_path, packed / "design_packed_1_1.pdb")
     unrelated = _write(packed / "design2_packed_1_1.cif", {"A": [1], "B": [2]})
 
     handler = block.compile(sandbox)
@@ -193,18 +157,17 @@ def test_block_renames_for_mpnn_and_restores_the_outputs(tmp_path):
     assert unrelated.is_file()
 
 
-def test_block_with_only_single_letter_chains_writes_no_copy_and_no_sidecar(tmp_path):
+def test_block_with_only_single_letter_chains_writes_no_sidecar(tmp_path):
     source = _write(tmp_path / "design.cif", {"A": [1, 2], "B": [3]})
     row = make_row("rfd3", str(source), metadata={"motif": ["A1"]})
     sandbox = tmp_path / "chunk_0"
 
     _structure_block().create_command(PipelineDataHandler([row]), sandbox, chunk_id=0)
 
-    assert not (sandbox / "inputs" / "chain_ids_renamed").exists()
     assert not list((sandbox / "inputs").glob("chain_renames_chunk*.json"))
 
 
-def test_sequence_mode_leaves_chain_ids_alone(tmp_path):
+def test_sequence_mode_stages_a_renamed_pdb_and_keeps_original_chains_in_the_manifest(tmp_path):
     source = _write(tmp_path / "design.cif", {"A": [1, 2], "X1": [5]})
     row = make_row("rfd3", str(source), metadata={"motif": ["X15"]})
     sandbox = tmp_path / "chunk_0"
@@ -217,40 +180,6 @@ def test_sequence_mode_leaves_chain_ids_alone(tmp_path):
         (sandbox / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     ((path, positions),) = staged.items()
-    assert path.endswith("design.cif") and "chain_ids_renamed" not in path
-    assert positions == ["X15"]
-
-
-@pytest.mark.parametrize(
-    "preference,backend,legacy_exists,expected",
-    [
-        ("auto", "apptainer", True, "legacy"),
-        ("auto", "apptainer", False, "legacy"),
-        ("auto", "docker", True, "legacy"),
-        ("legacy", "apptainer", True, "legacy"),
-        ("legacy", "docker", True, "error"),
-    ],
-)
-def test_container_selection_preference(
-    tmp_path, monkeypatch, preference, backend, legacy_exists, expected
-):
-    import blocks.networks.mpnn as module
-    from chaperone import get_settings
-
-    monkeypatch.setattr(get_settings(), "CHAPERONE_MPNN_CONTAINER", preference)
-    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", backend)
-    monkeypatch.setattr(get_settings(), "MPNN_WEIGHTS_DIR", str(tmp_path / "site-profile-weights"))
-    legacy = tmp_path / "legacy.sif"
-    monkeypatch.setattr(module, "_ONPREM_MODELHUB_SIF", str(legacy))
-    if legacy_exists:
-        legacy.touch()
-    if expected == "error":
-        with pytest.raises(ValueError, match="requires Apptainer"):
-            module._pick_modelhub_container()
-    else:
-        assert module._pick_modelhub_container() is module._MODELHUB_SIF_CONTAINER
-        if not legacy_exists or backend == "docker":
-            with pytest.raises(FileNotFoundError, match="needs an Apptainer image.*LigandMPNN"):
-                module._require_classic_sif()
-        else:
-            module._require_classic_sif()
+    assert path.endswith("pdb_inputs/design.pdb")
+    assert _chain_ids(path) == {"A", "B"}
+    assert positions == "B5"

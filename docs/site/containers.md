@@ -43,8 +43,8 @@ been built or exercised. Validate one small workload on your cluster before scal
 
 | Recipes | Installation notes |
 |---|---|
-| `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to legacy MPNN is not established here. |
-| `ligandmpnn_public` | Public MIT-licensed `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with six bundled, checksum-verified public checkpoints. The default backend outside a legacy site profile; see the [validation record](release-validation.md) for completed build/GPU checks. |
+| `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block; see the [validation record](release-validation.md) for completed build/GPU checks. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
 | `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. See the [validation record](release-validation.md) for actual inference status. |
@@ -73,40 +73,36 @@ inputs live elsewhere. Place referenced inputs beneath that root or configure
 an explicit image bind for their location. Evaluation workers use their assigned
 workspace instead of inferring a host project directory.
 
-The public LigandMPNN backend stages PDB inputs for its pinned runner. It keeps the original CIF and parent links, remaps
+`mpnn` is the single LigandMPNN block. Install its image once with
+`chaperone install ligandmpnn`; no settings are needed, because the image bakes
+every official checkpoint. Within the block, `model_type` selects the model and
+`noise_level` the checkpoint version (the backbone noise, in Angstrom, the model
+was trained with); leaving `noise_level` unset uses the upstream default for the
+model.
+
+| `model_type` | `noise_level` | Default | Checkpoints |
+|---|---|---|---|
+| `protein_mpnn` | 0.02, 0.1, 0.2, 0.3 | 0.2 | `proteinmpnn_v_48_{002,010,020,030}.pt` |
+| `ligand_mpnn` (default) | 0.05, 0.1, 0.2, 0.3 | 0.1 | `ligandmpnn_v_32_{005,010,020,030}_25.pt` |
+| `soluble_mpnn` | 0.02, 0.1, 0.2, 0.3 | 0.2 | `solublempnn_v_48_{002,010,020,030}.pt` |
+| `per_residue_label_membrane_mpnn` | 0.2 | 0.2 | `per_residue_label_membrane_mpnn_v_48_020.pt` |
+| `global_label_membrane_mpnn` | 0.2 | 0.2 | `global_label_membrane_mpnn_v_48_020.pt` |
+
+Requesting a combination that is not in this table is an error that lists the
+valid ones. The membrane models take `args.transmembrane_buried` and
+`args.transmembrane_interface` (per-residue) or `args.global_transmembrane_label`
+(global); those options are rejected for any other model. Side-chain packing
+(`output_mode="structures"`) uses `ligandmpnn_sc_v_32_002_16.pt`, or a host file
+given as `args.checkpoint_path_sc`.
+
+`mpnn` stages PDB inputs for its pinned runner. It keeps the original CIF and parent links, remaps
 fixed residues with chain names, and restores original chain identifiers in
 compiled sequences or structures. Inputs must fit PDB's residue and component
-identifier limits; coordinates use PDB precision. Existing IPD images retain
-their CIF-aware runtime.
-
-Set `CHAPERONE_MPNN_CONTAINER` **before starting Python** to choose a backend:
-
-| Setting | Runtime |
-|---|---|
-| `public` | Public LigandMPNN source and bundled official weights (`ligandmpnn_public`). Ignores the legacy checkpoint layout. |
-| `legacy` | Classic ProteinMPNN from the existing IPD modelhub SIF; requires Apptainer and that SIF. There is no buildable recipe for it. |
-| `auto` (default) | Uses `public` when `MPNN_WEIGHTS_DIR` is unset. With a supplied legacy weights profile, uses the existing IPD image (Apptainer only); without that SIF, use `public` or `foundry_mpnn`. |
-
-For a public installation, use `chaperone install ligandmpnn_public` (or `chaperone
-install mpnn` without a legacy profile). Public `mpnn` supports `protein_mpnn`,
-`ligand_mpnn` (default), and `soluble_mpnn`, with sequence output or side-chain
-packing. It rejects `lddt_enhanced`. Residue-level bias requires single-character
-input chain IDs; different per-input chain constraint mappings require separate
-chunks. Integration checks do not establish scientific equivalence between
-public LigandMPNN, the private fork, and FoundryMPNN. See the
+identifier limits; coordinates use PDB precision. Residue-level bias requires
+single-character input chain IDs; different per-input chain constraint mappings
+require separate chunks. Integration checks do not establish scientific
+equivalence between LigandMPNN and FoundryMPNN. See the
 [release validation record](release-validation.md) for actual build/GPU status.
-
-For the legacy runtime, set `MPNN_WEIGHTS_DIR` to your host checkpoint directory
-(`/net/databases/mpnn` on digs, as configured by the shipped profile).
-`/databases/mpnn` is the older image's internal alias, not the digs host path.
-For compatibility, an older `.env.ipd` value of `/databases/mpnn` resolves to
-`/net/databases/mpnn` when only the latter exists on the host. If the configured
-directory itself exists, it takes precedence; other paths are never substituted.
-Both runtimes mount an explicitly configured host directory and use it for model
-and packer checkpoints; a missing configured directory fails before launching.
-Older IPD modelhub images lack Blackwell GPU kernels and can fail with
-`no kernel image is available`; rebuild the portable image or supply a compatible
-runtime before running on those GPUs. This selection does not switch to CPU.
 
 Some CPU blocks use host tools rather than a container. For example,
 `ligand_ddg` needs Rosetta and, for its bundled Holes metric, DAlphaBall: set

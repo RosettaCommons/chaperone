@@ -24,8 +24,6 @@
     "/projects/ml/pipelines/containers",
     "/projects/ml/pipelines/software",
     "/projects/ml/pipelines/cache",
-    "/projects/ml/modelhub",
-    "/net/software/lab/fused_mpnn",
     "/net/tukwila/rohith/RFdiffusion2",
     "/net/databases/lab/aa-diffusion",
     "/net/software/containers/colabfold.sif",
@@ -37,12 +35,7 @@
     "/net/software/foldseek",
     "/net/software/containers/pipelines",
     "/net/software/containers/versions",
-    "/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease",
-    "/net/databases/mpnn",
-    [
-      "/net/databases/mpnn",
-      "/databases/mpnn"
-    ]
+    "/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease"
   ],
   "environment": {},
   "capabilities": {
@@ -54,16 +47,6 @@
     ],
     "Foundry RF3/RFD3 container": [
       "/net/software/containers/pipelines/foundry.sif"
-    ],
-    "LigandMPNN container": [
-      "/projects/ml/modelhub/apptainer/frozen_modelhub_datahub_cifutils_2025-02-05.sif",
-      "/projects/ml/modelhub/apptainer/test_modelhub_2025-05-01.sif"
-    ],
-    "LigandMPNN entry point": [
-      "/net/software/lab/fused_mpnn/v1.1.1/run.py"
-    ],
-    "LigandMPNN weights": [
-      "/net/databases/mpnn/ligand_mpnn_model_weights/s25_r010_t300_p.pt"
     ],
     "RF3 checkpoint": [
       "/projects/ml/pipelines/weights/foundry/checkpoints/rf3_foundry_01_24_latest_remapped.ckpt"

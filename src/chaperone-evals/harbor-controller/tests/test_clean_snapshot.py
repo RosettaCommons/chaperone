@@ -115,18 +115,15 @@ class CleanSnapshotTest(unittest.TestCase):
         self.assertNotIn("/usr/bin/srun", mounted_sources)
 
     @patch("environments.apptainer._optional_path_exists", return_value=True)
-    def test_runtime_mounts_include_on_prem_mpnn_code(self, _exists) -> None:
+    def test_runtime_mounts_include_on_prem_code(self, _exists) -> None:
         mounted_sources = {
             str(mount["source"]) for mount in ApptainerEnvironment._runtime_mounts()
         }
         required_sources = {
-            "/projects/ml/modelhub",
-            "/net/software/lab/fused_mpnn",
             "/net/tukwila/rohith/RFdiffusion2",
             "/net/databases/lab/aa-diffusion",
             "/net/software/containers/colabfold.sif",
             "/projects/ml/esm-weights",
-            "/net/databases/mpnn",
         }
         self.assertLessEqual(required_sources, mounted_sources)
         for mount in ApptainerEnvironment._runtime_mounts():
@@ -164,8 +161,6 @@ class CleanSnapshotTest(unittest.TestCase):
             self.assertIn("USALIGN_BIN", script)
             subprocess.run(["bash", "-n", str(wrapper)], check=True)
             for path in (
-                "/projects/ml/modelhub",
-                "/net/software/lab/fused_mpnn",
                 "/net/tukwila/rohith/RFdiffusion2",
                 "/net/databases/lab/aa-diffusion",
             ):
