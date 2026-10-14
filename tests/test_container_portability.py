@@ -33,6 +33,35 @@ def test_dry_run_does_not_clone_or_invoke_runtime(monkeypatch, tmp_path):
     assert not list(tmp_path.iterdir())
 
 
+@pytest.mark.parametrize("returncode", [0, 137])
+def test_apptainer_bounds_packing_resources_and_preserves_image_on_failure(
+    monkeypatch, tmp_path, returncode
+):
+    image = Image("bounded").base_image("ubuntu:24.04")
+    destination = tmp_path / "bounded.sif"
+    destination.write_bytes(b"previous image")
+
+    def run(command, **kwargs):
+        packing = shlex.split(command[command.index("--mksquashfs-args") + 1])
+        assert packing == ["-processors", "2", "-mem", "1G"]
+        temporary = Path(command[-2])
+        assert temporary != destination
+        temporary.write_bytes(b"new image")
+        if returncode:
+            raise subprocess.CalledProcessError(returncode, command)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    if returncode:
+        with pytest.raises(RuntimeError, match="Failed to build bounded"):
+            _build_apptainer(image, image.name, tmp_path, force=True)
+        assert destination.read_bytes() == b"previous image"
+    else:
+        _build_apptainer(image, image.name, tmp_path, force=True)
+        assert destination.read_bytes() == b"new image"
+    assert not (tmp_path / "bounded-tmp.sif").exists()
+
+
 def test_docker_stages_only_recipe_sources_inside_context(monkeypatch, tmp_path):
     runner = tmp_path / "runner.py"
     runner.write_text("print('hello')")

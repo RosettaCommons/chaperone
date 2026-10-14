@@ -143,8 +143,8 @@ run directory. The main controller still launches from the submission host.
 From the repository root on a Linux host with Apptainer build support:
 
 ```bash
-apptainer build --fakeroot agent.sif src/chaperone-evals/harbor-controller/containers/agent.def
-apptainer build --fakeroot baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
+apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' agent.sif src/chaperone-evals/harbor-controller/containers/agent.def
+apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
 ```
 
 These recipes copy only framework packages into the scientific image and no
