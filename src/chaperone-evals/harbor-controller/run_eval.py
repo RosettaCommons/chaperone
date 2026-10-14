@@ -1346,14 +1346,14 @@ def _path_in_chaperone_namespace(path: Path, chaperone_repo: Path) -> Path:
 def _preflight_scoring_site_environment(values: Mapping[str, str]) -> None:
     """Fail before scoring if a required site tool or data path is unavailable."""
     problems: list[str] = []
-    paths = {name: Path(values[name]).expanduser() for name in _SCORING_SITE_ENV_NAMES}
-    hbplus = paths["HBPLUS_COPY"]
-    if not hbplus.is_file() or not os.access(hbplus, os.X_OK):
+    paths = {name: Path(value).expanduser() for name, value in values.items()}
+    hbplus = paths.get("HBPLUS_COPY")
+    if hbplus is not None and (not hbplus.is_file() or not os.access(hbplus, os.X_OK)):
         problems.append("HBPLUS_COPY must be an executable file")
     for name in ("CCD_MIRROR_PATH", "PYROSETTA_PATH", "X3DNA_BIN_DIR", "X3DNA_DIR"):
-        if not paths[name].is_dir() or not os.access(paths[name], os.R_OK | os.X_OK):
+        if name in paths and (not paths[name].is_dir() or not os.access(paths[name], os.R_OK | os.X_OK)):
             problems.append(f"{name} must be a readable directory")
-    for executable in ("x3dna-dssr", "x3dna-snap"):
+    for executable in (("x3dna-dssr", "x3dna-snap") if "X3DNA_BIN_DIR" in paths else ()):
         candidate = paths["X3DNA_BIN_DIR"] / executable
         if not candidate.is_file() or not os.access(candidate, os.X_OK):
             problems.append(f"X3DNA_BIN_DIR/{executable} must be executable")
@@ -1362,7 +1362,8 @@ def _preflight_scoring_site_environment(values: Mapping[str, str]) -> None:
 
 
 def _scoring_site_environment(
-    chaperone_repo: Path, environment: Mapping[str, str] | None = None
+    chaperone_repo: Path, environment: Mapping[str, str] | None = None,
+    *, task_name: str | None = None,
 ) -> dict[str, str]:
     """Resolve the scorer's allowlisted settings from the selected profile.
 
@@ -1374,13 +1375,16 @@ def _scoring_site_environment(
     source_environment = os.environ if environment is None else environment
     configured = get_site()["environment"]
 
+    # Biotin uses AF3 and geometric/PLIP metrics, not PyRosetta or DNA tools.
+    # Other tasks retain the existing conservative requirements.
+    required = ("HBPLUS_COPY",) if task_name == "biotin_binder_design" else _SCORING_SITE_ENV_NAMES
     resolved: dict[str, str] = {}
     missing: list[str] = []
     for name in _SCORING_SITE_ENV_NAMES:
         value = source_environment.get(name) or configured.get(name)
         if value:
             resolved[name] = value
-        else:
+        elif name in required:
             missing.append(name)
     if missing:
         raise SystemExit(
@@ -1561,7 +1565,7 @@ def _score_trial(
     chaperone_repo = Path(os.path.abspath(chaperone_repo.expanduser()))
     scorer = _path_in_chaperone_namespace(scorer, chaperone_repo)
     host_python = _host_scoring_python(chaperone_repo)
-    site_environment = _scoring_site_environment(chaperone_repo)
+    site_environment = _scoring_site_environment(chaperone_repo, task_name=scorer.parent.parent.name)
     image = image.expanduser().resolve()
     if not image.is_file() or image.suffix != ".sif":
         raise SystemExit(f"Chaperone worker image was not found: {image}")
@@ -1788,6 +1792,8 @@ def _find_codex_vendor() -> Path:
 
 def _probe_agent_runtime(image: Path, arm: str) -> None:
     """Verify only the entry points intentionally exposed to the selected arm."""
+    site = get_site()
+    on_compute = site.get("runtime_probe_on_compute", False)
     vendor = _find_codex_vendor()
     runtime_path = "/opt/harbor-codex/bin:/opt/harbor-codex/codex-path"
     if arm == "harness":
@@ -1808,12 +1814,16 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
     # temporary files, or Matplotlib's import-time cache. Give the probe a
     # private, disposable /tmp rather than weakening isolation or depending on
     # an ambient host directory.
-    with tempfile.TemporaryDirectory(prefix="harbor-agent-runtime-") as temporary:
+    probe_root = None
+    if on_compute:
+        probe_root = JOBS_ROOT / ".runtime-probes"
+        probe_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="harbor-agent-runtime-", dir=probe_root) as temporary:
         command = [
             "apptainer",
             "exec",
             "--no-mount",
-            "home,tmp,bind-paths",
+            "home,tmp,bind-paths,hostfs,cwd",
             "--cleanenv",
             "--no-eval",
             "--bind",
@@ -1834,9 +1844,19 @@ def _probe_agent_runtime(image: Path, arm: str) -> None:
                 f" PATH={shlex.quote(runtime_path)}; {probe}"
             ),
         ]
+        if on_compute:
+            prefix = [
+                "srun", "--nodes=1", "--ntasks=1", "--cpus-per-task=1",
+                "--mem=4G", "--time=00:03:00", "--immediate=60",
+                "--job-name=chaperone-eval-preflight",
+            ]
+            for option, key in (("partition", "cpu_partition"), ("account", "account"), ("qos", "qos")):
+                if site[key]:
+                    prefix.append(f"--{option}={site[key]}")
+            command = prefix + command
         try:
             completed = subprocess.run(
-                command, text=True, capture_output=True, timeout=60
+                command, text=True, capture_output=True, timeout=240 if on_compute else 60
             )
         except subprocess.TimeoutExpired as exc:
             raise SystemExit("Apptainer agent-runtime preflight timed out.") from exc
@@ -2048,6 +2068,7 @@ def _preflight(args: argparse.Namespace, task: Path) -> None:
     if not args.no_score:
         commands.append("uv")
         _host_scoring_python(args.chaperone_repo)
+        _scoring_site_environment(args.chaperone_repo, task_name=task.name)
     for command in commands:
         if shutil.which(command) is None:
             raise SystemExit(f"Required command is unavailable: {command}")

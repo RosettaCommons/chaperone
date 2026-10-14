@@ -127,9 +127,16 @@ selected arm's image and `--worker-image` overrides the scoring/scientific worke
 
 Scoring reads `HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`, `X3DNA_BIN_DIR`, and
 `X3DNA_DIR` from the selected profile, with shell overrides, and verifies the paths
-before starting. No checkout `.env.ipd` is required. Scientific tasks still need
+before starting. Biotin requires only `HBPLUS_COPY` from that list; other configured
+paths are checked when supplied. Other tasks retain the full preflight requirements.
+No checkout `.env.ipd` is required. Scientific tasks still need
 licensed tools, model weights, and their block containers; the controller cannot
 make those external assets available by itself.
+
+If the login host cannot execute Apptainer, set `"runtime_probe_on_compute": true`
+in the site JSON. Runtime preflight then uses a short CPU-only `srun` allocation
+in the configured CPU partition/account/QoS, with temporary files under the shared
+run directory. The main controller still launches from the submission host.
 
 ### Building runtime images outside digs
 

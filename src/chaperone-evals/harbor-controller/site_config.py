@@ -57,6 +57,7 @@ def get_site() -> dict:
         worker_image="",
         baseline_image="",
         worker_python="/opt/chaperone/.venv/bin/python",
+        runtime_probe_on_compute=False,
         cpu_partition="",
         gpu_partition="",
         gpu_type="",
@@ -111,6 +112,8 @@ def get_site() -> dict:
     for key in ("max_total_gpus", "max_requested_gpus_per_submission"):
         if type(site[key]) is not int or site[key] < 1:
             raise ValueError(f"{key} must be a positive integer")
+    if type(site["runtime_probe_on_compute"]) is not bool:
+        raise ValueError("runtime_probe_on_compute must be a boolean")
     for key in ("agent_image", "worker_image", "baseline_image"):
         site[key] = os.environ.get("CHAPERONE_EVAL_" + key.upper(), site[key])
         if site[key]:

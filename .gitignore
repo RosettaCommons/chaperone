@@ -74,7 +74,7 @@ design-docs-old/
 /site/
 
 
-.venv/
+.venv
 .claude/settings.local.json
 
 # Derived inputs for bcov sm-binder-chop experiments

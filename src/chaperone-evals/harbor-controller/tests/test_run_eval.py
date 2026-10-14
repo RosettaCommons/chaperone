@@ -18,7 +18,7 @@ TEST_SITE_ENV = {
 }
 
 
-def _fake_site_environment(_repo):
+def _fake_site_environment(_repo, **_kwargs):
     return TEST_SITE_ENV.copy()
 
 
@@ -837,6 +837,47 @@ class RunEvalTest(unittest.TestCase):
         with patch.object(run_eval, "get_site", return_value={"environment": {}}):
             with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY"):
                 run_eval._scoring_site_environment(Path("/unused"), {})
+
+    def test_biotin_preflight_does_not_require_unrelated_dna_or_rosetta_tools(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hbplus = root / "hbplus"
+            hbplus.touch(mode=0o700)
+            tools = {"HBPLUS_COPY": str(hbplus)}
+            with patch.object(run_eval, "get_site", return_value={"environment": tools}):
+                self.assertEqual(
+                    run_eval._scoring_site_environment(root, {}, task_name="biotin_binder_design"),
+                    tools,
+                )
+                hbplus.chmod(0o600)
+                with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY must be an executable"):
+                    run_eval._scoring_site_environment(root, {}, task_name="biotin_binder_design")
+
+    def test_compute_runtime_probe_uses_shared_scratch_and_cpu_site_policy(self):
+        completed = SimpleNamespace(returncode=0, stdout="", stderr="")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            site = {
+                "runtime_probe_on_compute": True,
+                "worker_python": "/opt/chaperone/.venv/bin/python",
+                "cpu_partition": "hpc-mid", "account": "science", "qos": "",
+            }
+            with (
+                patch.object(run_eval, "JOBS_ROOT", root),
+                patch.object(run_eval, "get_site", return_value=site),
+                patch.object(run_eval, "_find_codex_vendor", return_value=Path("/vendor")),
+                patch.object(run_eval.subprocess, "run", return_value=completed) as run,
+            ):
+                run_eval._probe_agent_runtime(Path("/agent.sif"), "harness")
+            command = run.call_args.args[0]
+            self.assertEqual(command[0], "srun")
+            self.assertIn("--partition=hpc-mid", command)
+            self.assertIn("--account=science", command)
+            self.assertFalse(any(arg.startswith("--gres") for arg in command))
+            source = next(arg.rsplit(":", 1)[0] for arg in command if arg.endswith(":/tmp"))
+            self.assertEqual(Path(source).parent, root / ".runtime-probes")
+            self.assertFalse(Path(source).exists())
+            self.assertIn("home,tmp,bind-paths,hostfs,cwd", command)
 
     def test_scoring_site_environment_requires_all_preflighted_paths(self) -> None:
         values = {name: "/missing" for name in run_eval._SCORING_SITE_ENV_NAMES}
