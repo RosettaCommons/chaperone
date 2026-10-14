@@ -56,7 +56,7 @@ which apptainer 2>/dev/null && apptainer --version || echo "apptainer: not found
 which docker 2>/dev/null && docker --version || echo "docker: not found"
 ```
 
-Report which backends are available. If neither is found, warn the user that container-based blocks (RFD3, MPNN, AF3, etc.) won't work. Suggest to install docker if not.
+Local container execution needs Docker or Apptainer. Modal runs remotely and needs neither installed locally; install the `cloud` extra and authenticate with `modal setup` for that path. CPU Python blocks need no container runtime.
 
 ### 4. Configure Container Backend
 
@@ -66,7 +66,7 @@ source .venv/bin/activate
 python -c "from chaperone import get_settings; print(f'Auto-detected backend: {get_settings().CHAPERONE_CONTAINER_BACKEND}')"
 ```
 
-Use `AskUserQuestion` to ask the user which container backend they want to use (showing what was auto-detected as default). If they want to override, write it to the project `.env` file (see step 5 for the write pattern).
+Use `AskUserQuestion` to ask the user which container backend they want to use (showing what was auto-detected as default). If they want to override, write it to the project `.env.local` file (see step 5 for the write pattern).
 
 ### 5. Configure Compute Backend
 
@@ -82,12 +82,13 @@ source .venv/bin/activate
 python -c "from chaperone import get_settings; print(f'Current compute backend: {get_settings().CHAPERONE_COMPUTE_BACKEND}')"
 ```
 
-Use `AskUserQuestion` with `multiSelect: true` to ask the user which compute resources are available to them. Show what was auto-detected in the descriptions:
+Select one compute backend, using the user's existing preference when supplied. Show what was auto-detected in the descriptions:
 - **Auto (recommended)** — Automatically detect and use the best available backend at runtime
 - **Local** — Run directly on this machine (detected: {local GPU status})
 - **Cluster (detected: {SLURM status})** — Submit jobs to SLURM
+- **Modal** — Run compiled blocks on cloud GPUs (`CHAPERONE_COMPUTE_BACKEND=modal`)
 
-After the user selects, write their preference to `.env.local` (gitignored, user-specific overrides). If multiple backends are selected, join them with `/` as a priority list (e.g. `CHAPERONE_COMPUTE_BACKEND=local/slurm`). Use `CHAPERONE_`-prefixed variable names.
+After the user selects, write their preference to `.env.local` (gitignored, user-specific overrides). Use one of `auto`, `local`, `slurm`, or `modal`. Slash-separated priority lists apply only to the container backend; they are invalid for the compute backend. Use `CHAPERONE_`-prefixed variable names.
 
 For Slurm, configure `CHAPERONE_DEFAULT_PARTITION` (CPU),
 `CHAPERONE_GPU_PARTITION`, and `CHAPERONE_GRES_MAP` in `.env.local`. For example:

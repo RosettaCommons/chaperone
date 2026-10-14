@@ -461,6 +461,10 @@ class ClassicMPNNBlock(CompiledBlockFunction):
     _chunked = True
     _emits_sequence_table = True
 
+    def _wants_container_gpu(self) -> bool:
+        # A user's explicit CPU mode also applies inside a GPU allocation.
+        return self.device != "cpu" and super()._wants_container_gpu()
+
     def get_command_template(self) -> list[str]:
         """The ``run.py`` command with every checkpoint flag spelled out.
 

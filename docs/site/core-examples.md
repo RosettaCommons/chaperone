@@ -33,9 +33,6 @@ samples to estimate uncertainty.
 
 ## Validation status and first runs
 
-See the dated [release validation record](release-validation.md) for completed
-local checks, GPU smoke evidence, pending runs, and reproducible commands.
-
 These GPU campaigns are not run in routine CI. No release-wide, fresh-cluster
 end-to-end validation is asserted for this list. Unit tests and small integration
 checks cover different questions from full scientific benchmarking. Where an

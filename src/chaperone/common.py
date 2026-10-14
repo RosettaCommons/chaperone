@@ -73,18 +73,22 @@ def find_project_root() -> Path:
     """Find the project root directory.
 
     Searches for marker files (pyproject.toml, .git) starting from this file's
-    location and walking up. Falls back to dotenv if available.
+    location and walking up. Installed distributions have no source checkout;
+    their working directory is the project root and needs no sys.path changes.
 
     Returns:
         Path to the project root directory.
     """
-    return rootutils.setup_root(
-        __file__,
-        indicator=[".git", "pyproject.toml"],
-        dotenv=True,
-        pythonpath=True,
-        cwd=False,
-    )
+    try:
+        return rootutils.setup_root(
+            __file__,
+            indicator=[".git", "pyproject.toml"],
+            dotenv=True,
+            pythonpath=True,
+            cwd=False,
+        )
+    except FileNotFoundError:
+        return Path.cwd()
 
 
 def progress_disabled() -> bool:
