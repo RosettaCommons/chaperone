@@ -4,19 +4,17 @@ Agent evaluation harness for Chaperone. It launches a coding agent on a design
 task, with or without Chaperone available, then scores what the agent submits
 against held-out criteria.
 
-Each task folder holds what the agent receives (`prompt.md`, `inputs/`) and what it
-never sees (`score/`, `example/`). Keep this repository private while the scorers
-are in it: an agent with network access can read anything that is public.
+Each shipped task folder contains only `prompt.md` and `inputs/`. Held-out
+scorers, reference answers and audit fingerprints are stored in a private Harbor
+Hub dataset and restored only on the trusted controller.
 
 ## Layout
 
 ```text
 harbor-controller/       launcher, isolated environments, sanitizer, audit
 scoring/                 submission contract, gates and reporting shared by scorers
-evals_task/<task>/       prompt.md and inputs/ (what the agent receives), score/
-                         (held-out scorer) and example/ (reference submission)
-evals_task/audit_hints.json   fingerprints the sanitizer must never find in a bundle
-pyproject.toml           depends on the checkout's `chaperone` package by path and
+evals_task/<task>/       prompt.md and inputs/ (what the agent receives)
+pyproject.toml           depends on the checkout's `chaperone-pipelines` package by path and
                          adds the controller's dependencies
 ```
 
@@ -31,10 +29,10 @@ Ten tasks are included: `antibody_cdr`, `biotin_binder_design`, `dna_binder`,
 
 Only `prompt.md` and `inputs/` reach the agent. `score/`, `example/` and
 `audit_hints.json` are read by the controller on the host and are never copied into
-the Harbor task, the harness bundle or the baseline workspace. Tests cover each
+the rendered agent task, the harness bundle or the baseline workspace. Tests cover each
 path.
 
-To keep them somewhere else, point the controller at a separate directory laid
+Point the controller at a separate private directory laid
 out like `evals_task/` with `CHAPERONE_EVALS_PRIVATE=<dir>` or
 `run_eval.py --private-tasks-path`. Launch checks that its `inputs/` match the
 ones in this repository. `audit_hints.json` is a JSON list of
@@ -59,15 +57,51 @@ After the bundle is built it is validated again, and the audit rejects any
 allowlisted file that contains a fingerprint from `audit_hints.json`.
 
 Exclusion keeps held-out material out of the agent's workspace. It does not stop an
-agent that has network access from reading a public repository. If this repository
-is ever made public, move `score/`, `example/` and `audit_hints.json` to a private
-tree first.
+agent that has network access from reading public worked examples. Treat those
+examples as open-book assistance or use a network-restricted benchmark. Before
+making this repository public, remove historical answer copies from all published
+Git refs as well; the deletion commit alone does not sanitize history.
+
+## Private Harbor dataset
+
+The private package is `ubiquinone-dot/chaperone-evals`. Its ten task packages
+contain prompts/inputs; held-out controller data is a dataset-level archive,
+not an agent environment asset. Download only on the trusted controller:
+
+```bash
+harbor dataset download ubiquinone-dot/chaperone-evals@release-split-20261014 \
+  --output-dir /private/download
+# Use the download directory returned by Harbor:
+python harbor-controller/scripts/private_dataset.py restore \
+  --dataset /private/download/chaperone-evals --output /private/evals_task
+export CHAPERONE_EVALS_PRIVATE=/private/evals_task
+```
+
+Use the Chaperone `run_eval.py` entry point afterward. The package requires the
+configured cluster runtimes and external scorer; its standalone Harbor verifier
+fails explicitly rather than issuing an unmeasured reward. Keep Hub credentials,
+downloads and restored data outside all agent and scientific-asset mounts.
+The exporter/restorer validates the file inventory and SHA-256 checksums.
+
+Public CI checks structural isolation using synthetic data. Run the corpus audit
+with `CHAPERONE_EVALS_PRIVATE` configured before launching real evaluations.
+
+### Scheduler boundary
+
+Only the host broker has Slurm authentication. Agent status queries (`sacct`,
+`squeue`) are scoped to registered trial jobs. Agent and worker mounts reject
+scheduler directories, authentication sockets, libraries and native clients,
+including aliases and enclosing directories. Workers receive allocation metadata
+from an explicit environment allowlist; they cannot submit nested Slurm work or
+invoke Submitit's native `scontrol requeue`. The outer driver owns retries.
+Site-provided images and scientific assets remain trusted inputs: do not bake
+credentials into images or expose broad shared code/cache trees containing secrets.
 
 ## Setup
 
 The controller lives inside the Chaperone checkout it evaluates and shares its
 environment. Bootstrap installs this folder's project, which brings in the
-checkout's `chaperone` package (editable) and the controller's dependencies, on top
+checkout's `chaperone-pipelines` package (editable) and the controller's dependencies, on top
 of what is already in the checkout's `.venv`, and links the controller to it.
 
 ```bash

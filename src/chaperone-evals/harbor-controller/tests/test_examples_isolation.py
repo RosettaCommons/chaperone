@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from scripts.snapshot_harness import build, validate_snapshot, iter_bundle_files
-from task_paths import EVALS_ROOT, PUBLIC_TASKS_ROOT
+from task_paths import EVALS_ROOT, PRIVATE_TASKS_ENV, private_tasks_root
 
 REPO = EVALS_ROOT.parent.parent
 STRUCTURE_SUFFIXES = {
@@ -34,9 +35,16 @@ def _tracked_examples() -> list[Path]:
     return [REPO / name for name in listing.stdout.split("\0") if name]
 
 
-def _held_out_digests() -> dict[str, str]:
+@pytest.fixture
+def private_root():
+    if not os.environ.get(PRIVATE_TASKS_ENV):
+        pytest.skip("Private corpus audit requires CHAPERONE_EVALS_PRIVATE")
+    return private_tasks_root()
+
+
+def _held_out_digests(private_root) -> dict[str, str]:
     digests = {}
-    for task in PUBLIC_TASKS_ROOT.iterdir():
+    for task in private_root.iterdir():
         for part in ("score", "example"):
             for path in (task / part).rglob("*") if (task / part).is_dir() else []:
                 if path.is_file():
@@ -46,8 +54,8 @@ def _held_out_digests() -> dict[str, str]:
     return digests
 
 
-def test_no_agent_bundled_file_is_a_copy_of_a_held_out_file():
-    held_out = _held_out_digests()
+def test_no_agent_bundled_file_is_a_copy_of_a_held_out_file(private_root):
+    held_out = _held_out_digests(private_root)
     assert held_out
     # Public source fixtures can also be evaluator references. They must never
     # enter the agent workspace; do not obscure their provenance by rewriting
@@ -61,13 +69,13 @@ def test_no_agent_bundled_file_is_a_copy_of_a_held_out_file():
     assert not copies, copies
 
 
-def test_no_agent_bundled_text_matches_an_audit_pattern():
+def test_no_agent_bundled_text_matches_an_audit_pattern(private_root):
     hints = [
         (
             entry["label"],
             re.compile(entry["pattern"], re.I if entry.get("ignore_case", True) else 0),
         )
-        for entry in json.loads((PUBLIC_TASKS_ROOT / "audit_hints.json").read_text())
+        for entry in json.loads((private_root / "audit_hints.json").read_text())
     ]
     hits = []
     # Public examples may describe the same scientific systems as benchmark
@@ -85,7 +93,16 @@ def test_no_agent_bundled_text_matches_an_audit_pattern():
     assert not hits, hits
 
 
-def test_real_bundle_contains_no_example_files(tmp_path):
+def test_real_bundle_contains_no_example_files(tmp_path, monkeypatch):
+    # Structural CI check uses synthetic fingerprints; real corpus checks above
+    # are separately required on the private controller before launching trials.
+    if not os.environ.get(PRIVATE_TASKS_ENV):
+        private = tmp_path / "private"
+        private.mkdir()
+        (private / "audit_hints.json").write_text(json.dumps([
+            {"label": "synthetic", "pattern": "HELD_OUT_TEST_SENTINEL_48723"}
+        ]))
+        monkeypatch.setenv(PRIVATE_TASKS_ENV, str(private))
     examples = {path.relative_to(REPO).as_posix() for path in _tracked_examples()}
 
     seed = build(REPO, tmp_path / "bundles")

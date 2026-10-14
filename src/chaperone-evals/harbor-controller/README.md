@@ -5,9 +5,8 @@ from a login/submission host; `run_eval.py` is the supported entry point.
 
 Evaluation tasks live in `../evals_task/<task-name>/` and provide the model prompt
 and public inputs. The held-out scorer (`score/`) and reference submission
-(`example/`) sit in the same task folder, are read only by the controller, and are
-never exposed to the model. `CHAPERONE_EVALS_PRIVATE` moves them elsewhere (see
-`../README.md`).
+(`example/`) live in the private Harbor dataset. Set `CHAPERONE_EVALS_PRIVATE`
+to its restored task tree on the trusted controller (see `../README.md`).
 
 ## How a run works
 

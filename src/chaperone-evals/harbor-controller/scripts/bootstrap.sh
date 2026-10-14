@@ -4,7 +4,7 @@ set -euo pipefail
 CONTROLLER_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # The controller is src/chaperone-evals/harbor-controller of the Chaperone
 # checkout it evaluates, and shares that checkout's environment. The nested
-# project src/chaperone-evals depends on the checkout's `chaperone` package by
+# project src/chaperone-evals depends on the checkout's `chaperone-pipelines` package by
 # path and adds the harness dependencies.
 REPO_ROOT=$(cd "$CONTROLLER_ROOT/../../.." && pwd)
 CHAPERONE_PYTHON_VERSION=${CHAPERONE_PYTHON_VERSION:-3.12}

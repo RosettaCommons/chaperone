@@ -17,21 +17,15 @@
     "FOUNDRY_CHECKPOINT_DIRS": "/shared/chaperone/weights/foundry"
   },
   "capabilities": {
-    "Foundry RF3/RFD3 container": ["/shared/chaperone/containers/foundry.sif"],
-    "RF3 checkpoint": ["/shared/chaperone/weights/foundry/rf3_foundry_01_24_latest_remapped.ckpt"]
+    "Foundry RF3/RFD3 container": [
+      "/shared/chaperone/containers/foundry.sif"
+    ],
+    "RF3 checkpoint": [
+      "/shared/chaperone/weights/foundry/rf3_foundry_01_24_latest_remapped.ckpt"
+    ]
   },
   "runtime_binds": [
     "/dev/fuse",
-    "/etc/slurm",
-    "/run/munge/munge.socket.2",
-    "/usr/lib/slurm",
-    "/usr/lib/x86_64-linux-gnu/libmunge.so.2",
-    "/usr/bin/sacct",
-    "/usr/bin/scancel",
-    "/usr/bin/scontrol",
-    "/usr/bin/squeue",
-    "/usr/bin/srun",
-    "/usr/bin/sstat",
     "/shared/chaperone/containers",
     "/shared/chaperone/weights"
   ]

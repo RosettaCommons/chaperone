@@ -18,6 +18,7 @@ from typing import override
 
 from harbor.environments.singularity.singularity import SingularityEnvironment
 
+from scheduler_isolation import WORKER_SLURM_ENV
 from environments.slurm_broker import (
     SBATCH_GUARD,
     SOCKET_TARGET,
@@ -320,7 +321,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
                 *self._slurm_broker.mounts(),
             ],
             persistent_env=configured_env,
-            singularity_no_mount="home,tmp,bind-paths",
+            singularity_no_mount="home,tmp,bind-paths,hostfs,cwd",
             **kwargs,
         )
 
@@ -439,6 +440,7 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
             (
                 "#!/usr/bin/env bash",
                 "set -euo pipefail",
+                'while IFS= read -r name; do unset "$name"; done < <(compgen -A variable APPTAINER; compgen -A variable SINGULARITY; true)',
                 f"workspace={shlex.quote(str(workspace))}",
                 f"runtime={shlex.quote(str(runtime))}",
                 f"image={shlex.quote(str(image))}",
@@ -461,11 +463,11 @@ class BaselineSingularityEnvironment(SingularityEnvironment):
                 "for name in CUDA_VISIBLE_DEVICES NVIDIA_VISIBLE_DEVICES HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do",
                 '  if [[ -v "$name" ]]; then env_args+=(--env "$name=${!name}"); fi',
                 "done",
-                'while IFS= read -r name; do env_args+=(--env "$name=${!name}"); done < <(compgen -A variable SLURM_)',
+                'for name in ' + ' '.join(WORKER_SLURM_ENV) + '; do if [[ -v $name ]]; then env_args+=(--env "$name=${!name}"); fi; done',
                 'payload_name=$(basename "$payload")',
                 'env_args+=(--env "HARBOR_LOG_OUTPUT=$output" --env "HARBOR_LOG_ERROR=$error")',
                 'exec apptainer exec "${gpu_args[@]}" "${env_args[@]}" \\',
-                "  --cleanenv --containall --no-mount home --no-mount tmp --no-mount bind-paths \\",
+                "  --cleanenv --containall --no-mount home --no-mount tmp --no-mount bind-paths --no-mount hostfs --no-mount cwd \\",
                 "  --writable-tmpfs --pid --pwd /workspace \\",
                 '  -B "$workspace:/workspace" \\',
                 '  -B "$runtime:/run/harbor-baseline:ro" \\',

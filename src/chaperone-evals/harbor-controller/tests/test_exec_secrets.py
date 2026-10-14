@@ -101,3 +101,25 @@ def test_staging_dir_is_recreated(environment):
     instance, _ = environment
     run(instance, {})
     assert Path(instance._staging_dir).is_dir()
+
+
+def test_host_scheduler_credentials_are_not_forwarded(environment, monkeypatch):
+    instance, log = environment
+    monkeypatch.setenv('SLURM_JWT', 'test-authentication-token')
+    monkeypatch.setenv('SLURM_CONF', '/secret/slurm.conf')
+    monkeypatch.setenv('SLURM_JOB_ID', '123')
+    run(instance, {})
+    env = json.loads(log.read_text())['env']
+    assert 'APPTAINERENV_SLURM_JWT' not in env
+    assert 'APPTAINERENV_SLURM_CONF' not in env
+    assert env['APPTAINERENV_SLURM_JOB_ID'] == '123'
+
+
+def test_ambient_apptainerenv_secret_is_not_inherited(environment, monkeypatch):
+    instance, log = environment
+    monkeypatch.setenv('APPTAINERENV_UNREQUESTED_SECRET', 'host-secret')
+    monkeypatch.setenv('SINGULARITYENV_UNREQUESTED_SECRET', 'host-secret')
+    run(instance, {})
+    env = json.loads(log.read_text())['env']
+    assert 'APPTAINERENV_UNREQUESTED_SECRET' not in env
+    assert 'SINGULARITYENV_UNREQUESTED_SECRET' not in env

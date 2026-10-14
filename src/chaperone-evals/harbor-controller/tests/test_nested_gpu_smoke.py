@@ -2,10 +2,17 @@
 
 from pathlib import Path
 import runpy
+import json
 import subprocess
 
 
 def test_prepare_only_stages_sanitized_source_and_real_worker(monkeypatch, tmp_path):
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "audit_hints.json").write_text(json.dumps([
+        {"label": "synthetic", "pattern": "HELD_OUT_TEST_SENTINEL_48723"}
+    ]))
+    monkeypatch.setenv("CHAPERONE_EVALS_PRIVATE", str(private))
     helper = runpy.run_path(str(Path(__file__).with_name("nested_gpu_smoke.py")), run_name="nested_gpu_helper")
     image = tmp_path / "agent.sif"
     image.touch()  # Placeholder images are never executed in preparation mode.

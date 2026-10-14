@@ -1,18 +1,8 @@
-"""Where the controller finds tasks, held-out scorers, and the Chaperone checkout.
+"""Resolve public prompts/inputs and explicitly configured private evaluation data.
 
-Each task folder, ``evals_task/<task>/``, holds the agent-facing half
-(``prompt.md`` and ``inputs/``) and the held-out half (``score/`` for the scorer,
-``example/`` for a reference submission). The controller hands the agent only
-``prompt.md`` and ``inputs/``; the harness bundle is built from an allowlist that
-never includes ``src/chaperone-evals``; and the baseline arm gets a clean
-workspace. The held-out half is never copied anywhere the agent can read.
-
-Agents with network access can read anything that is public, so keep this
-repository private for as long as the scorers are in it. To keep them elsewhere,
-set ``CHAPERONE_EVALS_PRIVATE`` to the ``evals_task/`` directory of a separate
-checkout. That tree is complete, because scorers read ``inputs/`` as a sibling of
-``score/``, and ``check_inputs_match`` makes sure its ``inputs/`` and the ones
-agents receive are identical.
+Scorers, reference answers and audit fingerprints live outside the release
+checkout. Only the trusted controller receives CHAPERONE_EVALS_PRIVATE.
+Removing files from a branch does not remove earlier copies from Git history.
 """
 
 from __future__ import annotations
@@ -40,19 +30,14 @@ def default_chaperone_repo() -> Path:
 def private_tasks_root(override: str | os.PathLike | None = None) -> Path:
     """Return the ``evals_task/`` directory that holds the scorers.
 
-    An explicit path or ``CHAPERONE_EVALS_PRIVATE`` wins. Otherwise it is the
-    ``evals_task/`` directory shipped next to this controller.
+    An explicit path or ``CHAPERONE_EVALS_PRIVATE`` is required.
     """
     configured = override or os.environ.get(PRIVATE_TASKS_ENV)
     if not configured:
-        if not any(PUBLIC_TASKS_ROOT.glob("*/score/score.py")):
-            raise SystemExit(
-                "No held-out scorers found under "
-                f"{PUBLIC_TASKS_ROOT}. Set {PRIVATE_TASKS_ENV} to the evals_task/ "
-                "directory that holds them (run_eval.py also accepts "
-                "--private-tasks-path), or pass --no-score to launch without scoring."
-            )
-        return PUBLIC_TASKS_ROOT.resolve()
+        raise SystemExit(
+            f"Held-out evaluation data is stored separately. Set {PRIVATE_TASKS_ENV} "
+            "to a private evals_task/ directory (or pass --private-tasks-path)."
+        )
     root = Path(configured).expanduser().resolve()
     if not root.is_dir():
         raise SystemExit(f"Private tasks directory not found: {root}")
@@ -126,7 +111,7 @@ def assert_private_tree_unreachable(
     private = Path(os.path.realpath(private_root))
     for source in bound_sources:
         for candidate in {Path(source), Path(os.path.realpath(source))}:
-            if private == candidate or private.is_relative_to(candidate):
+            if private == candidate or private.is_relative_to(candidate) or candidate.is_relative_to(private):
                 raise SystemExit(
                     f"The private tasks directory {private} is inside {candidate}, "
                     "which is mounted into the agent container. Move the private "
