@@ -27,10 +27,9 @@ This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/s
 ## Package installation status
 
 The distribution is named **`chaperone-pipelines`**; the Python import and CLI
-remain `chaperone`. It is being prepared for TestPyPI and has **not yet been
-released on production PyPI**. See the [release guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/publishing.md)
-for TestPyPI installation and the tested support scope. Until then, use the source
-installation below. Do not install the unrelated `chaperone` package from PyPI.
+remain `chaperone`. A candidate is available on
+[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.5.1rc1/), but it has
+**not yet been released on production PyPI**. Use the source installation below. Do not install the unrelated `chaperone` package from PyPI.
 
 ## Installation (Agents)
 

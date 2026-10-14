@@ -131,7 +131,7 @@ The compute nodes must permit unprivileged user namespaces and FUSE. Native Linu
 Codex must be installed on the host; the controller mounts its executable.
 Build scientific block containers separately with `chaperone install`; the runtime
 image does not include model containers or weights. Both supplied recipes were
-built on Linux during the [release validation](release-validation.md), and the
+built on Linux, and the
 fresh scientific image passed clean framework imports, block discovery and the
 CPU functional smoke covering cache, metrics, selection and CatCIF roundtrips.
 Nested Apptainer execution also passed with `/dev/fuse` bound, matching the

@@ -37,17 +37,15 @@ Portable variants remain available even when a local IPD SIF is selected:
 
 The release checks render all **22** source recipes for Docker and Apptainer,
 check shell syntax and local copy inputs, and exercise installer staging and
-site selection. That audit is static; the separate source builds and GPU runs
-are recorded in [release validation](release-validation.md). Not all images have
-been built or exercised. Validate one small workload on your cluster before scaling up.
+site selection. That audit is static; not all images have been built or exercised. Validate one small workload on your cluster before scaling up.
 
 | Recipes | Installation notes |
 |---|---|
 | `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
-| `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block; see the [validation record](release-validation.md) for completed build/GPU checks. |
+| `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
-| `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. See the [validation record](release-validation.md) for actual inference status. |
+| `chai1` | Blackwell recipe explicitly overrides `chai_lab==0.6.1`'s `torch<2.7` requirement with Torch 2.7.1/CUDA 12.8. Other dependencies resolve normally; the build's dependency check allows only this exact mismatch. This is not a clean `pip check` stack. |
 | `rfdiffusion1` | HTTPS source recipe; install the checkpoints and provide the configured weight path. |
 | `rfdiffusion2_portable` | HTTPS source recipe. The `RFD_173.pt` checkpoint is downloaded during the build and checked against a pinned SHA-256; pass `ckpt_path` to use another file. |
 | `colabfold_portable`, `simplefold` | Public source recipes with model downloads/caches configured separately. SimpleFold's CUDA apt repository matches its Ubuntu base. |
@@ -101,8 +99,7 @@ compiled sequences or structures. Inputs must fit PDB's residue and component
 identifier limits; coordinates use PDB precision. Residue-level bias requires
 single-character input chain IDs; different per-input chain constraint mappings
 require separate chunks. Integration checks do not establish scientific
-equivalence between LigandMPNN and FoundryMPNN. See the
-[release validation record](release-validation.md) for actual build/GPU status.
+equivalence between LigandMPNN and FoundryMPNN.
 
 Some CPU blocks use host tools rather than a container. For example,
 `ligand_ddg` needs Rosetta and, for its bundled Holes metric, DAlphaBall: set
