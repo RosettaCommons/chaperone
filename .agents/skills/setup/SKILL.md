@@ -28,10 +28,25 @@ source .venv/bin/activate
 python -c "import chaperone; print('chaperone OK')"
 ```
 
-If the venv doesn't exist or the import fails, create and install:
+If the venv doesn't exist, create and activate it:
 ```bash
-uv venv --python=3.12.3
+uv venv --python=3.12 --managed-python
 source .venv/bin/activate
+```
+
+On clusters, keep this environment and uv's managed interpreter on a filesystem
+visible to compute nodes; a login-node `/usr/bin/python` may not exist there.
+For a **new Linux CPU controller environment**, install CPU Torch before the
+framework so GPU libraries remain in the scientific containers:
+
+```bash
+uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+Do not replace an existing GPU Torch installation needed by other local work.
+Then install the framework (also use this if its import failed in an existing venv):
+
+```bash
 uv pip install -e '.[all]' --override overrides.txt
 ```
 
