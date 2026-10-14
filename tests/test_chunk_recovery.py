@@ -6,7 +6,11 @@ That is indistinguishable from a job that genuinely wrote nothing, so without
 this the driver discards completed work and raises "N chunk(s) still failing".
 """
 
+import json
 from types import SimpleNamespace
+
+import polars as pl
+import pytest
 
 from chaperone.engine.chunking import recover_written_outputs
 
@@ -15,7 +19,7 @@ def _ctx(tmp_path, chunk_id, *, write=False):
     chunk_dir = tmp_path / f"step/chunk_{chunk_id}"
     chunk_dir.mkdir(parents=True)
     if write:
-        (chunk_dir / "output.parquet").write_bytes(b"PAR1")
+        pl.DataFrame({"id": ["design"]}).write_parquet(chunk_dir / "output.parquet")
     return SimpleNamespace(
         chunk_id=chunk_id, steps=[SimpleNamespace(chunk_dir=chunk_dir)]
     )
@@ -66,7 +70,7 @@ def test_waits_for_a_parquet_that_appears_late(tmp_path):
 
     def fake_sleep(_seconds):
         calls.append(_seconds)
-        parquet.write_bytes(b"PAR1")  # becomes visible during the wait
+        pl.DataFrame({"id": ["design"]}).write_parquet(parquet)
 
     assert recover_written_outputs(contexts, outputs, wait_s=10, sleep=fake_sleep) == 1
     assert outputs[0] == parquet
@@ -103,6 +107,70 @@ def test_terminal_failure_is_not_recovered_from_a_leftover_parquet(tmp_path):
     contexts[0].steps[-1].chunk_dir.joinpath("terminal.json").write_text(
         '{"status":"error"}'
     )
+    outputs = [None]
+    assert recover_written_outputs(contexts, outputs, wait_s=0) == 0
+    assert outputs == [None]
+
+
+@pytest.mark.parametrize("payload", [b"", b"PAR1", b"not parquet"])
+def test_corrupt_output_is_not_recovered(tmp_path, payload):
+    contexts = [_ctx(tmp_path, 0)]
+    (contexts[0].steps[-1].chunk_dir / "output.parquet").write_bytes(payload)
+    outputs = [None]
+    assert recover_written_outputs(contexts, outputs, wait_s=0) == 0
+    assert outputs == [None]
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        None,
+        [],
+        {"status": "running"},
+        {"status": "success", "output_sha256": "stale"},
+        {"status": "success", "output_count": 2},
+    ],
+)
+def test_inconsistent_terminal_report_is_not_recovered(tmp_path, report):
+    contexts = [_ctx(tmp_path, 0, write=True)]
+    (contexts[0].steps[-1].chunk_dir / "terminal.json").write_text(json.dumps(report))
+    outputs = [None]
+    assert recover_written_outputs(contexts, outputs, wait_s=0) == 0
+    assert outputs == [None]
+
+
+def test_recovers_verified_empty_output(tmp_path):
+    from chaperone.engine.chunking import _sha256
+
+    contexts = [_ctx(tmp_path, 0)]
+    parquet = contexts[0].steps[-1].chunk_dir / "output.parquet"
+    pl.DataFrame(schema={"id": pl.String}).write_parquet(parquet)
+    parquet.with_name("terminal.json").write_text(
+        json.dumps(
+            {"status": "success", "output_count": 0, "output_sha256": _sha256(parquet)}
+        )
+    )
+    outputs = [None]
+    assert recover_written_outputs(contexts, outputs, wait_s=0) == 1
+
+
+def test_retries_incomplete_output_until_readable(tmp_path):
+    contexts = [_ctx(tmp_path, 0)]
+    parquet = contexts[0].steps[-1].chunk_dir / "output.parquet"
+    parquet.write_bytes(b"PAR1")
+    outputs = [None]
+
+    def finish_write(_):
+        pl.DataFrame({"id": ["design"]}).write_parquet(parquet)
+
+    assert (
+        recover_written_outputs(contexts, outputs, wait_s=10, sleep=finish_write) == 1
+    )
+
+
+def test_invalid_json_terminal_report_is_not_recovered(tmp_path):
+    contexts = [_ctx(tmp_path, 0, write=True)]
+    (contexts[0].steps[-1].chunk_dir / "terminal.json").write_text("{")
     outputs = [None]
     assert recover_written_outputs(contexts, outputs, wait_s=0) == 0
     assert outputs == [None]
