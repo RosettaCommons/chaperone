@@ -8,6 +8,7 @@ Usage:
 """
 
 import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
 import tempfile
 from pathlib import Path
@@ -19,6 +20,19 @@ logger = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 flags.DEFINE_boolean("force", False, "Force rebuild even if container exists")
 flags.DEFINE_boolean("dry_run", False, "Show what would be done without doing it")
+flags.DEFINE_boolean("full", False, "Install the curated core scientific containers")
+flags.DEFINE_integer("jobs", None, "Concurrent builds (full: 2; named installs: 1)", lower_bound=1)
+flags.DEFINE_boolean("warmup_rfd3", False, "After builds, warm the RFD3 GPU compiler cache")
+flags.DEFINE_string("warmup_cache_dir", None, "Persistent writable RFD3 compiler cache")
+flags.DEFINE_string("warmup_run_dir", None, "Shared directory for RFD3 warmup outputs")
+flags.DEFINE_boolean("warmup_local", False, "Warm up on an already allocated local GPU")
+
+# Names are container registrations, not block aliases. Foundry includes RFD3,
+# RFD3NA, RF3 and FoundryMPNN; ligandmpnn includes Protein/Ligand/SolubleMPNN.
+CORE_CONTAINERS = (
+    "foundry", "ligandmpnn", "alphafold3", "esmfold2", "boltz2", "chai1",
+    "colabfold_portable",
+)
 
 
 def get_writable_container_dir() -> Path:
@@ -293,10 +307,13 @@ def _build_docker(
     print(f"  Built: {tag}")
 
 
-def install(names: list[str]):
-    """Install containers by name."""
+def install(names: list[str], *, full=False, jobs=1, force=False, dry_run=False):
+    """Build each resolved image once, with bounded parallelism and all failures reported."""
     from blocks import get_container
 
+    if jobs < 1:
+        raise ValueError("jobs must be at least 1")
+    names = list(dict.fromkeys([*(CORE_CONTAINERS if full else ()), *names]))
     requested = [(name, get_container(name)) for name in names]
     unknown = [name for name, spec in requested if spec is None]
     if unknown:
@@ -304,26 +321,39 @@ def install(names: list[str]):
             f"Unknown container: {', '.join(unknown)}. "
             f"Available: {sorted(get_all_containers())}"
         )
-
-    if FLAGS.dry_run:
+    # Aliases can resolve to the same output image. Never build it twice at once.
+    images = {spec.name: spec for _, spec in requested}
+    if dry_run:
         from chaperone.containers import get_container_dirs
         output_dir = get_container_dirs()[0]
     else:
         output_dir = get_writable_container_dir()
-    print(f"\nContainer directory: {output_dir}\n")
-
-    for name, spec in requested:
-        print(f"Installing {name}...")
-        build_container(
-            spec, spec.name, output_dir, force=FLAGS.force, dry_run=FLAGS.dry_run
-        )
-        print("  Done.\n")
+    print(f"\nContainer directory: {output_dir}")
+    print(f"Images: {', '.join(images)}; concurrent builds: {jobs}\n")
+    failures = {}
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        pending = {
+            executor.submit(build_container, spec, name, output_dir, force=force, dry_run=dry_run): name
+            for name, spec in images.items()
+        }
+        for future in as_completed(pending):
+            name = pending[future]
+            try:
+                future.result()
+                print(f"  {name}: done")
+            except Exception as exc:
+                failures[name] = str(exc)
+                print(f"  {name}: FAILED: {exc}")
+    if failures:
+        raise RuntimeError("Container builds failed: " + "; ".join(
+            f"{name}: {error}" for name, error in sorted(failures.items())
+        ))
 
 
 def main(argv):
     names = [a for a in argv[1:] if not a.startswith("-")]
 
-    if not names or names == ["list-blocks"]:
+    if (not names and not FLAGS.full) or names == ["list-blocks"]:
         list_blocks()
         return 0
 
@@ -341,7 +371,18 @@ def main(argv):
         print()
         return 0
 
-    install(names)
+    if FLAGS.warmup_rfd3 and not (FLAGS.warmup_cache_dir and FLAGS.warmup_run_dir):
+        raise app.UsageError("--warmup_rfd3 requires --warmup_cache_dir and --warmup_run_dir")
+    install(names, full=FLAGS.full, jobs=FLAGS.jobs or (2 if FLAGS.full else 1),
+            force=FLAGS.force, dry_run=FLAGS.dry_run)
+    if FLAGS.warmup_rfd3:
+        from chaperone_cli.warmup import main as warmup_main
+        warmup_args = ["--cache-dir", FLAGS.warmup_cache_dir, "--rundir", FLAGS.warmup_run_dir]
+        if FLAGS.warmup_local:
+            warmup_args.append("--local")
+        if FLAGS.dry_run:
+            warmup_args.append("--dry-run")
+        warmup_main(warmup_args)
     print("Done.")
 
 

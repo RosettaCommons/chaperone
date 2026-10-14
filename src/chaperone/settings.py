@@ -324,6 +324,10 @@ class ChaperoneSettings(BaseSettings):
             "the paths.data.protein_msa_dirs entries RF3 validation uses."
         ),
     )
+    RFD3_COMPILE_CACHE_DIR: Optional[str] = Field(
+        default=None,
+        description="Writable persistent TorchInductor/Triton cache for local RFD3; create before use.",
+    )
     FOUNDRY_CHECKPOINT_DIRS: Optional[str] = Field(
         default=None,
         description="Colon-separated list of directories for Foundry model checkpoints.",

@@ -216,15 +216,99 @@ chaperone list-blocks
 
 Show the user which blocks are available and which containers are installed vs missing.
 
-### 7. Install Containers
+### 7. Install core containers (full install)
 
-Use `AskUserQuestion` to ask the user which blocks they want to install containers for (based on what's not yet installed from step 6).
+When the user asks for a full install or evaluation-ready setup, use this preset;
+their request already authorizes the selected builds. Reuse verified installed
+images. Do not ask again for individual tools or rebuild everything with `--force`.
 
-Run installation:
 ```bash
 source .venv/bin/activate
-chaperone install <selected_names>
+chaperone install --full --jobs=2 --dry_run
+chaperone install --full --jobs=2
 ```
+
+The preset builds **Foundry** (RFD3, RFD3NA, RF3, FoundryMPNN), **LigandMPNN**
+(ProteinMPNN, LigandMPNN, SolubleMPNN), **AlphaFold3**, **ESMFold2**, **Boltz2**,
+**Chai-1**, and **ColabFold**. It omits PLMs (E1/ESM2), SimpleFold, legacy diffusion,
+and specialized tools. Additional names extend the preset, e.g.
+`chaperone install --full tmol --jobs=2`. Named installs retain a serial default.
+Unknown names fail before any builds start; aliases are built once. Failures are
+reported together, and a rerun skips successful images. Each build retains its
+rendered recipe in the container directory.
+
+Run builds on a machine/allocation with Apptainer build privileges or a Docker
+daemon, outbound network, and sufficient disk, RAM and CPUs. Start with two builds;
+Apex compilation and large CUDA image layers are expensive. `--jobs` bounds builds,
+not every compiler thread. Apptainer compression is capped at two threads/1 GiB per
+image. On a cluster that forbids execution on login nodes, use a CPU allocation
+via the Slurm skill. Do not build containers inside a benchmark agent trial.
+
+**Containers alone are not a full evaluation installation.** Complete the
+prerequisite table and runtime-image instructions in `docs/site/evaluations.md`:
+
+- Install the separate harness project with its bootstrap script; authenticate
+  the host Codex executable with the intended model provider.
+- Build `agent.sif` (also usable as `worker_image`); build `baseline.sif` only when
+  running a baseline arm. These are separate from scientific tool containers.
+- Stage model weights before the trial. AF3 weights require authorized access;
+  some other downloads need accepted terms/authentication. Verify cache mounts
+  and driver support (current ESMFold2 uses CUDA 13).
+- Configure Slurm partitions/GPU classes, runtime binds, task capabilities and
+  writable per-trial caches. Verify nested Apptainer with `/dev/fuse` on a GPU node.
+- Keep private eval data and provider/download credentials on the trusted
+  controller. Never bind their parent directories into agent or worker containers.
+- Install the task's scoring dependencies. Biotin needs AF3 weights/container and
+  HBPLUS; the controller stages pinned PLIP/OpenBabel/lxml. Other task preflights
+  also require CCD, PyRosetta and X3DNA paths. Optional scientific containers do
+  not supply those external assets.
+- Run controller `--dry-run`, then one real single-design trial and scoring. A
+  container listing or successful import does not prove end-to-end readiness.
+
+### 7b. Warm RFD3's compilation cache on the target GPU
+
+For a full install including GPU warmup, combine the phases:
+
+```bash
+chaperone install --full --jobs=2 --warmup_rfd3 \
+  --warmup_cache_dir="$HOME/.cache/chaperone/rfd3" \
+  --warmup_run_dir=/absolute/shared/path/rfd3-warmup
+```
+
+This builds containers first, then submits warmup through the engine. Add
+`--warmup_local` only when the installer is already running in a GPU allocation.
+A failed build prevents warmup; retrying skips completed images.
+
+
+Use the pinned public Foundry's supported `compile_model` interface. Do not select
+a private `foundry_fast.sif`, change the model weights, or copy PR #351's unsupported
+kernel/shape/worker flags. Its persistent-cache idea is applicable, but its private
+runtime is not the current public recipe.
+
+```bash
+mkdir -p "$HOME/.cache/chaperone/rfd3"
+chaperone warmup-rfd3 \
+  --cache-dir "$HOME/.cache/chaperone/rfd3" \
+  --rundir /absolute/shared/path/rfd3-warmup
+```
+
+The normal execution engine submits one GPU job using site settings. Add `--local`
+only within an existing GPU allocation. This runs two short batches through the
+compiled model; outputs are installation smoke artifacts, not design-quality
+samples. `--inputs /path/to/public-inputs.json` and `--batch-size N` can warm a
+representative workload. Keep benchmark-private inputs/answers out of shared caches.
+
+Persist `RFD3_COMPILE_CACHE_DIR=/absolute/cache/path` in `.env.local` and use
+`RFD3(compile_model=True)` in subsequent pipelines. The directory must already
+exist and be writable; it is bound explicitly for local Apptainer/Docker execution.
+The cache does not contain model weights. GPU architecture, software version,
+shape, and diffusion batch size affect reuse; new combinations may compile again.
+Cold compile can take several minutes and is not always worthwhile for a short
+job. Leaving `compile_model=None` retains the installed runtime's defaults.
+
+For evaluation, use a writable trial-local cache (or a controller-prepared copy),
+never a shared mutable cache across contestants. The setup command does not relax
+the evaluation mount allowlist or automatically expose a user's cache.
 
 ### 8. Optional Extras
 
@@ -272,4 +356,4 @@ Then present what's possible, grouped into two categories:
 - **Multi-state validation** — predict apo, holo, and ligand-bound states in parallel branches
 - **Progressive filtering** — multi-round design with increasingly strict thresholds
 
-Remind the user that the documentation site is running at **http://127.0.0.1:8000** where they can browse the full block reference with primary/secondary parameter tiers, syntax docs, and guides.
+If you actually started the documentation server, report its address, normally **http://127.0.0.1:8000** where they can browse the full block reference with primary/secondary parameter tiers, syntax docs, and guides.

@@ -76,6 +76,58 @@ export OPENAI_API_KEY=...        # or use an existing `codex login`
 The controller lives inside the Chaperone checkout it evaluates and uses that
 checkout for scoring. Set `CHAPERONE_REPO` to score against a different one.
 
+## Full-install prerequisites
+
+`chaperone install --full --jobs=2` prepares the core scientific containers in
+parallel: Foundry (RFD3/RFD3NA/RF3/MPNN), LigandMPNN, AF3, ESMFold2, Boltz2, Chai-1,
+and ColabFold. It skips existing output images. Use `--dry_run` to inspect the plan
+and lower `--jobs` on small build machines. PLMs, SimpleFold and specialized or
+legacy tools are excluded; append explicit container names when required.
+This is a container preset, not a promise that licensed weights, every scoring
+binary, or an evaluation account have been installed.
+
+| Layer | Required preparation | Verification |
+|---|---|---|
+| Controller | Linux, shared Python 3.12 environment, `uv`, harness bootstrap, Slurm clients, native Codex and provider login | Controller `--dry-run` and runtime probe |
+| Isolation | Apptainer, user namespaces/FUSE on compute nodes; agent/worker SIF; baseline SIF only for baseline | Nested container execution with `/dev/fuse`; exact runtime binds |
+| Scientific runtimes | Core preset above, NVIDIA driver compatible with the image CUDA versions (ESMFold2 currently CUDA 13) | A real GPU inference for each tool needed by the selected task |
+| Model data | AF3 authorized weights; Foundry checkpoints; predictor weight caches and any required download access | Stage before the trial and verify paths inside the isolated runtime |
+| Held-out data | Private GitHub checkout or restored private Harbor dataset and checksum verification | Input sync and bundle leak checks in controller preflight |
+| Scoring | Biotin: AF3 and HBPLUS. Other current task preflights: also CCD mirror, PyRosetta setup, X3DNA/DSSR/SNAP | Scorer preflight; pinned PLIP/OpenBabel/lxml are staged by the controller |
+| Site policy | CPU/GPU partition, GPU type/constraint, account/QoS, concurrency caps, asset allowlist | One single-design trial through GPU execution and scoring |
+
+Build on a CPU build node with sufficient memory/disk and network access, before
+starting the agent. The concurrency limit applies to builds, not compiler threads.
+Apex compilation can consume several CPUs per image. Each Apptainer build bounds
+final compression to two threads and 1 GiB, avoiding host-sized buffer allocation.
+A failed image does not replace an existing working image; rerunning retries
+missing images while retaining successful ones.
+
+### Optional RFD3 GPU compilation warmup
+
+The pinned public Foundry supports `compile_model=True`. Populate a persistent
+cache with the target GPU through the normal Chaperone engine:
+
+```bash
+chaperone warmup-rfd3 --cache-dir /absolute/writable/rfd3-cache \
+  --rundir /absolute/shared/rfd3-warmup
+```
+
+To include this phase in a full install, use `chaperone install --full --jobs=2
+--warmup_rfd3 --warmup_cache_dir=/absolute/writable/rfd3-cache
+--warmup_run_dir=/absolute/shared/rfd3-warmup` (as one command).
+
+This submits a short two-batch GPU warmup; add `--local` inside an existing GPU
+allocation. Use `--inputs` and `--batch-size` for representative public inputs.
+Reuse that cache through `RFD3_COMPILE_CACHE_DIR` and set the block's
+`compile_model=True`. Different shapes, GPUs and software can trigger recompilation.
+Warmup output is not suitable for scientific quality assessment. The historical
+[Pipelines PR #351](https://github.com/baker-laboratory/pipelines/pull/351) used a
+private fast image with extra controls; those controls and its reported speedup
+are not assumed for the public pin. Measure cold and warm performance separately.
+For benchmark trials, prepare isolated writable cache copies; never share a
+mutable compiler cache across contestants or widen mounts to expose host home.
+
 ## Cluster configuration
 
 The default `--site portable` has no digs images or scientific mounts. Copy

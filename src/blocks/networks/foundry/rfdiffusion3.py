@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from pydantic import Field, field_validator
 from typing import Optional
-from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs
+from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs, get_setting_field
 from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 from chaperone.data import make_row
 
@@ -44,6 +44,29 @@ class RFD3Block(CompiledBlockFunction):
     )
     _inline = False
     _chunked = True
+
+    compile_model: Optional[bool] = Field(
+        None, description="Compile hot diffusion modules; None inherits the Foundry runtime default."
+    )
+
+    def get_command_template(self) -> list[str]:
+        # NA and cloud runtimes retain their own compilation/cache behavior.
+        cache = get_setting_field("RFD3_COMPILE_CACHE_DIR", None)
+        from chaperone.orchestration.modal_backend import current_command_context
+        cloud = self.cloud or current_command_context() is not None or get_setting_field(
+            "CHAPERONE_COMPUTE_BACKEND", "auto"
+        ) in ("modal", "cloud")
+        if not cache or cloud or self._script_spec.command != ["rfd3", "design"]:
+            return super().get_command_template()
+        cache = str(Path(cache).expanduser().resolve())
+        if not Path(cache).is_dir():
+            raise ValueError("Create RFD3_COMPILE_CACHE_DIR before running RFD3")
+        return self._script_spec.image.build_command(
+            *self._script_spec.command,
+            binds=[(cache, cache)],
+            env={"TORCHINDUCTOR_CACHE_DIR": f"{cache}/inductor",
+                 "TRITON_CACHE_DIR": f"{cache}/triton"},
+        )
 
     # Model and input configuration
     inputs: Optional[str | dict] = Field(
@@ -112,7 +135,7 @@ See the RFdiffusion3 skill for more information
         },
         description="Sampler parameters to override (not configurable via CLI)",
     )
-    seed_offset: int = Field(
+    seed_offset: Optional[int] = Field(
         42,
         json_schema_extra={"tier": TIER_PRIMARY},
         description="Increments seed by 1 from offset for every chunk",
@@ -252,7 +275,7 @@ See the RFdiffusion3 skill for more information
         sampler_args = [
             f"inference_sampler.{k}={v}" for k, v in self.inference_sampler.items()
         ]
-        seed_arg = f"seed={self.seed_offset + chunk_id}" if self.seed_offset else None
+        seed_arg = f"seed={self.seed_offset + chunk_id}" if self.seed_offset is not None else None
         ckpt = self.ckpt_path
         ckpt_arg = f"ckpt_path={ckpt}" if ckpt else None
         cmd = self.command_template + [
@@ -265,6 +288,8 @@ See the RFdiffusion3 skill for more information
             *sampler_args,
             seed_arg,
         ]
+        if self.compile_model is not None:
+            cmd.append(f"compile_model={str(self.compile_model).lower()}")
         for k, v in extra_args.items():
             if v is not None:
                 cmd.append(f"{k}={v}")

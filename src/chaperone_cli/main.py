@@ -163,7 +163,8 @@ Commands:
     list-available    List all available containers
     list-installed    List currently installed containers
     list-blocks       List all blocks and their container status
-    install           Install containers for tools
+    install           Install containers for tools (--full --jobs=2)
+    warmup-rfd3       Populate a persistent RFD3 GPU compilation cache
     shell             Enter an interactive shell in a container
     artifact          Read a bounded log/artifact excerpt with a continuation cursor
     wait              Sleep until a Slurm job, process, or marker finishes
@@ -212,6 +213,10 @@ def main():
         from absl import app
 
         app.run(install_main)
+    elif command == "warmup-rfd3":
+        from chaperone_cli.warmup import main as warmup_main
+
+        sys.exit(warmup_main(sys.argv[2:]))
     elif command == "shell":
         if len(sys.argv) < 3:
             print("Usage: chaperone shell <container_name>")
