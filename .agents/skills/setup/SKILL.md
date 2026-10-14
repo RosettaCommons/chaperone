@@ -300,7 +300,8 @@ representative workload. Keep benchmark-private inputs/answers out of shared cac
 
 Persist `RFD3_COMPILE_CACHE_DIR=/absolute/cache/path` in `.env.local` and use
 `RFD3(compile_model=True)` in subsequent pipelines. The directory must already
-exist and be writable; it is bound explicitly for local Apptainer/Docker execution.
+exist, be writable, and allow execution of compiler probes (`TMPDIR` is routed
+there because container `/tmp` can be non-executable); it is bound explicitly for local Apptainer/Docker execution.
 The cache does not contain model weights. GPU architecture, software version,
 shape, and diffusion batch size affect reuse; new combinations may compile again.
 Cold compile can take several minutes and is not always worthwhile for a short

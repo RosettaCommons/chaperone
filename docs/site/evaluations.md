@@ -103,6 +103,35 @@ final compression to two threads and 1 GiB, avoiding host-sized buffer allocatio
 A failed image does not replace an existing working image; rerunning retries
 missing images while retaining successful ones.
 
+### Stage weights before isolating the agent
+
+The full preset builds runtime software. LigandMPNN's public recipe includes its
+model parameters; the other model caches remain separate. Configure these paths
+and include only the required assets in the site's runtime binds:
+
+| Tool | Weight/cache setting |
+|---|---|
+| Foundry | `FOUNDRY_CHECKPOINT_DIRS` (colon-separated checkpoint directories) |
+| AlphaFold3 | `ALPHAFOLD3_WEIGHTS_DIR` (authorized AF3 parameters) |
+| ESMFold2 | `ESM_WEIGHTS_DIR` (Hugging Face cache) |
+| Boltz2 | `BOLTZ_CACHE_DIR` |
+| Chai-1 | `CHAI_DOWNLOADS_DIR` |
+| ColabFold | `COLABFOLD_DATA_DIR` |
+
+For example, prefetch the pinned Foundry runtime's base model set on an allowed
+build/compute host (create the host directory first):
+
+```bash
+apptainer exec --bind /absolute/weights:/weights /absolute/foundry.sif \
+  foundry install base-models --checkpoint-dir /weights
+```
+
+Set `FOUNDRY_CHECKPOINT_DIRS=/absolute/weights` for Chaperone. Use the selected
+predictor's documented download or a small inference outside the evaluation to
+populate its cache, then verify the isolated trial can read it. Complete any
+required license/terms approval on the trusted host. Download credentials and
+private evaluation data must not accompany the cache into the trial.
+
 ### Optional RFD3 GPU compilation warmup
 
 The pinned public Foundry supports `compile_model=True`. Populate a persistent

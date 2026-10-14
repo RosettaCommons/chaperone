@@ -64,7 +64,9 @@ class RFD3Block(CompiledBlockFunction):
         return self._script_spec.image.build_command(
             *self._script_spec.command,
             binds=[(cache, cache)],
-            env={"TORCHINDUCTOR_CACHE_DIR": f"{cache}/inductor",
+            # Apptainer's private /tmp may be noexec on cluster nodes. Inductor
+            # executes short compiler probes there unless TMPDIR is explicit.
+            env={"TMPDIR": cache, "TORCHINDUCTOR_CACHE_DIR": f"{cache}/inductor",
                  "TRITON_CACHE_DIR": f"{cache}/triton"},
         )
 
