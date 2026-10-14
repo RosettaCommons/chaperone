@@ -5,8 +5,10 @@ from a login/submission host; `run_eval.py` is the supported entry point.
 
 Evaluation tasks live in `../evals_task/<task-name>/` and provide the model prompt
 and public inputs. The held-out scorer (`score/`) and reference submission
-(`example/`) live in the private Harbor dataset. Set `CHAPERONE_EVALS_PRIVATE`
-to its restored task tree on the trusted controller (see `../README.md`).
+(`example/`) live in the private
+[evaluation repository](https://github.com/Ubiquinone-dot/chaperone-evals) and a
+private Harbor dataset snapshot. Set `CHAPERONE_EVALS_PRIVATE` to the cloned or
+restored `evals_task/` tree on the trusted controller (see `../README.md`).
 
 ## How a run works
 

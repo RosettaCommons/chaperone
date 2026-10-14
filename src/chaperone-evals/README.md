@@ -5,8 +5,9 @@ task, with or without Chaperone available, then scores what the agent submits
 against held-out criteria.
 
 Each shipped task folder contains only `prompt.md` and `inputs/`. Held-out
-scorers, reference answers and audit fingerprints are stored in a private Harbor
-Hub dataset and restored only on the trusted controller.
+scorers, reference answers and audit fingerprints are stored in the private
+[chaperone-evals repository](https://github.com/Ubiquinone-dot/chaperone-evals)
+and a private Harbor Hub snapshot, accessible only to the trusted controller.
 
 ## Layout
 
@@ -62,7 +63,26 @@ examples as open-book assistance or use a network-restricted benchmark. Before
 making this repository public, remove historical answer copies from all published
 Git refs as well; the deletion commit alone does not sanitize history.
 
-## Private Harbor dataset
+## Private evaluation repository
+
+Clone [Ubiquinone-dot/chaperone-evals](https://github.com/Ubiquinone-dot/chaperone-evals)
+on the trusted controller, outside the Chaperone checkout and every agent/worker
+mount:
+
+```bash
+umask 077
+git clone https://github.com/Ubiquinone-dot/chaperone-evals.git /private/chaperone-evals
+cd /private/chaperone-evals
+sha256sum --check SHA256SUMS
+export CHAPERONE_EVALS_PRIVATE=/private/chaperone-evals/evals_task
+```
+
+Return to this evaluation project before running the controller commands below.
+The private repository contains all ten task trees and their audit fingerprints;
+the controller and shared scoring implementation remain here. Keep that repository
+private. Git changes do not automatically update the published Harbor snapshot.
+
+## Private Harbor dataset (alternative download)
 
 The private package is `ubiquinone-dot/chaperone-evals`. Its ten task packages
 contain prompts/inputs; held-out controller data is a dataset-level archive,
