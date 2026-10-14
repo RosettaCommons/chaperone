@@ -345,7 +345,10 @@ class ApptainerEnvironment(SingularityEnvironment):
             raise FileNotFoundError(f"Harness snapshot not found: {seed}")
         if not inputs.is_dir():
             raise FileNotFoundError(f"Task inputs not found: {inputs}")
-        validate_snapshot(seed, seed.name)
+        # The submission host audited private patterns before publishing this
+        # content-addressed seed. Recheck its exact bytes without copying the
+        # patterns or private task location into the outer compute job.
+        validate_snapshot(seed, seed.name, check_private_hints=False)
         input_symlinks = sorted(
             path.relative_to(inputs) for path in inputs.rglob("*") if path.is_symlink()
         )
@@ -363,7 +366,7 @@ class ApptainerEnvironment(SingularityEnvironment):
                 shutil.rmtree(staging)
             try:
                 shutil.copytree(seed, staging)
-                validate_snapshot(staging, seed.name)
+                validate_snapshot(staging, seed.name, check_private_hints=False)
                 staging.rename(chaperone)
             except BaseException:
                 shutil.rmtree(staging, ignore_errors=True)
@@ -371,7 +374,7 @@ class ApptainerEnvironment(SingularityEnvironment):
         else:
             # The workspace directory is named "chaperone", so compare it to
             # the immutable source bundle's digest rather than its own name.
-            validate_snapshot(chaperone, seed.name)
+            validate_snapshot(chaperone, seed.name, check_private_hints=False)
 
         input_copy = workspace / "inputs"
         if not input_copy.exists():

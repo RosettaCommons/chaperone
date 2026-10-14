@@ -342,8 +342,10 @@ The harness arm's workspace is built fresh for each launch from an allowlist. It
 `src/blocks`, `src/chaperone` and `src/chaperone_cli`, the agent skills, the block
 reference and a few root files. It contains no Git history, tests, examples, campaigns,
 earlier outputs, and nothing under `src/chaperone-evals/`. The bundle is validated
-again after it is built, and rejected if any file matches a pattern from
-`audit_hints.json`.
+on the trusted submission host after it is built, and rejected if any file
+matches a private pattern from `audit_hints.json`. The compute-side controller
+receives no private data: it repeats structural checks and requires an exact
+SHA-256 match to the audited bundle before copying it into the agent workspace.
 
 Compute is capped by the selected site policy across all Slurm jobs and arrays
 in a trial (digs defaults to five concurrent `gpu:small` GPUs). Held-out scoring jobs are not counted against the agent.

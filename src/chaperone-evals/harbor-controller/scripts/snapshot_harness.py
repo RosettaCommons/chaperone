@@ -404,8 +404,19 @@ def assert_no_evaluation_hints(root: Path, hints=None) -> None:
         )
 
 
-def validate_snapshot(root: Path, expected_hash: str | None = None) -> str:
-    """Prove that a materialized bundle contains only the allowlisted files."""
+def validate_snapshot(
+    root: Path, expected_hash: str | None = None, *, check_private_hints: bool = True
+) -> str:
+    """Validate structure, contents and (on the trusted submission host) private hints.
+
+    Compute-side revalidation may omit the private audit only when checking the
+    exact SHA-256 of a bundle already audited by the submission host. The outer
+    job intentionally receives no private task data or hint patterns.
+    """
+    if not check_private_hints and (
+        expected_hash is None or re.fullmatch(r"[0-9a-f]{64}", expected_hash) is None
+    ):
+        raise ValueError("Private-audit revalidation requires an audited SHA-256")
     root = root.expanduser()
     if root.is_symlink():
         raise RuntimeError(f"Chaperone bundle root may not be a symlink: {root}")
@@ -431,7 +442,8 @@ def validate_snapshot(root: Path, expected_hash: str | None = None) -> str:
             "Chaperone bundle is missing required files: " + ", ".join(missing)
         )
     validate_advertised_skills(root)
-    assert_no_evaluation_hints(root)
+    if check_private_hints:
+        assert_no_evaluation_hints(root)
     digest = snapshot_hash(root)
     if expected_hash is not None and digest != expected_hash:
         raise RuntimeError(

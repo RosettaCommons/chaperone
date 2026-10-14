@@ -659,6 +659,23 @@ class CleanSnapshotTest(unittest.TestCase):
             )
             audit_model_instructions([instruction], snapshot)
 
+    def test_compute_copy_rechecks_audited_hash_without_private_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            seed = build(self._minimal_source(root), root / "bundles")
+            inputs = root / "inputs"
+            inputs.mkdir()
+            with patch.dict(os.environ, {}, clear=True):
+                # Default validation still fails closed without private patterns.
+                with self.assertRaises(SystemExit):
+                    validate_snapshot(seed, seed.name)
+                ApptainerEnvironment._prepare_workspace(root / "workspace", seed, inputs)
+                with self.assertRaisesRegex(ValueError, "audited SHA-256"):
+                    validate_snapshot(seed, check_private_hints=False)
+                (seed / "src/chaperone/__init__.py").write_text("TAMPERED = True\n")
+                with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
+                    ApptainerEnvironment._prepare_workspace(root / "another", seed, inputs)
+
     def test_workspace_copy_has_no_git_repository_or_history(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
