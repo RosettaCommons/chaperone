@@ -41,9 +41,9 @@ python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 mkdir -p /tmp/chaperone-download
 python -m pip download --no-deps --only-binary=:all: \
   --index-url https://test.pypi.org/simple/ \
-  --dest /tmp/chaperone-download 'chaperone-pipelines==1.5.0'
+  --dest /tmp/chaperone-download 'chaperone-pipelines==1.5.1rc1'
 python -m pip install --index-url https://pypi.org/simple/ \
-  /tmp/chaperone-download/chaperone_pipelines-1.5.0-py3-none-any.whl
+  /tmp/chaperone-download/chaperone_pipelines-1.5.1rc1-py3-none-any.whl
 python -m pip check
 chaperone --help
 chaperone list-blocks

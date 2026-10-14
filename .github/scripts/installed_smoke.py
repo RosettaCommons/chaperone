@@ -2,13 +2,17 @@
 from importlib import metadata, resources
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 
 import chaperone
 from blocks import Blocks
 from chaperone import ExecutionEngine, PipelineDataHandler
 
 assert metadata.metadata("chaperone-pipelines")["Name"] == "chaperone-pipelines"
-assert Path(chaperone.__file__).resolve().is_relative_to(Path(__import__("sys").prefix).resolve())
+assert Path(chaperone.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
+for command in ("--help", "list-blocks", "list-available"):
+    subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)
 for package, filename in [("chaperone", "site_profiles/digs.env"), ("blocks", "scripts/ddg_protocol.xml")]:
     assert resources.files(package).joinpath(filename).is_file(), filename
 

@@ -33,3 +33,22 @@ def test_block_runtime_assets_are_declared_as_package_data():
     for relative in assets:
         assert (root / "src/blocks" / relative).is_file()
         assert any(fnmatch(relative, pattern) for pattern in patterns), relative
+
+
+def test_logging_initializes_without_a_source_checkout(monkeypatch, tmp_path):
+    import sys
+    from chaperone import common
+
+    def no_checkout(*args, **kwargs):
+        raise FileNotFoundError("No source tree in site-packages")
+
+    monkeypatch.setattr(common.rootutils, "setup_root", no_checkout)
+    monkeypatch.chdir(tmp_path)
+    before = list(sys.path)
+    common.find_project_root.cache_clear()
+    try:
+        assert common.find_project_root() == tmp_path
+        common.setup_logging()
+        assert sys.path == before
+    finally:
+        common.find_project_root.cache_clear()
