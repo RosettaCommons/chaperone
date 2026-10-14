@@ -16,9 +16,8 @@ GPU workstation with `--partition=local`. IPD users can supply an untracked
 `.env.ipd`; other installations do not need it.
 
 This is an integration example, not a validated protein-design protocol.
-FoundryMPNN has a public upstream implementation; equivalence to the legacy
-`mpnn` backend has not been established by a published comparison in this repository.
-The legacy backend requires access to a private upstream repository.
+Equivalence between FoundryMPNN and the `mpnn` block (LigandMPNN) has not been
+established by a published comparison in this repository.
 
 ## Files and script
 

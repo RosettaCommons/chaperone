@@ -328,14 +328,6 @@ class ChaperoneSettings(BaseSettings):
         default=None,
         description="Colon-separated list of directories for Foundry model checkpoints.",
     )
-    FOUNDRY_DEV_PATH: Optional[str] = Field(
-        default=None,
-        description="Path to local foundry-dev repository for RF3DevBlock.",
-    )
-    FOUNDRY_DEV_SIF: Optional[str] = Field(
-        default=None,
-        description="Path to the foundry-dev (deps-only) apptainer SIF for RF3DevBlock.",
-    )
     AF3_JAX_CACHE_DIR: Optional[str] = Field(
         default=None,
         description="Persistent directory for JAX compilation cache (speeds up repeated AF3 runs).",
@@ -353,27 +345,6 @@ class ChaperoneSettings(BaseSettings):
         description=(
             "Directory containing AlphaFold3 model weights (license-gated; "
             "request access from DeepMind)."
-        ),
-    )
-    CHAPERONE_MPNN_CONTAINER: Literal["auto", "public", "portable", "legacy"] = Field(
-        default="auto",
-        description=(
-            "MPNN runtime selection. Auto uses the public MIT LigandMPNN image "
-            "unless MPNN_WEIGHTS_DIR supplies a legacy site profile, in which case "
-            "it prefers modelhub_portable.sif, then the existing IPD image. "
-            "Public forces public source and bundled public checkpoints; "
-            "portable forces the rebuildable private fused_mpnn image; "
-            "legacy explicitly selects the existing IPD Apptainer image. "
-            "Set before importing blocks."
-        ),
-    )
-    MPNN_WEIGHTS_DIR: Optional[str] = Field(
-        default=None,
-        description=(
-            "Directory containing LigandMPNN/fused_mpnn checkpoints "
-            "(e.g. vanilla_model_weights/, ligand_mpnn_model_weights/, "
-            "packer_weights/). When unset, runs fall back to the paths "
-            "provided by the existing Apptainer image."
         ),
     )
     CCD_MIRROR_PATH: Optional[str] = Field(

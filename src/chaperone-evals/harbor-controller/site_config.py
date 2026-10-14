@@ -12,9 +12,6 @@ CAPABILITIES = (
     "HBPLUS",
     "AlphaFold3 container",
     "Foundry RF3/RFD3 container",
-    "LigandMPNN container",
-    "LigandMPNN entry point",
-    "LigandMPNN weights",
     "RF3 checkpoint",
 )
 RUNTIME_BINDS = [
@@ -33,7 +30,6 @@ ENV_NAMES = {
     "CHAPERONE_GPU_PARTITION",
     "CHAPERONE_GRES_MAP",
     "CHAPERONE_CONTAINER_DIRS",
-    "CHAPERONE_MPNN_CONTAINER",
     "HF_HUB_CACHE",
     "BOLTZ_CACHE_DIR",
     "AF3_JAX_CACHE_DIR",
@@ -49,7 +45,6 @@ ENV_NAMES = {
     "PDB_MIRROR_PATH",
     "DALPHABALL_BIN",
     "ROSETTA_BIN",
-    "MPNN_WEIGHTS_DIR",
     "ESM_WEIGHTS_DIR",
     "SIMPLEFOLD_WEIGHTS_DIR",
     "CHAI_DOWNLOADS_DIR",
@@ -177,10 +172,6 @@ def get_site() -> dict:
             **supplied,
             **overrides.get("environment", {}),
         }
-    if site["environment"].get("CHAPERONE_MPNN_CONTAINER", "auto") not in {
-        "auto", "public", "portable", "legacy"
-    }:
-        raise ValueError("CHAPERONE_MPNN_CONTAINER must be auto, public, portable or legacy")
     site["gpu_partition"] = site["gpu_partition"] or site["cpu_partition"]
     # The scheduler mapping and broker must agree even when the snapshot has no dotenv files.
     gres = "gpu:" + (site["gpu_type"] + ":" if site["gpu_type"] else "") + "1"

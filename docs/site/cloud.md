@@ -15,7 +15,7 @@ Sandboxes require a workspace with billing enabled.
 
 ## Running a pipeline
 
-Existing pipelines can select Modal with the environment setting above.
+Existing scripts can select Modal with the environment setting above.
 Alternatively, select it for one engine:
 
 ```python
@@ -69,8 +69,7 @@ In cloud mode these make real copies. Duplicate basenames are staged under
 distinct directories. External symlinks and unstaged host file arguments are
 rejected before starting a Sandbox.
 
-Public ProteinMPNN (`CHAPERONE_MPNN_CONTAINER=public`) has checkpoints in its
-image. For tools with external checkpoints, upload the permitted model data
+The `mpnn` block (LigandMPNN) has its checkpoints in its image. For tools with external checkpoints, upload the permitted model data
 to a Modal volume and mount it at the path the tool expects. For example:
 
 ```bash
@@ -113,7 +112,7 @@ Dockerfile `RUN` serialization. Runtime and container regression tests passed
 the Modal Sandbox and count its allocation, rather than inheriting GPU counts
 or Slurm job IDs from the controller.
 
-The public MPNN GPU smoke subsequently passed on A10G, including a CUDA tensor
+The MPNN GPU smoke subsequently passed on A10G, including a CUDA tensor
 operation in the model image, two eight-residue sequences from its default
 LigandMPNN checkpoint, preserved chain ID and cache replay. This validates the
 Modal GPU execution path.
@@ -144,12 +143,12 @@ opt-in and may incur Modal charges:
 
 ```bash
 CHAPERONE_RUN_MODAL_TESTS=1 pytest tests/test_modal_backend.py -m cloud -k copy
-CHAPERONE_RUN_MODAL_MPNN=1 pytest tests/test_modal_backend.py -m cloud -k public_mpnn
+CHAPERONE_RUN_MODAL_MPNN=1 pytest tests/test_modal_backend.py -m cloud -k live_modal_mpnn
 # After uploading both public checkpoints to chaperone-foundry-checkpoints:
 CHAPERONE_RUN_MODAL_FOUNDRY=1 pytest tests/test_modal_foundry.py -q -s
 ```
 
-The first command tests CPU and GPU copies; the second builds the public MPNN
+The first command tests CPU and GPU copies; the second builds the MPNN
 image and checks CPU and GPU sequence generation and cache replay. Synthetic inputs
 exercise pipeline functionality, not protein design quality.
 The Foundry test uses the volume named by `CHAPERONE_MODAL_FOUNDRY_VOLUME`,

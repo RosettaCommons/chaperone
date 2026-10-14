@@ -18,18 +18,14 @@ from chaperone.containers import Image
 
 BLOCKS_DIR = Path(blocks.__file__).parent
 
-# Existing-file images that deliberately have no recipe. The first three are
-# the on-prem SIF variants that a module prefers when the file is on disk; each
-# has a buildable ``*_portable`` counterpart. ``foundry_dev`` is created inside
-# the rf3 block from a user-supplied SIF, so it is never a module-level image.
+# Existing-file images that deliberately have no recipe. ``colabfold`` and
+# ``rfdiffusion2`` are on-prem SIF variants with a buildable ``*_portable``
+# counterpart.
 EXISTING_ALLOWLIST = {
-    "modelhub": "on-prem SIF variant; buildable counterpart is modelhub_portable",
     "colabfold": "on-prem SIF variant; buildable counterpart is colabfold_portable",
     "rfdiffusion2": "on-prem SIF variant; buildable counterpart is rfdiffusion2_portable",
-    "foundry_dev": "user-supplied dev SIF (FOUNDRY_DEV_SIF), built inside rosettafold3",
 }
 PORTABLE_COUNTERPARTS = {
-    "modelhub": "modelhub_portable",
     "colabfold": "colabfold_portable",
     "rfdiffusion2": "rfdiffusion2_portable",
 }
@@ -48,8 +44,8 @@ EXPECTED_BUILDABLE = {
     "esmfold2",
     "foundry",
     "foundry_public",
+    "ligandmpnn",
     "metal3d",
-    "modelhub_portable",
     "openfold3",
     "protein_hunter",
     "protenix",
@@ -167,9 +163,3 @@ def test_existing_images_cannot_render(name):
 def test_each_onprem_image_has_a_buildable_counterpart(onprem, portable):
     assert onprem in EXISTING
     assert portable in BUILDABLE
-
-
-def test_foundry_dev_is_the_only_function_local_existing_image():
-    source = (BLOCKS_DIR / "networks/prediction/rosettafold3.py").read_text()
-    assert 'Image.from_existing("foundry_dev"' in source
-    assert "foundry_dev" not in IMAGES

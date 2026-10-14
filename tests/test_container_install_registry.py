@@ -10,17 +10,16 @@ import blocks.networks.mpnn as mpnn
 from chaperone_cli import install
 
 
-def test_public_mpnn_installable_when_site_selects_private_image(monkeypatch, tmp_path):
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._MODELHUB_SIF_CONTAINER)
-    assert blocks.get_container("ligandmpnn_public") is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
+def test_mpnn_is_installable(monkeypatch, tmp_path):
+    assert blocks.get_container("ligandmpnn") is mpnn.LIGANDMPNN_CONTAINER
     monkeypatch.setattr(install, "FLAGS", SimpleNamespace(dry_run=False, force=False))
     monkeypatch.setattr(install, "get_writable_container_dir", lambda: tmp_path)
     built = []
     monkeypatch.setattr(install, "build_container", lambda *args, **kwargs: built.append((args, kwargs)))
-    install.install(["ligandmpnn_public"])
+    install.install(["ligandmpnn"])
     assert len(built) == 1
-    assert built[0][0] == (mpnn.LIGANDMPNN_PUBLIC_CONTAINER, "ligandmpnn_public", tmp_path)
-    assert blocks.get_all_containers()["ligandmpnn_public"] is mpnn.LIGANDMPNN_PUBLIC_CONTAINER
+    assert built[0][0] == (mpnn.LIGANDMPNN_CONTAINER, "ligandmpnn", tmp_path)
+    assert blocks.get_all_containers()["ligandmpnn"] is mpnn.LIGANDMPNN_CONTAINER
 
 
 def test_unknown_name_fails_before_building_or_creating_output(monkeypatch):

@@ -6,54 +6,50 @@ by using E1 embeddings at multiple orders and a trained MLP classifier.
 
 USAGE (with container - recommended):
 =====================================
-    The recommended way to run this script is with apptainer using the E1 container.
+    The recommended way to run this script is with apptainer using an E1 image.
     This ensures all dependencies (E1, torch, safetensors) are available.
+    ``--weights-path`` (the trained classifier checkpoint) is required.
 
     # Basic usage with container
-    apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
+    apptainer run --nv /path/to/e1.sif \
         python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
-        --output-path predictions.csv
+        --output-path predictions.csv \
+        --weights-path /path/to/stoichiometry_classifier.pt
 
     # With directory bindings (for accessing files outside container)
     apptainer run --nv \
-        --bind /projects:/projects \
-        --bind /home/$USER:/home/$USER \
-        /projects/ml/pipelines/containers/e1.sif \
+        --bind /path/to/data:/path/to/data \
+        /path/to/e1.sif \
         python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
-        --input-path /home/$USER/data/sequences.fasta \
-        --output-path /home/$USER/results/predictions.csv
+        --input-path /path/to/data/sequences.fasta \
+        --output-path /path/to/data/predictions.csv \
+        --weights-path /path/to/data/stoichiometry_classifier.pt
 
     # Using a larger E1 model for better accuracy
-    apptainer run --nv \
-        --bind /projects:/projects \
-        /projects/ml/pipelines/containers/e1.sif \
+    apptainer run --nv /path/to/e1.sif \
         python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv \
+        --weights-path /path/to/stoichiometry_classifier.pt \
         --e1-model 600m
 
     # Skip E1 inference if embeddings already exist
-    apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
+    apptainer run --nv /path/to/e1.sif \
         python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
         --input-path sequences.fasta \
         --output-path predictions.csv \
+        --weights-path /path/to/stoichiometry_classifier.pt \
         --skip-e1 \
         --embeddings-dir /path/to/existing/embeddings
-
-    # With custom classifier weights
-    apptainer run --nv /projects/ml/pipelines/containers/e1.sif \
-        python /path/to/chaperone/src/blocks/scripts/predict_stoichiometry.py \
-        --input-path sequences.fasta \
-        --output-path predictions.csv \
-        --weights-path /path/to/custom_classifier.pt
 
 USAGE (without container):
 ==========================
     If running outside the container, ensure E1 and dependencies are installed:
         pip install E1 torch safetensors click
 
-    python predict_stoichiometry.py --input-path sequences.fasta --output-path predictions.csv
+    python predict_stoichiometry.py --input-path sequences.fasta --output-path predictions.csv \
+        --weights-path /path/to/stoichiometry_classifier.pt
 
 OUTPUT:
 =======
@@ -99,10 +95,6 @@ from safetensors.torch import save_file
 
 logger = logging.getLogger(__name__)
 
-# Default paths
-DEFAULT_WEIGHTS_PATH = (
-    "/projects/ml/pipelines/helium/models/stoichiometry_classifier_v1.pt"
-)
 DEFAULT_E1_MODEL = "150m"
 
 # Stoichiometry class labels
@@ -470,8 +462,8 @@ def write_predictions_csv(results: dict[str, dict], output_path: str | Path) -> 
 @click.option(
     "--weights-path",
     type=str,
-    default=DEFAULT_WEIGHTS_PATH,
-    help=f"Path to classifier weights (default: {DEFAULT_WEIGHTS_PATH})",
+    required=True,
+    help="Path to the trained classifier weights (.pt). No default is shipped.",
 )
 @click.option(
     "--e1-model",
@@ -512,7 +504,8 @@ def predict(
     copies) for each input sequence.
 
     Example:
-        python predict_stoichiometry.py --input-path seqs.fasta --output-path preds.csv
+        python predict_stoichiometry.py --input-path seqs.fasta --output-path preds.csv \
+            --weights-path /path/to/stoichiometry_classifier.pt
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -528,7 +521,7 @@ def predict(
     if not Path(weights_path).exists():
         raise click.ClickException(
             f"Classifier weights not found at {weights_path}. "
-            "Please provide a valid --weights-path or ensure the default weights are available."
+            "Pass the path to the trained classifier checkpoint with --weights-path."
         )
 
     # Run E1 predictions

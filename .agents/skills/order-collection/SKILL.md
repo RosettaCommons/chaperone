@@ -58,7 +58,7 @@ mkdir -p {rundir}/order_collection
 Read `{rundir}/pipeline.json` with the Read tool. Parse the `steps` array and classify each step by its `block_name` field (NOT the `name` field, which may include cycling namespaces):
 
 **Prediction blocks** (structure prediction oracles):
-- `af3`, `boltz2`, `rf3`, `rf3_dev`, `chai1`, `protenix`, `openfold3`
+- `af3`, `boltz2`, `rf3`, `chai1`, `protenix`, `openfold3`
 
 **Filter blocks**:
 - `filter`
@@ -135,7 +135,7 @@ import polars as pl
 
 rundir = '{rundir}'
 manifest = json.load(open(os.path.join(rundir, 'pipeline.json')))
-prediction_blocks = {'af3', 'boltz2', 'rf3', 'rf3_dev', 'chai1', 'protenix', 'openfold3'}
+prediction_blocks = {'af3', 'boltz2', 'rf3', 'chai1', 'protenix', 'openfold3'}
 outdir = os.path.join(rundir, 'order_collection')
 
 def is_apo(step, _cache={}):
@@ -159,7 +159,7 @@ def best_model_companions(cif_path, _parent_cache={}):
     Replaces the prior parent-wide \"*confidences*.json/*scores*.npz\" glob, which
     on Boltz2/Chai1/Protenix-cycle layouts pulled all 5 samples per design.
     Caches one os.listdir() per parent directory to replace the per-file
-    NFS-cache-busting fh.read(1) that hangs at 20K+ files against /net/scratch.
+    NFS-cache-busting fh.read(1) that hangs at 20K+ files on a network filesystem.
     '''
     parent = os.path.dirname(cif_path)
     cif_stem = os.path.splitext(os.path.basename(cif_path))[0]
@@ -282,7 +282,7 @@ manifest = json.load(open(os.path.join(rundir, 'pipeline.json')))
 with open(os.path.join(rundir, 'order_collection', '_ordered_seqs.json')) as f:
     ordered_seqs = set(json.load(f))
 
-prediction_blocks = {'af3', 'boltz2', 'rf3', 'rf3_dev', 'chai1', 'protenix', 'openfold3'}
+prediction_blocks = {'af3', 'boltz2', 'rf3', 'chai1', 'protenix', 'openfold3'}
 # Leave 4 cores free; cap at 24 (diminishing returns past that).
 NUM_WORKERS = max(1, min(os.cpu_count() or 4, 24) - 4)
 

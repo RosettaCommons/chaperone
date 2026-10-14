@@ -41,8 +41,6 @@ SITE_AND_IMAGE_PATHS = [
     # the symlink the unvendored agent/ tooling refers to.
     r"pipelines_agent(?:_base|_hardened_\d+)?\.sif",
     r"agent/pipelines\.sif",
-    # A previous developer's home checkout in a pixi task; not ours, not editable.
-    r"/home/anmittal/Code/protein-design-pipelines[\w./-]*",
 ]
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
@@ -72,6 +70,11 @@ NOUN_USES = [
     # (The mask above covers the bare path; these lines spell it in other forms.)
     (r"^src/chaperone-evals/harbor-controller/.*", r"/opt/pipelines", "image path"),
     (r"^src/chaperone_cli/job_wait\.py$", r"/opt/pipelines", "image path"),
+    (
+        r"^docs/site/cloud\.md$",
+        r"baker-laboratory/pipelines",
+        "historical reference to the predecessor repository",
+    ),
 ]
 
 # Held-out scorers, example solutions and their notes are not edited in place

@@ -1,6 +1,6 @@
 """Soft-repulsive ligand binding ddG.
 
-Port from /home/bcov/sc/scaffold_comparison/py_protocols/ddg_soft_sm.py.
+Port of bcov's soft-repulsive small-molecule ddG protocol (``ddg_soft_sm``).
 
 Packs the binder interface with the **hard** beta_nov16 scorefxn, then scores
 with the **soft** beta_nov16_soft scorefxn. Repeated N times; the best and

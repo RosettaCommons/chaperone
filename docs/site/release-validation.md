@@ -11,7 +11,7 @@ is explicitly deferred; no additional cluster tests are running.
 | Framework regression suite | **631 passed, 14 skipped** after the targeted naming-check rerun following the main-branch docs merge. Includes PR #356 regressions, smoke configuration, container selection/binds, site settings and Slurm resources. |
 | Eval controller suite | **259 passed, 2 skipped**, plus **27 passing subtests**. Includes snapshots, isolation, site profiles, scoring dispatch and guarded Slurm submission. |
 | Submission/scoring helpers | **13 passed**. |
-| Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the public MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
+| Wheel and source distribution | Built successfully. Wheel: 184 members; source archive: 243. Project MIT metadata, packaged third-party notices, the MPNN recipe and required runtime assets present; no eval harness or `.env.ipd` included. |
 | Documentation | Block reference regenerated; strict MkDocs build passed. |
 | Container recipes | All 22 scientific-tool recipes rendered and checked statically. This does not mean all 22 were rebuilt or exercised. Eval image shell sections also passed syntax checks. |
 
@@ -76,7 +76,6 @@ sinfo -o '%P %G %l'
 export CHAPERONE_SITE=portable
 export CHAPERONE_CONTAINER_BACKEND=apptainer
 export CHAPERONE_CONTAINER_DIRS=/shared/chaperone/containers
-export CHAPERONE_MPNN_CONTAINER=public
 # Optional when the Slurm default is unsuitable:
 # export CHAPERONE_GPU_PARTITION=your-gpu-partition
 # export CHAPERONE_GRES_MAP='{"default":"gpu:h200:1"}'
@@ -88,22 +87,22 @@ we did not introduce a CoreWeave preset or infer resource policy from GPU names.
 
 The login node rejected Apptainer `%post` with a mount-propagation permission
 error. Run container installation inside an approved compute allocation on this
-cluster, using the same shared image directory. The fresh public LigandMPNN
+cluster, using the same shared image directory. The fresh LigandMPNN
 build there completed with Torch 2.11.0/CUDA 12.8 and passed package
 compatibility, six checksum/load gates and imports.
 
-To test public packing without Foundry or external checkpoint directories, first
+To test packing without Foundry or external checkpoint directories, first
 run the CPU smoke above, then use its two copied structures:
 
 ```bash
 # Omit --local: one engine-managed Slurm GPU job, capped at 15 minutes.
-python tests/public_mpnn_packing_smoke.py \
+python tests/mpnn_packing_smoke.py \
   --inputs=/absolute/path/to/cpu-smoke/pipeline/copy/output.parquet \
   --test --rundir=/absolute/path/to/new-packing-smoke
 ```
 
 This helper requests the configured GPU partition and large-class GRES explicitly
-because classic MPNN otherwise defaults to CPU. It checks eight packed structures,
+because MPNN otherwise defaults to CPU. It checks eight packed structures,
 fixed residues, restored multi-character chains, parent lineage, finite coordinates,
 one allocated GPU and cache replay. `--local` instead uses an existing allocation.
 
@@ -128,10 +127,9 @@ checks execution and output integration. Neither establishes prediction quality.
 |---|---|---|
 | SimpleFold | Passed | Fresh image GPU smoke passed on a 48-residue input, using `simplefold_100M` without the optional pLDDT model. |
 | ESMFold2 | Passed | Fresh-image GPU smoke passed on the same 48-residue input using the upstream default three loops and no local MSA: 394 atoms, finite coordinates, and the coordinate-extent check passed. The earlier one-loop diagnostic is superseded by this run. |
-| Public MPNN (`ligandmpnn_public`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. Six official checkpoints passed checksums and load checks. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
-| Legacy MPNN (`modelhub_portable`) | Passed with authorized private-source access | Complete PPI example executed: RFD3 → initial filter (1/1) → fresh MPNN → RF3 → RMSD → final filter (0/1). The final design failed both ipTM and RMSD gates. |
+| MPNN (`ligandmpnn`) | Repaired full rebuild v3 passed | Fresh-image GPU sequence generation passed: two RFD3 backbones, two sequences each, with exact lineage and sequence checks. The six official checkpoints baked at the time passed checksums and load checks. The image now bakes all fifteen official checkpoints (see the [container guide](containers.md)); a rebuild passed all fifteen checksums, and a CPU run of `protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, both membrane models and side-chain packing on a bundled 150-residue structure returned sequences and structures. The GPU checks above have not been repeated on the rebuilt image. Fresh-image side-chain packing subsequently passed on a CoreWeave H200: eight outputs, fixed residues and X1 chains preserved, verified lineage and disk-cache replay. No equivalence claim versus other backends. |
 | AlphaFold3 | Passed | Fresh-image 48-residue GPU smoke produced 394 atoms with finite coordinates. The repaired FGFR2 workflow also executed through target-template AF3 and downstream metrics/selection; see below. |
-| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with public MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
+| Foundry | Full repaired source rebuild v3 passed | Initial runtime exposed an incompatible AtomWorks polymer-bond API. An isolated derivative pinned to AtomWorks 2.2.1 passed real GPU RFD3 → FoundryMPNN in two Slurm array jobs. The complete rebuilt image also passed the two-backbone RFD3 core check with MPNN. Fresh-image RF3 batch coverage is deferred; previous RF3 example checks used the site image. |
 | DISCO | Transformers-repaired full build passed; final architecture repair not rebuilt | The first GPU failure was a Transformers 5 checkpoint-layout mismatch. The corrected rebuild reached a second upstream failure: a comma-delimited CUDA architecture list. The final recipe repairs that assignment and passes parser/regression checks; final GPU validation is deferred. |
 | Boltz2 | Passed | Fresh-image GPU smoke passed for 48 residues, one sample and the normal 512-step default, returning finite coordinates. |
 | Chai1 | Passed, with explicit Torch compatibility override | Fresh built-image GPU smoke passed with one sample and the normal 200 diffusion steps; compiled artifact step naming is correct after its repair. |
@@ -140,7 +138,7 @@ checks execution and output integration. Neither establishes prediction quality.
 | Eval agent | Passed | Clean imports/block discovery and CPU functional smoke passed. Nested Apptainer execution passed with `/dev/fuse` bound, matching the controller runtime binds. Full LLM agent trial remains untested. |
 | Eval baseline | Passed | Image build checks passed; full baseline trial pending. |
 
-The final core batch on one RTX A6000 passed fresh-image RFD3 → public MPNN,
+The final core batch on one RTX A6000 passed fresh-image RFD3 → MPNN,
 then independent AF3 and ESMFold2 predictions of all four designed sequences.
 The helper verified exact sequences, parent lineage, finite bounded coordinates,
 confidence metrics and disk-cache replay without new execution or changed output
@@ -156,7 +154,7 @@ after merge; this PR does not claim that compatibility.
 A prior PPI Foundry example executed using an existing site image, with **0 of 1**
 designs passing its scientific filters. This supplies execution evidence only;
 it does not establish a successful design campaign or validate the fresh image.
-The repaired FGFR2 example executed RFD3 → private-source MPNN → AF3 with target
+The repaired FGFR2 example executed, in an earlier run, RFD3 → MPNN → AF3 with target
 template → RMSD → ipSAE → CMS → PEPPR → final filter. All these stages executed
 successfully, but **0 of 1** designs passed the unchanged scientific gates. The
 completed PPI and FGFR2 workflows therefore demonstrate runtime integration,
@@ -165,7 +163,7 @@ after the AF3 sequence-authority fix, supplying execution evidence without a
 claim of design quality.
 
 The earlier CatCIF example completed archive writing/materialization and
-RFD3 → portable MPNN → AF3 → RMSD, but that run preceded the AF3 fix: default
+RFD3 → MPNN → AF3 → RMSD, but that run preceded the AF3 fix: default
 mmCIF preparation could predict the backbone context sequence instead of the
 designed MPNN sequence. Its RMSD is therefore not validation of the intended
 designed sequence. The fix routes authoritative sequence data, including folded
@@ -179,9 +177,7 @@ normally and permits only that exact mismatch in its dependency check. This is
 an explicit compatibility override, not a clean `pip check` result; the repaired image passed the bounded GPU smoke described above.
 
 Public recipes do not grant access to private repositories, licensed software or
-model weights. The legacy MPNN validation required authorized private-source
-access; the new public LigandMPNN backend supplies a separate public installation
-path with official public weights. Third-party
+model weights. The `mpnn` block installs LigandMPNN from source with its official checkpoints. Third-party
 software and weights retain their own terms despite Chaperone's MIT license.
 The [third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md)
 identify the bundled AF3 runner (CC BY-NC-SA 4.0) and nine eval example structures
@@ -191,8 +187,8 @@ Held-out scorers/reference material in public repository history remain accessib
 to network-enabled agents; snapshot and wheel isolation cannot make that history
 private. Separate private material/history or describe these as public tasks.
 
-Older IPD modelhub images failed on Blackwell with unsupported GPU kernels. Use
-the rebuilt portable runtime as described in the [container guide](containers.md).
+Older prebuilt images failed on Blackwell with unsupported GPU kernels. Rebuild
+the image as described in the [container guide](containers.md).
 Do not interpret a CPU substitution as successful GPU validation.
 
 ## Repeat the CPU functional smoke
@@ -253,7 +249,7 @@ export CHAPERONE_REPO="$(pwd)"
 export SMOKE_ROOT=/absolute/path/to/release-smokes
 
 python examples/benchmarks/ppi/pipeline_foundry.py --test --local --rundir="$SMOKE_ROOT/ppi-foundry"
-python examples/benchmarks/ppi/pipeline_legacy_mpnn.py --test --local --rundir="$SMOKE_ROOT/ppi-legacy"
+python examples/benchmarks/ppi/pipeline_mpnn.py --test --local --rundir="$SMOKE_ROOT/ppi-mpnn"
 python examples/benchmarks/disco/pipeline.py --test --local --rundir="$SMOKE_ROOT/disco"
 python examples/benchmarks/ame/pipeline.py --test --local --rundir="$SMOKE_ROOT/ame"
 python examples/benchmarks/ame/pipeline_full.py --test --local --rundir="$SMOKE_ROOT/ame-full"
@@ -287,4 +283,4 @@ with each result. The assertions verify execution, not structural accuracy.
 
 ### Latest runtime findings
 
-Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/public-MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, public packing and nested scientific eval runs are deferred; their opt-in helpers remain available.
+Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, MPNN packing and nested scientific eval runs are deferred; their opt-in helpers remain available.

@@ -22,7 +22,7 @@ from blocks.networks.design.bindcraft import BindCraftBlock
 from chaperone import PipelineDataHandler
 from chaperone.data import make_row
 from blocks.networks.design.boltzgen import BoltzGenBlock
-from blocks.networks.mpnn import ClassicMPNNBlock, MODELHUB_CONTAINER
+from blocks.networks.mpnn import ClassicMPNNBlock
 from blocks.networks.hallucination.protein_hunter import (
     PROTEIN_HUNTER_CONTAINER,
     ProteinHunterBlock,
@@ -30,7 +30,6 @@ from blocks.networks.hallucination.protein_hunter import (
 from blocks.networks.prediction.rosettafold3 import (
     _RF3_INPUT_MANIFEST,
     _rf3_input_records,
-    RF3DevBlock,
     RosettaFold3Block,
     compile_rf3,
 )
@@ -231,23 +230,7 @@ def test_boltzgen_uses_stable_container_tmpdir(tmp_path: Path, monkeypatch) -> N
 # test_mpnn_container.py
 
 
-def test_existing_modelhub_image_uses_exec_not_runscript():
-    if not MODELHUB_CONTAINER.is_existing:
-        return
-
-    command = ClassicMPNNBlock(num_seq_per_pdb=1).get_command_template()
-
-    assert command[:2] == ["apptainer", "exec"]
-    assert command[-3:-1] == ["python", "-u"]
-    assert command[-1].endswith("/fused_mpnn/v1.1.1/run.py")
-
-
-@pytest.mark.parametrize("backend,expected", [("legacy", ["A1", "A7"]), ("public", "A1 A7")])
-def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
-    tmp_path, monkeypatch, backend, expected,
-):
-    import blocks.networks.mpnn as mpnn
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn.LIGANDMPNN_PUBLIC_CONTAINER if backend == "public" else mpnn._MODELHUB_SIF_CONTAINER)
+def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(tmp_path):
     structure = tmp_path / "input.pdb"
     structure.write_text(
         "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\n"
@@ -267,7 +250,7 @@ def test_explicit_fixed_residues_are_merged_into_multi_input_constraints(
         (tmp_path / "chunk_0" / "inputs" / "pdb_position_fixed_chunk0.json").read_text()
     )
     assert constraints.endswith("pdb_position_fixed_chunk0.json")
-    assert next(iter(payload.values())) == expected
+    assert next(iter(payload.values())) == "A1 A7"
 
 
 # test_protein_hunter.py
@@ -337,27 +320,22 @@ def test_compile_accepts_cycle_zero_only_diagnostic(tmp_path: Path):
 
 
 def test_rf3_single_seed_uses_supported_seed_setting():
-    for block_cls, seed_arg in (
-        (RosettaFold3Block, "seed=20"),
-        (RF3DevBlock, "+seed=20"),
-    ):
-        command = block_cls(seed_offset=17, model_seeds=None, command_template=["rf3", "fold"])._append_common_cli_args(
-            ["rf3", "fold"], chunk_id=3
-        )
-        assert seed_arg in command
-        assert not any("model_seeds" in arg for arg in command)
+    command = RosettaFold3Block(
+        seed_offset=17, model_seeds=None, command_template=["rf3", "fold"]
+    )._append_common_cli_args(["rf3", "fold"], chunk_id=3)
+    assert "seed=20" in command
+    assert not any("model_seeds" in arg for arg in command)
 
 
 def test_rf3_model_seeds_expand_to_independent_invocations():
     base = ["rf3", "fold", "inputs=in.json", "out_dir=outputs"]
-    for block_cls, seed_prefix in ((RosettaFold3Block, ""), (RF3DevBlock, "+")):
-        command = block_cls(model_seeds=[101, 202], command_template=["rf3", "fold"])._expand_model_seed_commands(
-            base, "outputs"
-        )
-        assert command[:2] == ["bash", "-lc"]
-        assert all(f"out_dir=outputs/seed_{seed}" in command[2] for seed in (101, 202))
-        assert all(f"{seed_prefix}seed={seed}" in command[2] for seed in (101, 202))
-        assert " && " in command[2]
+    command = RosettaFold3Block(
+        model_seeds=[101, 202], command_template=["rf3", "fold"]
+    )._expand_model_seed_commands(base, "outputs")
+    assert command[:2] == ["bash", "-lc"]
+    assert all(f"out_dir=outputs/seed_{seed}" in command[2] for seed in (101, 202))
+    assert all(f"seed={seed}" in command[2] for seed in (101, 202))
+    assert " && " in command[2]
 
 
 def test_rf3_all_samples_excludes_top_model_alias(tmp_path):

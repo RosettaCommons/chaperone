@@ -1,14 +1,14 @@
 """Secondary-structure F1 / MCC of a design's motif, against reference pairs.
 
 Implements T3 of the RNA motif-scaffolding benchmark. The 2D prediction comes
-from RNet2 (RibonanzaNet2-SS), run on **sequence alone** by the tool at
-``/projects/ml/eterna_openknot/rnet2`` - deriving 2D from the design tool's own
-output would make the metric self-referential.
+from RNet2 (RibonanzaNet2-SS), run on **sequence alone** - deriving 2D from the
+design tool's own output would make the metric self-referential.
 
-This block does not run RNet. It ingests the runner's output CSV and computes
-the motif-restricted comparison, because a full-sequence F1 has no reference
-when the scaffold is novel by construction. Scoring is confined to the motif
-index space ``M`` (``n = |M|``):
+This block does not run RNet. It ingests the output CSV of an external RNet2
+runner (a ``predicted_dbn`` dot-bracket column plus a key column, ``join_on``,
+default ``design_path``) and computes the motif-restricted comparison, because
+a full-sequence F1 has no reference when the scaffold is novel by construction.
+Scoring is confined to the motif index space ``M`` (``n = |M|``):
 
     TP = |P & R|,  FP = |P - R|,  FN = |R - P|
     TN = n(n-1)/2 - TP - FP - FN

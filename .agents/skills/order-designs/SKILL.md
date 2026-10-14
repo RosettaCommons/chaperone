@@ -6,6 +6,8 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit", "AskUserQuestio
 
 # Order Designs Skill
 
+> **IPD-specific.** `cowboy-ssm`, JohnBercow and every `/net/software/...` path below exist only on the Baker-lab / IPD digs cluster.
+
 Help users generate DNA eblock orders from protein design PDB files using **`cowboy-ssm gene-order`** at `/net/software/lab/cowboy_ssm_beta/`. The wrapper drives JohnBercow under the hood but adds preflight PDB apo-ification, post-run QC gates (hairpins, homopolymers, off-target Type IIS sites, cryptic E. coli motifs, adapter/vector consistency, protein round-trip), and optional best-of retry — all the bad designs that raw JohnBercow would have silently shipped to IDT are caught here.
 
 ## Trigger
@@ -64,7 +66,7 @@ Pipe the output directly to the user for vector selection.
 - All ccdb vectors must be propagated in **NEB Stable** cells (resistant to the lethal ccdb gene).
 - Non-standard stickies (e.g. LM1423 `TATG`/`TAAT`) are **not compatible** with the standard `AGGA`/`TTCC` vectors — pick one family and stick with it for a given order.
 - Physical vector FASTAs: `/net/software/lab/johnbercow/entry_vectors/`
-- Plasmid maps (SnapGene): `/home/lmilles/0proteins/__orders/plasmids`
+- Plasmid maps (SnapGene): ask the lab for the shared plasmid-map folder
 
 ### 4. Build and Run the Command
 

@@ -100,14 +100,9 @@ def tied_positions(layout: dict[str, tuple[int, int]]) -> tuple[str, str]:
     sequence shared by all three chains.
 
     This is written out explicitly rather than using MPNN's ``homo_oligomer=1``
-    shortcut, which is **broken upstream**: `fused_mpnn`'s ``run.py`` reuses the
-    per-PDB ``name`` variable as a loop variable inside its homo-oligomer branch
-    (``name = chain + res``), so every packed output is written as
-    ``<last_chain><last_resid>__0_1.pdb`` instead of ``<input_stem>_0_1.pdb``.
-    That breaks the pipelines lineage merge, and — worse — makes every input in
-    a chunk write to the *same* filename, silently overwriting all but one
-    design. Explicit tying takes the same code path in MPNN's feature dict and
-    avoids the buggy branch entirely.
+    shortcut, so the tied positions come from the generated backbones' own chain
+    and residue numbering. Explicit tying takes the same code path in MPNN's
+    feature dict.
     """
     chains = sorted(layout)
     lengths = {chain: layout[chain][1] - layout[chain][0] + 1 for chain in chains}

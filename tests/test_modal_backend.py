@@ -170,16 +170,15 @@ def test_engine_preserves_compile_lineage_cache_and_failures(
         engine.run(CopyBlock(n_multiply=2), data=inputs, run_args={"force_exec": True})
 
 
-def test_public_mpnn_prepares_without_local_image(inputs, tmp_path, monkeypatch):
+def test_mpnn_prepares_without_local_image(inputs, tmp_path, monkeypatch):
     from blocks.networks import mpnn
 
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._PUBLIC_MPNN_CONTAINER)
     monkeypatch.setattr(
         Image, "get_image_path", lambda _: pytest.fail("local SIF lookup")
     )
     block = mpnn.ClassicMPNNBlock(cloud=True, device="cpu")
     manifest, context = backend.prepare_modal(block, inputs, tmp_path / "chunk", 0)
-    assert context.image.name == "ligandmpnn_public"
+    assert context.image.name == "ligandmpnn"
     assert manifest.command[0] == "env"
     assert "CUDA_VISIBLE_DEVICES=" in manifest.command
     assert "apptainer" not in manifest.command
@@ -301,7 +300,7 @@ def test_live_modal_copy_and_cache(tmp_path, inputs, gpu):
     reason="Opt-in Modal MPNN image build/inference",
 )
 @pytest.mark.parametrize("gpu", [False, True], ids=["cpu", "gpu"])
-def test_live_modal_public_mpnn(tmp_path, monkeypatch, gpu):
+def test_live_modal_mpnn(tmp_path, monkeypatch, gpu):
     from biotite.structure import Atom, array
     from blocks.networks import mpnn
     from chaperone.data.schema import get_sequences_from_row
@@ -338,7 +337,6 @@ def test_live_modal_public_mpnn(tmp_path, monkeypatch, gpu):
             )
     path = tmp_path / "design.pdb"
     write_pdb(array(atoms), path)
-    monkeypatch.setattr(mpnn, "MODELHUB_CONTAINER", mpnn._PUBLIC_MPNN_CONTAINER)
     engine = ExecutionEngine(
         tmp_path / "run", run_args_default={"mode": "modal", "max_retries": 0}
     )
