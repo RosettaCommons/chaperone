@@ -133,7 +133,8 @@ def test_cpu_device_is_masked_inside_each_container_runtime(monkeypatch, tmp_pat
     assert command[mask_index - 1] == env_flag
     assert mask_index < command.index("python")
     assert command.count("CUDA_VISIBLE_DEVICES=") == 1
-    assert "CUDA_VISIBLE_DEVICES=" not in mpnn.ClassicMPNNBlock().command_template
+    # Default MPNN resources are CPU; GPU access requires a GPU job request.
+    assert "CUDA_VISIBLE_DEVICES=" in mpnn.ClassicMPNNBlock().command_template
 
 
 # ── routing: model_type x noise_level ──────────────────────────────────────

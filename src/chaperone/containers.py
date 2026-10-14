@@ -129,6 +129,65 @@ def _checked_runtime_path(value: str | Path, *, label: str) -> Path:
 
 
 _RUNTIME_BIND_SETTINGS: ContextVar[dict | None] = ContextVar("container_runtime_bind_settings", default=None)
+_RUNTIME_GPU: ContextVar[bool] = ContextVar("container_runtime_gpu", default=False)
+
+
+@contextmanager
+def container_runtime_gpu(enabled: bool):
+    """Use block resource requirements without changing process-wide state."""
+    token = _RUNTIME_GPU.set(enabled)
+    try:
+        yield
+    finally:
+        _RUNTIME_GPU.reset(token)
+
+
+def refresh_container_gpu_options(command: list[str], enabled: bool) -> list[str]:
+    """Refresh only runtime GPU options in a frozen, generated image template.
+
+    Submission-time mounts and lazy environment values must remain frozen.
+    Explicit user templates are never passed to this function.
+    """
+    from chaperone.common import is_macos
+
+    result = list(command)
+    if result[:2] == ["docker", "run"]:
+        index, docker = 2, True
+    elif "apptainer" in result:
+        index, docker = result.index("apptainer") + 2, False
+    else:
+        return result
+    start = index
+    options = []
+    pairs = {"-v", "-e", "--gpus", "--bind", "--env", "--no-mount"}
+    while index < len(result) and result[index].startswith("-"):
+        option = result[index]
+        width = 2 if option in pairs else 1
+        value = result[index + 1] if width == 2 else ""
+        if option not in {"--gpus", "--nv"} and not (
+            option in {"-e", "--env"}
+            and value.split("=", 1)[0] in {"CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES"}
+        ):
+            options.extend(result[index:index + width])
+        index += width
+    mask = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if mask is not None:
+        mask = mask.strip()
+    enabled = enabled and mask not in ("", "-1", "none", "void")
+    if docker:
+        if enabled and not is_macos():
+            options += ["--gpus", "all" if mask is None else f'"device={mask}"']
+            if mask is not None:
+                inner = ",".join(str(i) for i in range(len(mask.split(","))))
+                options += ["-e", f"CUDA_VISIBLE_DEVICES={inner}"]
+        else:
+            options += ["-e", "NVIDIA_VISIBLE_DEVICES=void", "-e", "CUDA_VISIBLE_DEVICES="]
+    else:
+        if enabled:
+            options += ["--nv"]
+        if not enabled or mask is not None:
+            options += ["--env", f"CUDA_VISIBLE_DEVICES={mask if enabled else ''}"]
+    return result[:start] + options + result[index:]
 
 
 def _runtime_setting(settings: object, name: str, default=None):
@@ -410,6 +469,7 @@ class Image:
         exec_mode: str | None = None,
         binds: list[tuple[str, str]] | None = None,
         env: dict[str, str] | None = None,
+        gpu: bool | None = None,
     ) -> list[str]:
         """Build container command for this container.
 
@@ -445,8 +505,9 @@ class Image:
             else:
                 resolved[k] = v
         all_env = resolved
-
-        from chaperone.common import is_macos
+        wants_gpu = _RUNTIME_GPU.get() if gpu is None else gpu
+        if all_env.get("CUDA_VISIBLE_DEVICES") in ("", "-1"):
+            wants_gpu = False
 
         # Resolve image reference
         if self._existing_path:
@@ -467,10 +528,7 @@ class Image:
         backend = settings.CHAPERONE_CONTAINER_BACKEND
 
         if backend == "docker":
-            cmd = ["docker", "run"]
-            # --gpus requires NVIDIA Container Toolkit (Linux only)
-            if not is_macos():
-                cmd.extend(["--gpus", "all"])
+            cmd = ["docker", "run", "--rm"]
             for src, dst in all_binds:
                 cmd.extend(["-v", f"{src}:{dst}"])
             for key, val in all_env.items():
@@ -484,7 +542,6 @@ class Image:
             apptainer_cmd = [
                 "apptainer",
                 eff_exec_mode,
-                "--nv",
                 "--cleanenv",
                 "--containall",
                 "--no-mount",
@@ -524,6 +581,7 @@ class Image:
                 cmd.extend(["--env", f"{key}={val}"])
             cmd.append(image_ref)
 
+        cmd = refresh_container_gpu_options(cmd, wants_gpu)
         cmd.extend(args)
         return cmd
 

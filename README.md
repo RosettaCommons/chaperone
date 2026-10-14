@@ -1,7 +1,7 @@
-# Chaperone <img src="docs/site/.assets/icon.png" alt="icon" width="32" align="right"/>
+# Chaperone <img src="https://raw.githubusercontent.com/RosettaCommons/chaperone/main/docs/site/.assets/icon.png" alt="icon" width="32" align="right"/>
 
 <p align="center">
-  <img src="docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
+  <img src="https://raw.githubusercontent.com/RosettaCommons/chaperone/main/docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
   <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
 </p>
 
@@ -16,13 +16,21 @@ Analysis blocks include RMSD, Foldseek, RASA, contact metrics, H-bond metrics,
 and aromatic-neighbor scoring.
 People have used Chaperone for PPI, symmetric design, and enzyme design — reach out to the respective experts if interested.
 
-This repo ships with [agent skills](docs/site/skills.md) and project context (`AGENTS.md`) for writing, running, and debugging pipelines. The guides are Markdown files readable by Claude Code, Codex, and other coding agents; automatic discovery and slash commands depend on the agent installation.
+This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/skills/) and project context (`AGENTS.md`) for writing, running, and debugging pipelines. The guides are Markdown files readable by Claude Code, Codex, and other coding agents; automatic discovery and slash commands depend on the agent installation.
 
 > [!TIP]
 > Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/). Start with the [simple example](https://rosettacommons.github.io/chaperone/simple/) and [core examples](https://rosettacommons.github.io/chaperone/core-examples/).
 
 > [!NOTE]
-> Chaperone-authored code is [MIT licensed](LICENSE). External collaborators are welcome. Bundled third-party code and example outputs retain the terms listed in [Third-party notices](THIRD_PARTY_NOTICES.md); external tools and model weights retain their own licenses and access requirements.
+> Chaperone-authored code is [MIT licensed](https://github.com/RosettaCommons/chaperone/blob/main/LICENSE). External collaborators are welcome. Bundled third-party code and example outputs retain the terms listed in [Third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md); external tools and model weights retain their own licenses and access requirements.
+
+## Package installation status
+
+The distribution is named **`chaperone-pipelines`**; the Python import and CLI
+remain `chaperone`. It is being prepared for TestPyPI and has **not yet been
+released on production PyPI**. See the [release guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/publishing.md)
+for TestPyPI installation and the tested support scope. Until then, use the source
+installation below. Do not install the unrelated `chaperone` package from PyPI.
 
 ## Installation (Agents)
 

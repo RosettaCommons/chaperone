@@ -87,13 +87,21 @@ class CompiledBlockFunction(BlockFunction):
     command_template: Optional[List[str]] = None
     cloud: bool = False
     _modal_job_args: object = PrivateAttr(default=None)
+    _container_job_args: object = PrivateAttr(default=None)
     _generated_command_template: Optional[List[str]] = PrivateAttr(default=None)
     _container_bind_settings: Optional[dict] = PrivateAttr(default=None)
+
+    def _wants_container_gpu(self) -> bool:
+        resources = self._container_job_args or self.get_resources()
+        return bool(resources and resources.wants_gpu)
 
     @model_validator(mode="after")
     def _resolve_command_template(self):
         if self.command_template is None:
-            self.command_template = self.get_command_template()
+            from chaperone.containers import container_runtime_gpu
+
+            with container_runtime_gpu(self._wants_container_gpu()):
+                self.command_template = self.get_command_template()
             self._generated_command_template = list(self.command_template)
         return self
 
@@ -109,7 +117,10 @@ class CompiledBlockFunction(BlockFunction):
         # Preserve explicitly supplied templates and user edits.
         generated = getattr(self, "_generated_command_template", None)
         if generated is not None and self.command_template == generated:
-            self.command_template = self.get_command_template()
+            from chaperone.containers import container_runtime_gpu
+
+            with container_runtime_gpu(self._wants_container_gpu()):
+                self.command_template = self.get_command_template()
             self._generated_command_template = list(self.command_template)
 
     def stage_file(
@@ -300,14 +311,24 @@ class CompiledBlockFunction(BlockFunction):
     def create_manifest(self, handler, sandbox_dir, chunk_id, write=True):
         """Create manifest for block execution."""
         sandbox_dir = Path(sandbox_dir)
-        from chaperone.containers import container_runtime_bind_settings
+        from chaperone.containers import (
+            container_runtime_bind_settings, container_runtime_gpu,
+            refresh_container_gpu_options,
+        )
 
-        with container_runtime_bind_settings(getattr(self, "_container_bind_settings", None)):
+        with container_runtime_bind_settings(getattr(self, "_container_bind_settings", None)), container_runtime_gpu(
+            self._wants_container_gpu()
+        ):
             # Engine-managed blocks already resolved their template before
             # hashing/serialization. Preserve those submission-time settings in
             # fresh workers; direct block calls still resolve paths lazily here.
             if getattr(self, "_container_bind_settings", None) is None:
                 self._refresh_generated_command_template()
+            elif self.command_template == self._generated_command_template:
+                self.command_template = refresh_container_gpu_options(
+                    self.command_template, self._wants_container_gpu()
+                )
+                self._generated_command_template = list(self.command_template)
             command = self.create_command(handler, sandbox_dir, chunk_id)
         command = self._resolve_command(command)
         manifest = Manifest(

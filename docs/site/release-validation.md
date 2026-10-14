@@ -284,3 +284,20 @@ with each result. The assertions verify execution, not structural accuracy.
 ### Latest runtime findings
 
 Chai now passes fresh built-image GPU inference and artifact integration after correcting its compiled step name. Protenix now has an exact external-cache mount and a coherent pinned upstream dependency stack; its fresh full source build and bounded GPU smoke passed. Failed subprocesses now stop both compiled execution paths before stale outputs can be compiled; real subprocess regressions passed. The final RFD3/MPNN/AF3/ESMFold2 batch passed. Additional RF3, B4000, MPNN packing and nested scientific eval runs are deferred; their opt-in helpers remain available.
+
+## Public distribution rehearsal
+
+The public-launch PR renames the distribution to `chaperone-pipelines` while
+retaining the `chaperone` CLI/import. Local Linux / Python 3.12 validation used
+separate fresh environments for the wheel and source distribution, with public
+PyPI dependencies and CPU Torch from the official PyTorch index. Both passed
+installed runtime-asset checks and a CPU copy pipeline with disk cache replay,
+executed outside the checkout with isolated Python imports. Focused regressions
+against the installed wheel passed (164 passed, 8 optional tests skipped).
+
+GPU resource regressions cover CPU Docker without GPU requests, worker device
+selection and Docker ordinal remapping, Apptainer mask forwarding, explicit
+GPU job overrides, and preservation of frozen model-cache mounts. These are
+command-level checks; they do not constitute a new multi-GPU hardware benchmark.
+The clean-install workflow also runs a real CPU Docker container on GitHub's
+Linux runner. See [publishing](publishing.md) for the TestPyPI-only upload flow.

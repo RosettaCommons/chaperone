@@ -192,7 +192,7 @@ def execute_modal(manifest, context: CommandContext, job_args):
         import modal
     except ImportError as error:
         raise RuntimeError(
-            "Install Modal support with: pip install 'chaperone[cloud]'"
+            "Install Modal support with: pip install 'chaperone-pipelines[cloud]'"
         ) from error
     from chaperone import get_settings
 

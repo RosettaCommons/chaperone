@@ -60,5 +60,6 @@ nav:
   - Syntax Reference: syntax.md
   - Validation: validation.md
   - Release Validation: release-validation.md
+  - Package Publishing: publishing.md
   - Evaluations: evaluations.md
   - Agent Skills: skills.md

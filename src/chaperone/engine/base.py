@@ -344,6 +344,10 @@ class ExecutionEngine:
                     b._modal_job_args = _resolve_job_args(effective_job_args, b, run_args)
             block = blocks[0]
 
+        for b in blocks:
+            if isinstance(b, CompiledBlockFunction):
+                b._container_job_args = _resolve_job_args(effective_job_args, b, run_args)
+
         # Local mode never retries (no SLURM nodes to exclude)
         if run_args.mode == "local":
             run_args.max_retries = 0

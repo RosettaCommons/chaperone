@@ -1,5 +1,5 @@
 [project]
-name = "chaperone"
+name = "chaperone-pipelines"
 version = "1.5.0"
 description = "Chaperone: a framework for protein design and benchmarking"
 readme = "README.md"
@@ -53,6 +53,11 @@ dependencies = [
     "hpccm",
 ]
 
+[project.urls]
+Homepage = "https://rosettacommons.github.io/chaperone/"
+Repository = "https://github.com/RosettaCommons/chaperone"
+Issues = "https://github.com/RosettaCommons/chaperone/issues"
+
 [project.optional-dependencies]
 cloud = ["modal>=1.6.1,<2"]
 cli = [
@@ -105,7 +110,7 @@ rna = [
     "ViennaRNA",
     "tmtools",
 ]
-all = ["chaperone[cli,dev,docs,notebook,pyrosetta,rna]"]
+all = ["chaperone-pipelines[cli,dev,docs,notebook,pyrosetta,rna]"]
 
 [project.scripts]
 chaperone = "chaperone_cli.main:main"
