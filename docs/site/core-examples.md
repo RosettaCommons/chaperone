@@ -8,6 +8,9 @@ execution on every supported cluster.
 
 | Example | What it demonstrates or measures |
 |---|---|
+| [Nanoparticle scaffold](https://github.com/RosettaCommons/chaperone/tree/main/examples/nanoparticle-design) | C3 RFdiffusion, public I3 RPXdock, tied sequence design, and AF3 trimer refolding; full-cage checks remain required. |
+| [Peptide binder](https://github.com/RosettaCommons/chaperone/tree/main/examples/peptide-binder) | Sequence-conditioned flexible peptide design and two rounds of AF3 selection. |
+| [Multi-MPNN comparison](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/multi-mpnn) | Three model families on a shared backbone, with optional AF3 refolding. |
 | [FGFR2 binder campaign](https://github.com/RosettaCommons/chaperone/tree/main/examples/fgfr2-binder) | Backbone generation, sequence design, AF3 refolding, and interface confidence ranking with ipSAE for FGFR2. |
 | [PPI benchmark](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) | Two inverse-folding backends in an RFD3 → MPNN → RF3 workflow for the insulin receptor; compare refolding RMSD and interface confidence under matched inputs and sampling. |
 | [DISCO benchmark](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/disco) | Heme B ligand-conditioned co-design followed by AF3; measures backbone and ligand pose recovery after refolding. |

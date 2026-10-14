@@ -10,6 +10,7 @@ from copy import deepcopy
 
 _SMOKE_DEFAULTS = {
     "rfd1": {"num_designs": 1},
+    "rpxdock": {"nout_top": 1},
     "rfd2": {"num_designs": 1},
     "rfd3": {"n_batches": 1, "batch_size": 1},
     "rfd3_partial": {"n_batches": 1, "batch_size": 1},

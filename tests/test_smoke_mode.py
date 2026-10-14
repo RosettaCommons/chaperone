@@ -113,6 +113,9 @@ EXAMPLES = [
     "benchmarks/ame/pipeline_full.py",
     "fgfr2-binder/pipeline.py",
     "tests/catcif-storage/pipeline.py",
+    "nanoparticle-design/pipeline.py",
+    "peptide-binder/pipeline.py",
+    "benchmarks/multi-mpnn/pipeline.py",
 ]
 
 
@@ -170,6 +173,10 @@ Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default
         if block["type"] in {"af3", "af3_with_target_template", "rf3"}:
             assert values["diffusion_batch_size"] == 1
             assert len(values["model_seeds"]) == 1
+        if block["type"] == "rfd1":
+            assert values["num_designs"] == 1
+        if block["type"] == "rpxdock":
+            assert values["nout_top"] == 1
         if block["type"] == "disco":
             assert values["num_seeds"] == values["n_batches"] == 1
     if "ame" in example:

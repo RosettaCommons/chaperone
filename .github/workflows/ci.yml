@@ -67,7 +67,7 @@ jobs:
             tests/test_container_gpu_resources.py tests/test_container_portability.py \
             tests/test_site_settings.py tests/test_slurm_resources.py \
             tests/test_distribution.py tests/test_pdb_io.py tests/test_modal_backend.py \
-            tests/blocks/test_mpnn.py
+            tests/blocks/test_mpnn.py tests/test_nanoparticle.py tests/test_example_ports.py
       - name: Run a CPU Docker container without NVIDIA support
         if: matrix.artifact == 'wheel'
         env:

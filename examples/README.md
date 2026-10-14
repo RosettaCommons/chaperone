@@ -2,10 +2,14 @@
 
 Reference pipeline scripts that show how blocks fit together. Most examples provide a
 `pipeline.py` (the PPI benchmark has two named variants) that configures blocks and runs them with `ExecutionEngine`.
-They are worked examples, not tests: they need a GPU cluster and are not run in CI.
+Model inference is not run in routine CI; CPU tests check selected configurations
+and helper contracts. Most examples need a GPU, while multi-MPNN can run on CPU.
 
 | Example | Shows |
 |---|---|
+| [nanoparticle-design/](nanoparticle-design/) | C3 antigen-scaffold generation, I3 docking, tied MPNN, and AF3 trimer refolding |
+| [peptide-binder/](peptide-binder/) | Two-round design around a fixed peptide sequence with flexible coordinates |
+| [benchmarks/multi-mpnn/](benchmarks/multi-mpnn/) | ProteinMPNN, LigandMPNN, and SolubleMPNN on identical backbones |
 | [fgfr2-binder/](fgfr2-binder/) | Competitive mini-protein binders for FGFR2 (PDB 1DJS), ranked by ipSAE |
 | [benchmarks/ppi/](benchmarks/ppi/) | Binder design for the insulin receptor (4ZXB) with two inverse-folding backends |
 | [benchmarks/disco/](benchmarks/disco/) | DISCO co-design of a heme B binder, checked by AF3 refolding |
@@ -85,6 +89,9 @@ for each run so a smoke test cannot reuse a production output directory.
 
 | Script (prefix with `python examples/`) | Smoke work before scientific filters | Required tools/assets |
 |---|---|---|
+| `nanoparticle-design/pipeline.py --test` | One RFD1 C3 backbone, one I3 pose, one tied sequence, one AF3 trimer sample | `rfdiffusion1`, `rpxdock`, `ligandmpnn`, AF3 and weights |
+| `peptide-binder/pipeline.py --test` | One RFD3 backbone, one sequence and AF3 sample per round; round two only after passing | Foundry, `ligandmpnn`, AF3 and weights |
+| `benchmarks/multi-mpnn/pipeline.py --test` | One sequence from each of three models; optional `--refold` | `ligandmpnn`; AF3 and weights only for refolding |
 | `benchmarks/ppi/pipeline_foundry.py --test` | One RFD3 backbone, one FoundryMPNN sequence, one RF3 sample | Foundry container and checkpoints |
 | `benchmarks/ppi/pipeline_mpnn.py --test` | One backbone, one `mpnn` sequence, one RF3 sample | Foundry and the `ligandmpnn` image |
 | `benchmarks/disco/pipeline.py --test` | One DISCO heme-binder design at the fast preset, one AF3 sample | DISCO weights/container and licensed AF3 weights/container |
