@@ -475,8 +475,9 @@ def recover_written_outputs(
     submitit raises UncompletedJobError when the login node is still serving a
     directory listing that predates the compute node writing its result pickle.
     That is indistinguishable from a job which genuinely wrote nothing, so the
-    filesystem is the tiebreaker: a chunk that produced its parquet succeeded,
-    unless its terminal report records a worker failure. Without this the driver retries completed chunks
+    filesystem is the tiebreaker: recovery requires readable Parquet and,
+    when present, a successful terminal report with matching row count and digest.
+    Without this the driver retries completed chunks
     and can fail the whole run with "N chunk(s) still failing" while every
     chunk's output.parquet is present.
 
@@ -493,31 +494,61 @@ def recover_written_outputs(
         for i in pending:
             parquet = contexts[i].steps[-1].chunk_dir / "output.parquet"
             terminal = parquet.with_name("terminal.json")
+            report_present = True
             try:
-                failed = json.loads(terminal.read_text()).get("status") == "error"
+                report = json.loads(terminal.read_text())
+            except FileNotFoundError:
+                report_present = False  # Older workers have no terminal reports.
+                report = None
             except (OSError, ValueError):
-                failed = False
-            if failed:
-                continue
-            if _bust_and_check(parquet):
-                logger.warning(
-                    "Chunk %s was reported as failed but wrote %s; accepting it "
-                    "(stale NFS attr cache on the result pickle).",
-                    contexts[i].chunk_id,
-                    parquet,
-                )
-                outputs[i] = parquet
-                recovered_count += 1
-            else:
                 still_pending.append(i)
+                continue
+            if isinstance(report, dict) and report.get("status") == "error":
+                continue
+            if report_present and (
+                not isinstance(report, dict) or report.get("status") != "success"
+            ):
+                still_pending.append(i)
+                continue
+            if not _bust_and_check(parquet):
+                still_pending.append(i)
+                continue
+            try:
+                # Read all pages, not just the footer: a partial/corrupt result
+                # must remain eligible for retry instead of being called success.
+                with parquet.open("rb") as handle:
+                    frame = pl.read_parquet(handle)
+                if report is not None:
+                    if (
+                        "output_count" in report
+                        and report["output_count"] != frame.height
+                    ):
+                        still_pending.append(i)
+                        continue
+                    if report.get("output_sha256") and report[
+                        "output_sha256"
+                    ] != _sha256(parquet):
+                        still_pending.append(i)
+                        continue
+            except (OSError, pl.exceptions.PolarsError):
+                still_pending.append(i)
+                continue
+            logger.warning(
+                "Chunk %s future failed but its output is readable and consistent "
+                "with any available terminal report; recovering %s.",
+                contexts[i].chunk_id,
+                parquet,
+            )
+            outputs[i] = parquet
+            recovered_count += 1
         pending = still_pending
         if not pending or time.monotonic() >= deadline:
             break
-        sleep(_RECOVERY_POLL_S)
+        sleep(min(_RECOVERY_POLL_S, max(0.0, deadline - time.monotonic())))
 
     if pending:
         logger.info(
-            "%d chunk(s) wrote no output.parquet after %.0fs; treating as failed",
+            "%d chunk(s) had no recoverable output.parquet after %.0fs; treating as failed",
             len(pending),
             wait_s,
         )
@@ -610,8 +641,10 @@ def execute_chunks(
 
         # Query sacct for failed nodes and add to exclude list
         newly_excluded = (
-            extract_failed_nodes(run_args.job_args.job_name) - excluded_nodes
-        ) if run_args.mode == "slurm" else set()
+            (extract_failed_nodes(run_args.job_args.job_name) - excluded_nodes)
+            if run_args.mode == "slurm"
+            else set()
+        )
 
         if newly_excluded:
             excluded_nodes.update(newly_excluded)
@@ -768,7 +801,9 @@ def _dispatch_jobs(job_fn, contexts, runner, run_args, label, **extra_kwargs):
                 results.append(None)
         return results
     else:
-        console.print(f"[bold]Running {n} jobs for {label} ({run_args.mode.upper()})[/bold]")
+        console.print(
+            f"[bold]Running {n} jobs for {label} ({run_args.mode.upper()})[/bold]"
+        )
 
         return run_with_cancel(
             lambda: _run_mapped_jobs(

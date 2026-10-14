@@ -9,6 +9,7 @@ re-executing anything -- so those chunks were never retried even once, despite
 
 from types import SimpleNamespace
 
+import polars as pl
 import pytest
 
 from chaperone.data import PipelineDataHandler, make_row
@@ -19,6 +20,7 @@ def _run_args(max_retries=2):
     return SimpleNamespace(
         max_retries=max_retries,
         is_local=True,
+        mode="local",
         recompile=False,
         force_exec=False,
         skip_chunk_cache=False,
@@ -114,6 +116,7 @@ def test_forced_slurm_execution_never_recovers_an_old_output(
     dispatch_attempts([2])
     args = _run_args(max_retries=0)
     args.is_local = False
+    args.mode = "slurm"
     setattr(args, flag, True)
 
     def unexpected_recovery(*args, **kwargs):
@@ -142,7 +145,9 @@ def test_last_slurm_attempt_can_recover_a_completed_chunk(tmp_path, monkeypatch)
         assert not runner.fail_on_error
         for ctx in contexts:
             ctx.steps[-1].chunk_dir.mkdir(parents=True)
-            ctx.steps[-1].chunk_dir.joinpath("output.parquet").write_bytes(b"PAR1")
+            pl.DataFrame({"id": ["design"]}).write_parquet(
+                ctx.steps[-1].chunk_dir / "output.parquet"
+            )
         return [None] * len(contexts)
 
     monkeypatch.setattr(chunking, "_dispatch_jobs", dispatch)

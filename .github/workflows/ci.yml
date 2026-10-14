@@ -71,7 +71,8 @@ jobs:
             tests/test_remaining_example_ports.py tests/test_enzyme_ports.py \
             tests/test_biotin_dna_ports.py tests/test_ribozyme_ports.py tests/test_ccd_detection.py \
             tests/test_smoke_mode.py tests/test_rmsd_symmetry_annotations.py \
-            tests/test_rfd1_motif_mapping.py
+            tests/test_rfd1_motif_mapping.py \
+            tests/test_chunk_recovery.py tests/test_chunk_retry.py tests/test_ported_fixes.py
       - name: Keep worked examples out of the agent benchmark workspace
         run: |
           PYTHONPATH=src/chaperone-evals/harbor-controller \
