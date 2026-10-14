@@ -93,3 +93,24 @@ def test_cli_runs_warmup_only_after_successful_builds(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError, match="build failed"):
         install.main(["chaperone"])
     assert calls == []
+
+
+def test_existing_image_in_secondary_search_directory_is_reused(monkeypatch, tmp_path):
+    from chaperone import get_settings
+    from chaperone.containers import Image
+    import chaperone.containers as containers
+
+    writable = tmp_path / "new"
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    (shared / "ready.sif").write_bytes(b"existing image")
+    monkeypatch.setattr(get_settings(), "CHAPERONE_CONTAINER_BACKEND", "apptainer")
+    monkeypatch.setattr(containers, "get_container_dirs", lambda: [writable, shared])
+    built = []
+    monkeypatch.setattr(install, "_build_apptainer", lambda *a: built.append(a))
+    image = Image("ready").base_image("ubuntu:24.04")
+    install.build_container(image, "ready", writable)
+    assert built == []
+    assert not writable.exists()
+    install.build_container(image, "ready", writable, force=True)
+    assert len(built) == 1

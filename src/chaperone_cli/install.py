@@ -183,6 +183,15 @@ def build_container(
         print(f"  Container '{name}' references existing file: {spec._existing_path}")
         return
 
+    if backend != "docker" and not force:
+        try:
+            installed = spec.get_image_path()
+        except FileNotFoundError:
+            pass
+        else:
+            print(f"  Reusing installed image: {installed}")
+            return
+
     if backend == "docker":
         _build_docker(spec, name, output_dir, force, dry_run)
     else:
