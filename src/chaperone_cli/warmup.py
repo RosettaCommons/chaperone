@@ -59,7 +59,15 @@ def main(argv=None):
             job_args=JobArgs(cpus_per_task=4, mem_gb=32, time_limit="00:45:00"),
         ),
     )
-    if len(result.unpack()) == 0:
+    import numpy as np
+
+    count = 0
+    for loaded in result.get_data(load=True):
+        coords = loaded.atom_array.coord
+        if coords.size == 0 or not np.isfinite(coords).all():
+            raise RuntimeError("RFD3 warmup produced empty or non-finite coordinates")
+        count += 1
+    if count == 0:
         raise RuntimeError("RFD3 warmup produced no structures")
     print(
         f"Warmup completed. Reuse RFD3_COMPILE_CACHE_DIR={cache} and compile_model=True."

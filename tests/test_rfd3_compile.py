@@ -65,7 +65,13 @@ def test_warmup_uses_engine_with_compile_and_bounded_gpu_request(monkeypatch, tm
 
         def run(self, block, *, run_args):
             calls.append((block, run_args))
-            return SimpleNamespace(unpack=lambda: ["structure"])
+            import numpy as np
+
+            return SimpleNamespace(
+                get_data=lambda **kwargs: [
+                    SimpleNamespace(atom_array=SimpleNamespace(coord=np.zeros((4, 3))))
+                ]
+            )
 
     monkeypatch.setattr(chaperone, "ExecutionEngine", Engine)
     main(
@@ -89,7 +95,9 @@ def test_warmup_uses_engine_with_compile_and_bounded_gpu_request(monkeypatch, tm
 @pytest.mark.parametrize("mode", ["modal", "explicit_cloud"])
 def test_cloud_does_not_mount_host_compile_cache(monkeypatch, tmp_path, mode):
     settings = get_settings()
-    monkeypatch.setattr(settings, "RFD3_COMPILE_CACHE_DIR", str(tmp_path / "not-created"))
+    monkeypatch.setattr(
+        settings, "RFD3_COMPILE_CACHE_DIR", str(tmp_path / "not-created")
+    )
     if mode == "modal":
         monkeypatch.setattr(settings, "CHAPERONE_COMPUTE_BACKEND", "modal")
     command = RFD3Block(cloud=mode == "explicit_cloud").command_template
