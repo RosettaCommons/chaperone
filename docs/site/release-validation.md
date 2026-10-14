@@ -301,3 +301,15 @@ GPU job overrides, and preservation of frozen model-cache mounts. These are
 command-level checks; they do not constitute a new multi-GPU hardware benchmark.
 The clean-install workflow also runs a real CPU Docker container on GitHub's
 Linux runner. See [publishing](publishing.md) for the TestPyPI-only upload flow.
+
+### TestPyPI upload and download
+
+Version **1.5.0** was uploaded to
+[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.5.0/) from commit
+`29baf1a`. Both published SHA256 digests match the locally validated wheel/sdist.
+A forced reinstall of `chaperone-pipelines==1.5.0` from the TestPyPI index, without
+resolving dependencies from that index, passed dependency checks and the same
+isolated installed-package CPU/cache smoke. Production PyPI was not used for
+publication. This TestPyPI version is consumed; another upload requires a version
+increment. At recording time GitHub CI execution awaited workflow-write access;
+local validation is not a claim of a completed hosted CI run.
