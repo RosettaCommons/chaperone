@@ -1,0 +1,20 @@
+{
+  "point_group": "C3",
+  "n_copies": 3,
+  "protomer_length": 70,
+  "protomer_length_range": [60, 90],
+  "rfd1": {
+    "symmetry": "c3",
+    "diffuser_T": 50,
+    "num_designs": 32
+  },
+  "mpnn": {
+    "model_type": "protein_mpnn",
+    "omit_AA": "CX"
+  },
+  "_notes": {
+    "contigs": "Derived, not stored: RFdiffusion v1 needs the TOTAL length of the symmetric assembly, so contigs = 'L-L' with L = protomer_length * n_copies. Storing the total instead of the protomer length is how a C3 config silently becomes a 3x-too-small design.",
+    "mpnn_tying": "Derived, not stored: symmetry_residues/symmetry_weights are built from the generated backbones' own chain and residue numbering (see tied_positions in example_pipeline.py). Explicit tying is used instead of MPNN's homo_oligomer=1 shortcut.",
+    "omit_AA": "Cysteine is omitted: an unpaired Cys on a three-fold axis is a disulfide-scrambling liability in a self-assembling particle."
+  }
+}

@@ -1,0 +1,170 @@
+[project]
+name = "chaperone-pipelines"
+version = "1.0.0"
+description = "Chaperone: a framework for protein design and benchmarking"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+requires-python = ">=3.12"
+dependencies = [
+    # Core scientific packages
+    "numpy",
+    "scipy",
+    "pandas",
+
+    # Host embedding readers use safetensors with framework="pt".
+    "torch",
+
+    # Essential framework dependencies
+    "pydantic",
+    "pydantic-settings",
+    "pyyaml",  # Pipeline configs and prediction input builders.
+    "rich",
+    "rootutils",
+    "tqdm",
+    "python-dotenv>=1.2.2",  # atomworks>=3 requires >=1.2.2
+    "safetensors",
+
+    # Orchestration
+    "polars",
+    "cloudpickle",
+    "submitit",
+
+    # Biochem packages
+    "biotite",
+    "atomworks[ml,catcif]>=3.0.1",  # [ml]: torch, numba, einops, beartype; [catcif]: parse() reads archive.catcif:id tags
+    "peppr",
+    "catcif-tools",  # concatenated CIF archive format used by handler.store()
+
+    # CLI tools
+    "absl-py",
+
+    # Container building
+    "hpccm",
+]
+
+[project.urls]
+Homepage = "https://rosettacommons.github.io/chaperone/"
+Repository = "https://github.com/RosettaCommons/chaperone"
+Issues = "https://github.com/RosettaCommons/chaperone/issues"
+
+[project.optional-dependencies]
+cloud = ["modal>=1.6.1,<2"]
+cli = [
+    # No additional dependencies for CLI beyond core
+]
+dev = [
+    "setuptools>=77.0.3",  # package-discovery regression tests
+    "pytest",
+    "pytest-xdist",
+    "ruff==0.6.2",
+    "pre-commit==3.7.*",
+    "ipython",
+    "icecream",
+    "ipdb",
+    "wandb",
+]
+ligand = [
+    # pH-aware ligand protonation — only needed when soft_ddg/generate_params
+    # is called on a ligand lacking hydrogens AND no params_file is given.
+    "dimorphite-dl",
+]
+plip = [
+    # Protein-ligand interaction profiling (PLIPBlock).
+    # Also requires OpenBabel (system/conda install: `conda install -c conda-forge openbabel`).
+    "plip",
+]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.26.0",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-literate-nav>=0.6.1",
+]
+notebook = [
+    "matplotlib",
+    "seaborn",
+    "ipykernel",
+    "jupytext",
+    "papermill",
+]
+pyrosetta = [
+    # Installs the helper that fetches PyRosetta into the active environment.
+    # PyRosetta itself is distributed separately and may require credentials.
+    "pyrosetta-installer",
+]
+rna = [
+    # RNA motif-scaffolding benchmark metrics.
+    # ViennaRNA -> rna_thermo (Boltzmann probability of a required pair set).
+    # tmtools    -> tm_score (TM-align bindings, C3' anchors for nucleic acids).
+    "ViennaRNA",
+    "tmtools",
+]
+all = ["chaperone-pipelines[cli,dev,docs,notebook,pyrosetta,rna]"]
+
+[project.scripts]
+chaperone = "chaperone_cli.main:main"
+
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["blocks", "blocks.*", "chaperone", "chaperone.*", "chaperone_cli", "chaperone_cli.*"]
+
+[tool.setuptools.package-data]
+chaperone = ["py.typed", "site_profiles/*.env"]
+blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+# Pixi tasks
+[tool.pixi.tasks]
+docs = "mkdocs build"
+test = "pytest tests/"
+fmt = "ruff format . && ruff check --fix ."
+
+[dependency-groups]
+test = ["pytest"]
+
+# Environments
+[tool.pixi.environments]
+default = { solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+# Dev environment dependencies
+# Note: Most dev tools (jupyter, ipython, pytest, etc.) are in the default environment
+# Note: xxhash and inotify have been moved to default environment
+# [tool.pixi.feature.dev.pypi-dependencies]
+
+[tool.pixi.feature.test.tasks]
+test = "python -m pytest tests/"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+markers = [
+    "cloud: live Modal tests (explicitly opt in with CHAPERONE_RUN_MODAL_TESTS=1)",
+    "fast: marks tests as fast (deselect with '-m \"not fast\"')",
+    "gpu: marks tests as requiring GPU allocation (skipped by default)",
+    "slow: marks tests as slow or requiring full pipeline execution (skipped by default)",
+    "cluster: marks tests as requiring actual SLURM cluster resources (skipped by default)",
+    "perf: marks performance-sensitive tests (RSS, latency thresholds; skipped by default — opt in with '-m perf')",
+]
+testpaths = ["tests"]
+addopts = "-m 'not cluster and not gpu and not slow and not perf' --ignore=tests/outputs"
+
+[tool.coverage.run]
+source = ["chaperone", "blocks"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+[tool.ruff.lint.per-file-ignores]
+# Scientific port from C++ — ambiguous var names and intermediate debug vars are intentional
+"src/blocks/metrics/py_contact_ms.py" = ["E741", "F841"]
+# Third-party AF3 script — lambda and unused vars are upstream patterns
+"src/blocks/scripts/run_alphafold_AF.py" = ["E731", "F841"]

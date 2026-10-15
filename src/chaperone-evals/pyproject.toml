@@ -1,0 +1,29 @@
+[project]
+name = "chaperone-evals"
+version = "0.1.0"
+license = "MIT"
+description = "Agent evaluation harness for Chaperone"
+requires-python = ">=3.12"
+dependencies = [
+    "chaperone-pipelines",
+    "harbor==0.16.1",
+    "markdown>=3.7",
+    "python-dotenv>=1.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.4"]
+
+# `chaperone-pipelines` is the Chaperone checkout this directory lives in. Declaring it
+# here, rather than as an extra of the root pyproject.toml, keeps the harness
+# out of every file the agent bundle ships.
+[tool.uv.sources]
+chaperone-pipelines = { path = "../..", editable = true }
+
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+# Nothing to install: the controller runs from this directory.
+[tool.setuptools]
+packages = []

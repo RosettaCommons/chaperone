@@ -1,0 +1,246 @@
+/* Claude/Anthropic-inspired theme overrides for mkdocs-material */
+
+:root {
+  /* Anthropic brand palette */
+  --claude-bg: #faf9f5;
+  --claude-bg-alt: #f0efe8;
+  --claude-surface: #ffffff;
+  --claude-text: #1a1a1a;
+  --claude-text-secondary: #6b6560;
+  --claude-accent: #da7756;
+  --claude-accent-hover: #c4624a;
+  --claude-border: #e5e2db;
+  --claude-code-bg: #f5f3ee;
+  --claude-link: #da7756;
+}
+
+/* Dark mode overrides */
+[data-md-color-scheme="slate"] {
+  --claude-bg: #1a1816;
+  --claude-bg-alt: #242220;
+  --claude-surface: #2a2826;
+  --claude-text: #e8e4de;
+  --claude-text-secondary: #9a9590;
+  --claude-accent: #e08b6d;
+  --claude-accent-hover: #eda58c;
+  --claude-border: #3a3836;
+  --claude-code-bg: #2e2c2a;
+  --claude-link: #e08b6d;
+}
+
+/* Override material theme colors */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #1a1a1a;
+  --md-primary-bg-color: var(--claude-bg);
+  --md-accent-fg-color: var(--claude-accent);
+  --md-default-bg-color: var(--claude-bg);
+  --md-typeset-a-color: var(--claude-link);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #e8e4de;
+  --md-primary-bg-color: var(--claude-bg);
+  --md-accent-fg-color: var(--claude-accent);
+  --md-default-bg-color: var(--claude-bg);
+  --md-typeset-a-color: var(--claude-link);
+}
+
+/* Typography — clean, readable, minimal */
+.md-typeset {
+  font-family: "Söhne", "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--claude-text);
+}
+
+.md-typeset h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--claude-text);
+  border-bottom: 1px solid var(--claude-border);
+  padding-bottom: 0.4em;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--claude-text);
+  margin-top: 2em;
+}
+
+.md-typeset h3 {
+  font-weight: 500;
+  color: var(--claude-text);
+}
+
+/* Links */
+.md-typeset a {
+  color: var(--claude-link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.md-typeset a:hover {
+  color: var(--claude-accent-hover);
+  border-bottom-color: var(--claude-accent-hover);
+}
+
+/* Header bar */
+.md-header {
+  background-color: var(--claude-surface);
+  color: var(--claude-text);
+  box-shadow: 0 1px 0 var(--claude-border);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: var(--claude-surface);
+}
+
+.md-header__title {
+  font-weight: 500;
+}
+
+/* Navigation sidebar */
+.md-nav {
+  font-size: 0.78rem;
+}
+
+.md-nav__link {
+  color: var(--claude-text-secondary) !important;
+}
+
+.md-nav__link:hover,
+.md-nav__link--active {
+  color: var(--claude-accent) !important;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: var(--claude-accent) !important;
+  font-weight: 500;
+}
+
+/* Sidebar background */
+.md-sidebar {
+  background-color: transparent;
+}
+
+/* Code blocks */
+.md-typeset code {
+  background-color: var(--claude-code-bg);
+  color: var(--claude-text);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.82em;
+  border: 1px solid var(--claude-border);
+}
+
+.md-typeset pre {
+  background-color: var(--claude-code-bg) !important;
+  border: 1px solid var(--claude-border);
+  border-radius: 8px;
+}
+
+.md-typeset pre code {
+  border: none;
+  background: transparent;
+}
+
+/* Tables — clean, minimal borders */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--claude-border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.8rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--claude-bg-alt);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--claude-border);
+  padding: 0.7em 1em;
+}
+
+.md-typeset table:not([class]) td {
+  border-bottom: 1px solid var(--claude-border);
+  padding: 0.6em 1em;
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+/* Blockquotes — used for paper references */
+.md-typeset blockquote {
+  border-left: 3px solid var(--claude-accent);
+  background-color: var(--claude-bg-alt);
+  padding: 0.6em 1em;
+  margin: 0.8em 0;
+  border-radius: 0 6px 6px 0;
+  color: var(--claude-text-secondary);
+  font-size: 0.85em;
+}
+
+/* Admonitions */
+.md-typeset .admonition {
+  border-radius: 8px;
+  border: 1px solid var(--claude-border);
+  box-shadow: none;
+}
+
+/* Tabs styling */
+.md-tabs {
+  background-color: var(--claude-surface);
+  border-bottom: 1px solid var(--claude-border);
+}
+
+.md-tabs__link {
+  color: var(--claude-text-secondary) !important;
+  font-size: 0.78rem;
+  font-weight: 400;
+  opacity: 1 !important;
+}
+
+.md-tabs__link--active {
+  color: var(--claude-accent) !important;
+  font-weight: 500;
+  opacity: 1 !important;
+}
+
+.md-tabs__link:hover {
+  color: var(--claude-accent) !important;
+  opacity: 1 !important;
+}
+
+/* Search */
+.md-search__input {
+  background-color: var(--claude-bg-alt);
+  border-radius: 8px;
+}
+
+/* Footer */
+.md-footer {
+  background-color: var(--claude-surface);
+  border-top: 1px solid var(--claude-border);
+}
+
+/* Content area max width for readability */
+.md-content__inner {
+  max-width: 72em;
+}
+
+/* Horizontal rules */
+.md-typeset hr {
+  border-color: var(--claude-border);
+}
+
+/* Smooth transitions */
+.md-typeset a,
+.md-nav__link,
+.md-tabs__link {
+  transition: color 0.15s ease;
+}

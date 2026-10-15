@@ -1,0 +1,29 @@
+# Rosetta DDG rescore flags (beta_nov16 + gen_potential)
+# Default flags for ligand_ddg block
+
+-nstruct 1
+-use_input_sc
+-no_his_his_pairE
+-in:file:fullatom
+
+-out::file::pdb_comments
+-no_optH false
+-flip_HNQ
+-renumber_pdb 1
+
+# Score function
+-beta_nov16
+
+-no_nstruct_label true
+-run:preserve_header true
+
+# Dunbrack rotamer settings
+-dunbrack_prob_buried 0.8
+-dunbrack_prob_nonburied 0.8
+-dunbrack_prob_buried_semi 0.8
+-dunbrack_prob_nonburied_semi 0.8
+
+# DAlphaBall is supplied by LigandDDGBlock.dalphaball_bin / DALPHABALL_BIN.
+
+# Suppress noisy protocol reports
+-mute protocols.rosetta_scripts.ParsedProtocol.REPORT
