@@ -34,16 +34,13 @@ For each ligand, you technically only need **one params file** unless the ligand
 
 ### Chaperone Integration
 
-The `ligand_ddg` block accepts user-supplied params. No precomputed ligand params files are bundled.
+Params files used with the `ligand_ddg` block are stored in `src/blocks/utils/params/` and auto-discovered at runtime. To add a new ligand:
 
-1. Generate a `.params` file using your authorized Rosetta installation.
-2. Keep it in your own input directory.
-3. Set `CHAPERONE_LIGAND_PARAMS_DIR` to that directory and select
-   `ligand_name="<LIGAND_CODE>"`, or pass `override_params_file` directly.
+1. Generate the `.params` file (see steps below)
+2. Place it in `src/blocks/utils/params/<LIGAND_CODE>.params`
+3. It will be automatically available via `ligand_name="<LIGAND_CODE>"`
 
-`ligand_ddg_soft` can generate params on demand: configure
-`MOLFILE_TO_PARAMS_SCRIPT` to your Rosetta `molfile_to_params.py` (with its
-`rosetta_py` helpers). Install the `ligand` extra for pH-aware protonation.
+Override the params directory with `CHAPERONE_LIGAND_PARAMS_DIR` env var.
 
 ---
 

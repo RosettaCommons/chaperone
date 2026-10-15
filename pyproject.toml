@@ -116,7 +116,7 @@ where = ["src"]
 include = ["blocks", "blocks.*", "chaperone", "chaperone.*", "chaperone_cli", "chaperone_cli.*"]
 
 [tool.setuptools.package-data]
-blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
+blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]

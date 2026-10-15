@@ -7,7 +7,7 @@ import sys
 
 import chaperone
 from blocks import Blocks
-from blocks.utils.params import generate_params
+from blocks.utils.params import generate_params, list_available_ligands, resolve_param_file
 from chaperone import ExecutionEngine, PipelineDataHandler
 from chaperone.io import parse_to_atom_array
 import numpy as np
@@ -30,8 +30,10 @@ assert not resources.files("chaperone").joinpath("site_profiles/digs.env").is_fi
 assert not (Path(chaperone.__file__).resolve().parent.parent / "chaperone-evals").exists()
 assert Blocks["ligand_ddg_soft"]().replicates == 5
 assert callable(generate_params)
-assert "ppi_ddg" not in Blocks
-assert not resources.files("blocks").joinpath("utils/params/FAD.params").is_file()
+assert Blocks["ppi_ddg"]().replicates == 1
+assert {"FAD", "IAI", "OQO", "SAM"} <= set(list_available_ligands())
+for ligand in ("FAD", "IAI", "OQO", "SAM"):
+    assert Path(resolve_param_file(ligand)).is_file()
 for command in ("--help", "list-blocks", "list-available"):
     subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)
 for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "networks/foundry/.assets/LICENSE.md")]:

@@ -8,17 +8,20 @@ from blocks.util_blocks.filter import MetricFilter
 from chaperone import ExecutionEngine, init_cli
 from chaperone.data.schema import SELECTIONS
 
-def pipeline_blocks(files: Path):
+FILES = Path(__file__).resolve().parent / "files/input_pdbs"
+
+
+def pipeline_blocks():
     return [
         Blocks["rfd1"](
-            input_pdb=str(files / "dn5_stump.pdb"),
+            input_pdb=str(FILES / "dn5_stump.pdb"),
             contigs="A1-7/150/0 B1-7/150/0 C1-7/150/0",
             symmetry="c3",
             num_designs=1,
         ),
         Blocks["nanoparticle_prepare"](
-            motif_pdb=str(files / "dn5_stump.pdb"),
-            clash_ref_pdb=str(files / "dn5b_stalk.pdb"),
+            motif_pdb=str(FILES / "dn5_stump.pdb"),
+            clash_ref_pdb=str(FILES / "dn5b_stalk.pdb"),
             max_clashes=8,
         ),
         # RFD1 emits glycine placeholders; score their backbone geometry too.
@@ -50,17 +53,9 @@ def pipeline_blocks(files: Path):
 
 
 def main():
-    from absl import flags
-
-    flags.DEFINE_string("input_dir", None, "Directory with authorized dn5_stump.pdb and dn5b_stalk.pdb inputs.")
-    flags.mark_flag_as_required("input_dir")
     init_cli()
-    files = Path(flags.FLAGS.input_dir).expanduser().resolve()
-    for filename in ("dn5_stump.pdb", "dn5b_stalk.pdb"):
-        if not (files / filename).is_file():
-            raise FileNotFoundError(f"Required user-supplied input is missing: {files / filename}")
     engine = ExecutionEngine(rundir=Path(__file__).resolve().parent / "rundir")
-    result = engine.run(pipeline_blocks(files))
+    result = engine.run(pipeline_blocks())
     result.unpack().to_csv(engine.rundir / "results.csv", index=False)
     print(engine)
 

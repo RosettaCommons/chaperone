@@ -28,6 +28,7 @@ Use cheap geometry and confidence checks before energy calculations. Combine ort
 | `tmol_minimize` | Local Cartesian all-atom minimization. Not a predictor; unconstrained relaxation can move required geometry. |
 | `ligand_ddg` | Rosetta ligand binding-energy estimate. Expensive and sensitive to params, protonation, pose, and score function. |
 | `ligand_ddg_soft` | Replicated soft-repulsive ligand ddG. More robust, but costly and can tolerate unrealistic contacts. |
+| `ppi_ddg` | Relaxed protein-interface ddG. Expensive and starting-pose/score-function dependent. |
 
 ## Selection shortcuts
 

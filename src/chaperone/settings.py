@@ -380,7 +380,7 @@ class ChaperoneSettings(BaseSettings):
     )
     LIGAND_PARAMS_DIR: Optional[str] = Field(
         default=None,
-        description="Directory for user-supplied Rosetta ligand .params files.",
+        description="Directory for Rosetta ligand .params files. Falls back to bundled params.",
     )
     MOLFILE_TO_PARAMS_SCRIPT: Optional[str] = Field(
         default=None,

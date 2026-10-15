@@ -103,7 +103,7 @@ def atom_array_to_pose(atom_array, params_files: list[str] | None = None):
 
         return pose
 
-    # Low-level path (same as the params branch): fills an existing Pose
+    # Low-level path (same as the params branch / ppi_ddg): fills an existing Pose
     # directly. Avoids pyrosetta.distributed's PackedPose, which pickles the pose and
     # therefore requires a `--serialization` pyrosetta build (not present on many
     # standard installs).

@@ -7,14 +7,24 @@ backbone generation and LigandMPNN sequence design.
 
 - **AME-1:** 41 MCSA active sites in [`files/ame-1.json`](files/ame-1.json),
   with structures in `files/mcsa_41/`.
-- **AME-2:** optional user-supplied structures and JSON, selected with
-  `--ame2_inputs=/path/to/authorized/ame-2.json`. The configuration template in
-  `files/ame-2.json` describes four tasks, but the custom motif structures are
-  excluded pending permission. Resolve its input paths relative to your JSON.
+- **AME-2:** four tasks in [`files/ame-2.json`](files/ame-2.json), with
+  structures in `files/ame2_inputs/`:
 
-`pipeline.py` runs AME-1 by default and combines AME-2 only when supplied.
-`pipeline_full.py` runs AME-1 only, requesting one generation batch per job.
-Both default to 100 backbones per input and eight sequences per backbone.
+| Task | Ligand |
+|---|---|
+| `ornithine_decarboxylase` | `ORN` |
+| `dera_aldolase` | `HPD` |
+| `glycosidase` | `L:1` |
+| `phosphotriesterase` | `YYE` |
+
+[`pipeline.py`](pipeline.py) runs both suites, then combines their generated
+backbones for shared evaluation. [`pipeline_full.py`](pipeline_full.py) runs
+AME-1 only, requesting one generation batch per job. Both default to 100
+backbones per input and eight designed sequences per backbone.
+
+The phosphotriesterase fixture retains its molecular coordinates and atom IDs.
+Its virtual `ORI` marker has normalized PDB element/charge fields and follows
+the molecular atoms so readers accept the serial-number ordering.
 
 ## Pipeline
 

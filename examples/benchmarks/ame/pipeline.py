@@ -3,7 +3,7 @@
 
 Evaluates de novo enzyme design quality by measuring how well AF3 recovers
 the catalytic motif geometry after backbone generation and sequence design.
-Runs AME-1 and optionally a user-supplied AME-2 suite:
+Runs two benchmark suites through a shared evaluation pipeline:
 
   AME-1: 41 MCSA enzyme active sites (dialect-1 format, fixed-length 180 res)
   AME-2: 4 enzyme tasks — glycosidase, aldolase, decarboxylase, phosphotriesterase
@@ -20,9 +20,6 @@ from blocks import Blocks
 from chaperone import ExecutionEngine, get_runtime_overrides, init_cli
 from chaperone.data.schema import SELECTIONS
 
-from absl import flags
-
-flags.DEFINE_string("ame2_inputs", None, "Optional authorized AME-2 JSON with paths to your motif structures.")
 init_cli()
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -43,16 +40,13 @@ rfd3_ame1 = RFD3(
     batch_size=10,
 )
 
-rfd3_ame2 = None
-if flags.FLAGS.ame2_inputs:
-    rfd3_ame2 = RFD3(
-        name="rfd3/ame2",
-        inputs=flags.FLAGS.ame2_inputs,
-        json_keys_subset=["dera_aldolase"] if TEST_MODE else [],
-        n_batches=10,
-        batch_size=10,
-    )
-
+rfd3_ame2 = RFD3(
+    name="rfd3/ame2",
+    inputs=str(FILES_DIR / "ame-2.json"),
+    json_keys_subset=["dera_aldolase"] if TEST_MODE else [],
+    n_batches=10,
+    batch_size=10,
+)
 
 shared_blocks = [
     RotamerMetrics(
@@ -84,10 +78,13 @@ shared_blocks = [
 
 engine = ExecutionEngine(rundir=SCRIPT_DIR / "rundir", reinit=True)
 
+# Run both AME suites through RFD3 separately
+h_ame1 = engine.run(rfd3_ame1)
+h_ame2 = engine.run(rfd3_ame2)
+
+# Concatenate and feed through shared evaluation pipeline
 # Keep CPU rotamer work separate from GPU prediction allocations.
-handler = engine.run(rfd3_ame1)
-if rfd3_ame2 is not None:
-    handler = handler + engine.run(rfd3_ame2)
+handler = h_ame1 + h_ame2
 for block in shared_blocks:
     handler = engine.run(block, data=handler)
 

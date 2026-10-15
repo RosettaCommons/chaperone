@@ -79,12 +79,15 @@ binder-design tutorial. Its adjacent residue mapping preserves source author
 labels and insertion codes. The RCSB PDB entry and associated publication should
 be cited when using this structure scientifically.
 
-The flagged predecessor custom motif inputs, generated multi-MPNN
-backbone, nanoparticle stumps, ligand params, and icon/overview artwork are
-excluded pending permission. The corresponding workflow templates accept
-user-supplied inputs; their presence is not a license to redistribute those inputs.
+Other ported example fixtures retain the inputs of the original
+`baker-laboratory/pipelines` examples at snapshot `95ef0b6`. Workflow guides
+identify their provenance and any changes. These fixtures are example inputs,
+not newly generated validation results or evidence of experimental activity.
 
 ## Documentation images
+
+`docs/site/.assets/icon.png` is unchanged from `baker-laboratory/pipelines`
+commit `95ef0b6fd87eb27e1e73d2cfaa1482a39a0a132f`.
 
 The three illustrations in `src/blocks/networks/foundry/.assets/` are unchanged
 from [`RosettaCommons/foundry`, commit

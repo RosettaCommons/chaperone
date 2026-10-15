@@ -19,18 +19,11 @@ from chaperone.data.schema import SELECTIONS
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+FILES_DIR = SCRIPT_DIR / "files"
 
 
 def main():
-    from absl import flags
-
-    flags.DEFINE_string("input_dir", None, "Directory of authorized workflow inputs; see the example README.")
-    flags.mark_flag_as_required("input_dir")
     init_cli()
-    files_dir = Path(flags.FLAGS.input_dir).expanduser().resolve()
-    for filename in ['glycosidase.json', 'theozyme.pdb', 'af3_template_ptm.json', 'af3_template_ligand.json']:
-        if not (files_dir / filename).is_file():
-            raise FileNotFoundError(f"Required user-supplied input is missing: {files_dir / filename}")
     RFD3, MPNN, AF3, RMSD, Filter = Blocks.getall(
         "rfd3", "mpnn", "af3", "rmsd", "filter"
     )
@@ -40,7 +33,7 @@ def main():
     # Shared: backbone generation -> filtering -> sequence design
     design_blocks = [
         RFD3(
-            inputs=str(files_dir / "glycosidase.json"),
+            inputs=str(FILES_DIR / "glycosidase.json"),
             n_batches=1,
             batch_size=2,
         ),
@@ -92,7 +85,7 @@ def main():
             name="af3_ptm",
             diffusion_batch_size=1,
             input_mode="json",
-            template_json=str(files_dir / "af3_template_ptm.json"),
+            template_json=str(FILES_DIR / "af3_template_ptm.json"),
             add_ptm_at_mapped_residues={"L:1": "A86"},
         ),
         RMSD(
@@ -104,7 +97,7 @@ def main():
         ),
         Blocks["reference_motif_rmsd"](
             name="af3_ptm_catalytic",
-            reference=str(files_dir / "theozyme.pdb"),
+            reference=str(FILES_DIR / "theozyme.pdb"),
             residues=["A77", "A86", "A88", "A122", "A136", "A177"],
         ),
         Filter(
@@ -124,7 +117,7 @@ def main():
             name="af3_ligand",
             diffusion_batch_size=1,
             input_mode="json",
-            template_json=str(files_dir / "af3_template_ligand.json"),
+            template_json=str(FILES_DIR / "af3_template_ligand.json"),
         ),
         RMSD(
             name="af3_ligand_rmsd",

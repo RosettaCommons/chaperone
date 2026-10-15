@@ -1,8 +1,22 @@
-"""Discover user-supplied Rosetta ligand params via CHAPERONE_LIGAND_PARAMS_DIR.
+"""Rosetta ligand params file discovery, resolution, and generation.
 
-No precomputed ligand params are bundled. Pass a directory to the lookup helpers
-or set CHAPERONE_LIGAND_PARAMS_DIR before importing them. ``generate_params``
-can generate params using a configured Rosetta molfile_to_params.py installation.
+Dynamically scans a params directory for ``*.params`` files and provides
+lookup by ligand 3-letter code.  The directory is resolved in order:
+
+1. ``CHAPERONE_LIGAND_PARAMS_DIR`` environment variable
+2. Bundled ``blocks/utils/params/`` directory (ships with the repo)
+
+Usage::
+
+    from blocks.utils.params import resolve_param_file, list_available_ligands
+
+    path = resolve_param_file("FAD")          # -> "/…/params/FAD.params"
+    all_ligands = list_available_ligands()     # -> ["FAD", ...]
+
+For dynamic generation from an AtomArray (protonates if needed, runs
+molfile_to_params)::
+
+    params_path, protonated_ligand = generate_params(ligand_array, cache_dir)
 """
 
 import logging
@@ -15,12 +29,16 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_BUNDLED_PARAMS_DIR = Path(__file__).parent / "params"
 
-def _get_ligand_params_dir() -> Path | None:
+
+def _get_ligand_params_dir() -> Path:
     from chaperone import get_setting_field
 
+    # default="" suppresses the raise when LIGAND_PARAMS_DIR is None in
+    # settings — we fall through to the bundled dir instead.
     d = get_setting_field("LIGAND_PARAMS_DIR", default="")
-    return Path(d) if d else None
+    return Path(d) if d else _BUNDLED_PARAMS_DIR
 
 
 LIGAND_PARAMS_DIR = _get_ligand_params_dir()
@@ -35,8 +53,6 @@ def _scan_params_dir(params_dir: str | None = None) -> dict[str, Path]:
     """
     d = Path(params_dir) if params_dir else LIGAND_PARAMS_DIR
     registry: dict[str, Path] = {}
-    if d is None:
-        return registry
     if not d.is_dir():
         logger.warning("Params directory does not exist: %s", d)
         return registry
@@ -77,8 +93,8 @@ def resolve_param_file(ligand_name: str, params_dir: str | None = None) -> str:
         raise KeyError(
             f"No params file found for ligand '{ligand_name}'. "
             f"Available: {available}. "
-            "Set CHAPERONE_LIGAND_PARAMS_DIR to your params directory or pass "
-            "override_params_file= to the ligand_ddg block."
+            f"Either add a .params file to {LIGAND_PARAMS_DIR} or pass "
+            f"param_file= directly."
         )
     return str(registry[ligand_name])
 

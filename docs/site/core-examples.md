@@ -1,9 +1,5 @@
 # Core Examples
 
-Nanoparticle, protease, glycosidase and multi-MPNN recipes require authorized
-user-supplied inputs (`--input_dir`); the historical custom assets are not
-bundled. AME-2 is optional and requires `--ame2_inputs`. See each workflow guide.
-
 The worked scripts live in the repository's
 [`examples/` folder](https://github.com/RosettaCommons/chaperone/tree/main/examples).
 Each worked guide below explains its inputs, pipeline stages, prerequisites,

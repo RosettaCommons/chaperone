@@ -8,6 +8,7 @@ from blocks.util_blocks.filter import MetricFilter
 from chaperone import ExecutionEngine, PipelineDataHandler, init_cli
 from chaperone.data.schema import SELECTIONS
 
+FILES = Path(__file__).resolve().parent / "files"
 MODELS = ("protein_mpnn", "ligand_mpnn", "soluble_mpnn")
 
 
@@ -50,16 +51,9 @@ def main():
     flags.DEFINE_bool(
         "refold", False, "Run AF3 and RMSD; requires separately obtained AF3 weights."
     )
-    flags.DEFINE_string("input_dir", None, "Directory of your authorized input PDB/CIF structures.")
-    flags.mark_flag_as_required("input_dir")
     init_cli()
-    files = Path(flags.FLAGS.input_dir).expanduser().resolve()
-    if not files.is_dir():
-        raise FileNotFoundError(f"Input directory does not exist: {files}")
     engine = ExecutionEngine(rundir=Path(__file__).resolve().parent / "rundir")
-    inputs = PipelineDataHandler.from_dir(files, name="input")
-    if not len(inputs):
-        raise ValueError(f"No input structures found in {files}")
+    inputs = PipelineDataHandler.from_dir(FILES, name="input")
     outputs = []
     for block in sequence_blocks():
         output = engine.run(block, data=inputs)

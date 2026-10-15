@@ -22,18 +22,11 @@ from chaperone.data.schema import SELECTIONS
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+FILES_DIR = SCRIPT_DIR / "files"
 
 
 def main():
-    from absl import flags
-
-    flags.DEFINE_string("input_dir", None, "Directory of authorized workflow inputs; see the example README.")
-    flags.mark_flag_as_required("input_dir")
     init_cli()
-    files_dir = Path(flags.FLAGS.input_dir).expanduser().resolve()
-    for filename in ['protease.json', 'GPRVVERHQS78.pdb']:
-        if not (files_dir / filename).is_file():
-            raise FileNotFoundError(f"Required user-supplied input is missing: {files_dir / filename}")
     RFD3, MPNN, RF3, AF3, RMSD, Filter = Blocks.getall(
         "rfd3", "mpnn", "rf3", "af3", "rmsd", "filter"
     )
@@ -43,7 +36,7 @@ def main():
     # Phase 1: backbone generation -> filtering -> sequence design
     design_blocks = [
         RFD3(
-            inputs=str(files_dir / "protease.json"),
+            inputs=str(FILES_DIR / "protease.json"),
             n_batches=1,
             batch_size=2,
             inference_sampler={"s_jitter_origin": 1},

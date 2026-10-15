@@ -142,7 +142,7 @@ def _get_ligand_formal_charges(
 
     mol = atom_array_to_rdkit(heavy_array, hydrogen_policy="remove")
 
-    # Check for disconnected graph
+    # Check for disconnected graph (same pattern as protonate_ligand)
     smi = Chem.MolToSmiles(Chem.RemoveHs(mol))
     if "." in smi or mol.GetNumBonds() == 0:
         resolved_ref = _get_ref_smiles(str(heavy_array.res_name[0]), ref_smiles)
