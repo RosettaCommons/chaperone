@@ -127,6 +127,7 @@ BLOCK_REFERENCES: dict[str, dict[str, str]] = {
         "title": "van Kempen et al. (2024) — Fast and accurate protein structure search with Foldseek",
     },
     "ligand_ddg": {
+    "ligand_ddg_soft": "`ddg_soft` is the mean bound-minus-separated Rosetta score after packing with the hard beta_nov16 function and scoring with beta_nov16_soft. With at least three replicates the best and worst are dropped; `ddg_soft_std` reports the retained replicate spread. Values are Rosetta energy units, not measured binding free energies; do not compare numerically with the hard-score `ligand_ddg` protocol.",
         "title": "Rosetta DDG binding energy calculation",
         "code": "https://docs.rosettacommons.org/docs/latest/scripting_documentation/RosettaScripts/Filters/filter_pages/DdgFilter",
     },

@@ -1,10 +1,15 @@
 """Discover user-supplied Rosetta ligand params via CHAPERONE_LIGAND_PARAMS_DIR.
 
-No ligand params or automatic generation protocol is bundled. Pass a directory
-to the lookup helpers or set CHAPERONE_LIGAND_PARAMS_DIR before importing them.
+No precomputed ligand params are bundled. Pass a directory to the lookup helpers
+or set CHAPERONE_LIGAND_PARAMS_DIR before importing them. ``generate_params``
+can generate params using a configured Rosetta molfile_to_params.py installation.
 """
 
 import logging
+import os
+import shutil
+import subprocess
+import sys
 from functools import lru_cache
 from pathlib import Path
 
@@ -76,3 +81,179 @@ def resolve_param_file(ligand_name: str, params_dir: str | None = None) -> str:
             "override_params_file= to the ligand_ddg block."
         )
     return str(registry[ligand_name])
+
+
+# --------------------------------------------------------------------------- #
+# Dynamic params generation (port of ddg_soft_sm.py:atom_array_to_params_file)
+# --------------------------------------------------------------------------- #
+
+
+def _patch_sdf_names(atom_names, sdf_path: Path) -> None:
+    """Overwrite atom-name columns in an SDF written by RDKit.
+
+    Direct port of ddg_soft_sm.py:246-271. RDKit's SDWriter truncates the
+    atom-alias field to 3 chars; this patches columns 30:35 of each atom
+    record with the full (≤5-char) name so molfile_to_params --keep-names
+    sees the real names.
+    """
+    sdf_lines = sdf_path.read_text().splitlines(keepends=True)
+    atom_start = None
+    for i, line in enumerate(sdf_lines):
+        if atom_start is None:
+            if "V2000" in line:
+                atom_start = i + 1
+            continue
+        iatom = i - atom_start
+        if iatom < len(atom_names):
+            sdf_lines[i] = line[:30] + "%5s" % (atom_names[iatom]) + line[35:]
+    sdf_path.write_text("".join(sdf_lines))
+
+
+def generate_params(
+    ligand_array,
+    cache_dir,
+    ph: float = 7.4,
+    ref_smiles: str | None = None,
+    force: bool = False,
+):
+    """Generate a Rosetta .params file for a ligand, with filesystem caching.
+
+    If the ligand has no hydrogens, it is protonated first via Dimorphite-DL
+    (pH-aware). The protonated array is returned alongside the params path so
+    the caller can rebuild the complex with the correct H before pose
+    construction.
+
+    Caching is filesystem-based (keyed by 3-letter res_name) since chunks run
+    as separate processes and share no module state. Generation happens in a
+    per-PID temp subdir, then the params file is atomically moved into place
+    with os.replace — if two chunks race, the second overwrite is a harmless
+    identical-bytes replacement.
+
+    Parameters
+    ----------
+    ligand_array : AtomArray
+        Single-residue ligand. May or may not have hydrogens.
+    cache_dir : str | Path
+        Directory for cached .params files. Shared across chunks.
+    ph : float
+        Target pH for protonation (only used if ligand lacks H).
+    ref_smiles : str, optional
+        Reference SMILES for geometric bond-graph rebuild when the input
+        ligand's bonds are disconnected (CCD-name mismatch in diffusion
+        outputs). Falls back to CCD lookup on res_name. See
+        ``blocks.utils.ligand.protonate_ligand``.
+    force : bool
+        Regenerate even if a cached params file exists.
+
+    Returns
+    -------
+    (str, AtomArray)
+        Path to .params file, and the (possibly protonated) ligand array.
+    """
+    import numpy as np
+    from atomworks.io.tools.rdkit import atom_array_to_rdkit
+    from rdkit import Chem
+
+    from chaperone import get_setting_field
+
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    name3 = str(ligand_array.res_name[0])[:3]
+    params_path = cache_dir / f"{name3}.params"
+
+    # Protonate if needed — even on cache hit, the caller needs the H-bearing
+    # array to build a correct pose.
+    if (np.asarray(ligand_array.element) == "H").sum() == 0:
+        from blocks.utils.ligand import protonate_ligand
+
+        ligand_array = protonate_ligand(ligand_array, ph=ph, ref_smiles=ref_smiles)
+
+    # Normalize the ligand res_name to the 3-char code used for the params
+    # residue type. Diffusion/cofold outputs carry names like "LIG_B" (>3
+    # chars), which both break biotite's PDB writer (residue names must be
+    # ≤3 chars) and fail to match the generated params residue ("LIG"). Doing
+    # this here keeps the returned array, the PDB the pose is built from, and
+    # the params file all in agreement.
+    if str(ligand_array.res_name[0]) != name3:
+        ligand_array = ligand_array.copy()
+        ligand_array.res_name[:] = name3
+
+    if params_path.exists() and not force:
+        logger.debug("generate_params: cache hit %s", params_path)
+        return str(params_path), ligand_array
+
+    # --- cache miss: generate into a per-PID temp subdir -------------------
+    tmp_dir = cache_dir / f".{name3}_{os.getpid()}_tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        sdf_path = tmp_dir / f"{name3}.sdf"
+
+        # AtomArray → RDKit → SDF
+        mol = atom_array_to_rdkit(ligand_array, hydrogen_policy="keep")
+        writer = Chem.SDWriter(str(sdf_path))
+        writer.write(mol)
+        writer.close()
+        _patch_sdf_names(mol._annotations["atom_name"], sdf_path)
+
+        # subprocess molfile_to_params
+        script = get_setting_field("MOLFILE_TO_PARAMS_SCRIPT")
+        if not script:
+            raise FileNotFoundError(
+                "MOLFILE_TO_PARAMS_SCRIPT is not set. Set it to Rosetta's "
+                "main/source/scripts/python/public/molfile_to_params.py."
+            )
+        script = Path(script)
+        # A relative value is repo-relative, not CWD-relative: SLURM workers and
+        # sandboxed chunk dirs run from elsewhere.
+        if not script.is_absolute():
+            repo_root = Path(__file__).resolve().parents[3]
+            script = repo_root / script
+        if not script.exists():
+            raise FileNotFoundError(
+                f"MOLFILE_TO_PARAMS_SCRIPT does not exist: {script}. Set it to "
+                "Rosetta's main/source/scripts/python/public/molfile_to_params.py."
+            )
+
+        # cwd = script's parent dir — molfile_to_params imports rosetta_py
+        # which lives one level up; cwd=public/ puts python/ on sys.path[0]'s
+        # parent via the script's own sys.path insertion.
+        cmd = [
+            sys.executable,
+            str(script),
+            "--name",
+            name3,
+            "-p",
+            str(tmp_dir / name3),
+            str(sdf_path),
+            "--no-pdb",
+            "--clobber",
+            "--keep-names",
+        ]
+        proc = subprocess.run(
+            cmd,
+            cwd=script.parent,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"molfile_to_params failed for {name3} "
+                f"(exit {proc.returncode}):\n{proc.stderr}"
+            )
+
+        tmp_params = tmp_dir / f"{name3}.params"
+        if not tmp_params.exists():
+            raise RuntimeError(
+                f"molfile_to_params did not produce {tmp_params}. "
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
+
+        # atomic publish
+        os.replace(tmp_params, params_path)
+        logger.info("Generated params for %s → %s", name3, params_path)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    return str(params_path), ligand_array

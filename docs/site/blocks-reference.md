@@ -58,6 +58,7 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [ipsae](#ipsae) — Interface predicted Score from Aligned Errors
 - [ligand_clash](#ligand_clash) — Measure the closest protein-ligand heavy-atom contact
 - [ligand_ddg](#ligand_ddg) — Compute Rosetta DDG binding energy
+- [ligand_ddg_soft](#ligand_ddg_soft) — Soft-repulsive ddG (pack hard, score soft, trimmed mean)
 - [ligand_pocket](#ligand_pocket) — Distributed ligand contact, enclosure, and shell metrics
 - [metal3d](#metal3d) — Predict transition-metal binding sites with the Metal3D 3D-CNN
 - [motif_confidence](#motif_confidence) — Motif/scaffold pLDDT and PAE split, via diffused_index_map
@@ -1310,6 +1311,28 @@ Class: `LigandDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB
 | `override_param_file` | `Optional[str]` | `None` | Override path to ligand .params file for -extra_res. Bypasses auto-resolution from ligand name. |
 | `override_ligand_names` | `Optional[list[str]]` | `None` | Override ligand 3-letter codes (e.g. ['FAD', 'IAI']). Bypasses auto-detection from structure metadata. The first matc... |
 | `ligand_map` | `Optional[dict]` | `None` | Rename ligand residues in the atom array before detection and PDB writing. Maps old res_name to new res_name, e.g. {'... |
+
+---
+
+### ligand_ddg_soft
+
+*Soft-repulsive ddG (pack hard, score soft, trimmed mean over replicates).*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_ddg_soft.py)
+
+Class: `LigandDDGSoftBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `replicates` | `int` | `5` | Pack+score cycles. ≥3 → trimmed mean (drop best+worst). |
+| `binder_chain` | `str` | `'A'` | Chain ID of the binder. |
+| `ligand_chain` | `str` | `'B'` | Chain ID of the ligand. |
+| `interesting_atoms` | `Optional[list[str]]` | `None` | Ligand heavy-atom names to keep (plus their bonded H). Params is generated from the subset. |
+| `ph` | `float` | `7.4` | Target pH for Dimorphite-DL protonation of H-less ligands. |
+| `override_params_file` | `Optional[str]` | `None` | Pre-made .params file. Bypasses protonation and params generation — ligand H must already match. |
+| `ref_smiles` | `Optional[str]` | `None` | Reference SMILES for rebuilding the ligand bond graph when atom names don't follow CCD convention (common in diffusio... |
+| `cleanup_params_cache` | `bool` | `True` | Delete the shared params cache when the last chunk exits. |
 
 ---
 

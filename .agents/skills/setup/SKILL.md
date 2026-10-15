@@ -164,7 +164,7 @@ deps = {
     'DUNBRACK_LIBRARY_COPY':   ('Dunbrack rotamer library',    'Rotamer-dependent scoring'),
     'HBPLUS_COPY':             ('HBPLUS binary',               'Hydrogen bond metrics (hbond block)'),
     'ROSETTA_BIN':             ('Rosetta binary',              'Ligand DDG calculations'),
-    'PYROSETTA_PATH':          ('PyRosetta setup directory',   'PyRosetta-backed blocks (rotamer_relax, rotamer_sweep)'),
+    'PYROSETTA_PATH':          ('PyRosetta setup directory',   'PyRosetta-backed blocks (ligand_ddg_soft, rotamer_relax)'),
     'FOLDSEEK_EXEC':           ('Foldseek binary',             'Structure search (foldseek block)'),
 }
 for var, (name, usage) in deps.items():

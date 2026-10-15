@@ -7,6 +7,7 @@ import sys
 
 import chaperone
 from blocks import Blocks
+from blocks.utils.params import generate_params
 from chaperone import ExecutionEngine, PipelineDataHandler
 from chaperone.io import parse_to_atom_array
 import numpy as np
@@ -27,7 +28,8 @@ assert metadata.version("atomworks").split(".")[0] == "3"
 assert Path(chaperone.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 assert not resources.files("chaperone").joinpath("site_profiles/digs.env").is_file()
 assert not (Path(chaperone.__file__).resolve().parent.parent / "chaperone-evals").exists()
-assert "ligand_ddg_soft" not in Blocks
+assert Blocks["ligand_ddg_soft"]().replicates == 5
+assert callable(generate_params)
 assert "ppi_ddg" not in Blocks
 assert not resources.files("blocks").joinpath("utils/params/FAD.params").is_file()
 for command in ("--help", "list-blocks", "list-available"):

@@ -66,6 +66,11 @@ dev = [
     "ipdb",
     "wandb",
 ]
+ligand = [
+    # pH-aware ligand protonation — only needed when soft_ddg/generate_params
+    # is called on a ligand lacking hydrogens AND no params_file is given.
+    "dimorphite-dl",
+]
 plip = [
     # Protein-ligand interaction profiling (PLIPBlock).
     # Also requires OpenBabel (system/conda install: `conda install -c conda-forge openbabel`).

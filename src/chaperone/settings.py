@@ -382,6 +382,11 @@ class ChaperoneSettings(BaseSettings):
         default=None,
         description="Directory for user-supplied Rosetta ligand .params files.",
     )
+    MOLFILE_TO_PARAMS_SCRIPT: Optional[str] = Field(
+        default=None,
+        description="Path to Rosetta's molfile_to_params.py. Required for "
+        "dynamic .params generation (generate_params / ligand_ddg_soft).",
+    )
     RPXDOCK_CONTAINER: Optional[str] = Field(
         default=None,
         description="Path to RPXdock container image (.sif). Used by the rpxdock block for icosahedral docking.",
