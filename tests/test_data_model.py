@@ -13,6 +13,7 @@ from chaperone.data import make_row
 import os
 import subprocess
 from pathlib import Path
+from importlib.util import find_spec
 import json
 import cloudpickle
 import polars as pl
@@ -122,7 +123,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 def _run_isolated(source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(REPO / "src")
+    env["PYTHONPATH"] = str(Path(find_spec("chaperone").origin).parent.parent)
     env["PYDANTIC_DISABLE_PLUGINS"] = "1"
     return subprocess.run(
         [sys.executable, "-c", source],

@@ -35,7 +35,6 @@ General skills for protein design workflows and peripheral tooling.
 | Skill | Purpose | Typical triggers |
 |-------|---------|------------------|
 | [`/rosetta-params`](#rosetta-params) | Generate/debug Rosetta `.params` files for ligands | "make a params file", "rotamer generation", "ligand charges" |
-| [`/order-designs`](#order-designs) | Generate DNA eblock orders from design PDBs | "order these designs", "generate eblocks" |
 | [`/order-collection`](#order-collection) | Package a campaign into a handoff bundle | "collect orders", "bundle designs", "prepare handoff" |
 | [`/visualize`](#visualize) | Send structures and commands to PyMOL via XML-RPC | "visualize", "show in PyMOL", "view structure" |
 | [`/slurm-interactive`](#slurm-interactive) | Persistent interactive SLURM session (GPU/CPU) via qlogin (IPD) | "get me a gpu", "allocate a gpu/cpu", "gpu session", "qlogin" |
@@ -79,10 +78,6 @@ Diagnostic reference for the "silent" input failures that surface downstream: ch
 ### `/rosetta-params`
 
 Everything needed to generate and debug Rosetta small-molecule `.params` files: molfile → params conversion, rotamer libraries, partial-charge assignment, and common failure modes at the Rosetta/PyRosetta boundary.
-
-### `/order-designs`
-
-Generates DNA eblock orders from design PDBs using the `cowboy-ssm` gene-order wrapper on IPD digs. The wrapper combines JohnBercow with preflight checks, quality control, and retries. This workflow requires the IPD tools and environment described in the source guide.
 
 ### `/order-collection`
 

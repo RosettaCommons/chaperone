@@ -177,7 +177,7 @@ def test_evaluation_dependency_matches_release_distribution():
     evaluation = tomllib.loads((task_paths.EVALS_ROOT / 'pyproject.toml').read_text())
     name = main['project']['name']
     assert name in evaluation['project']['dependencies']
-    assert name in evaluation['tool']['uv']['sources']
+    assert 'sources' not in evaluation.get('tool', {}).get('uv', {})
     assert 'chaperone' not in evaluation['project']['dependencies']
 
 

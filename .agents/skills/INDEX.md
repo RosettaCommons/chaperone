@@ -19,4 +19,4 @@ than it saves.
 | `visualize` | Inspect structures in PyMOL. |
 | `notebook-editing` | Edit, create, or execute Jupyter notebooks. |
 | `rosetta-params` | Generate or debug Rosetta `.params` files for a ligand. |
-| `order-designs`, `order-collection` | Prepare wet-lab orders. Not part of a computational submission. |
+| `order-collection` | Prepare wet-lab orders. Not part of a computational submission. |

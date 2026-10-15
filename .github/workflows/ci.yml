@@ -63,27 +63,11 @@ jobs:
       - name: CPU regression tests against installed package
         run: |
           "$RUNNER_TEMP/install/bin/python" -m pip install pytest setuptools matplotlib 'modal>=1.6.1,<2'
-          "$RUNNER_TEMP/install/bin/python" -m pytest -o pythonpath= -q \
-            tests/test_container_gpu_resources.py tests/test_container_portability.py \
-            tests/test_site_settings.py tests/test_slurm_resources.py \
-            tests/test_optional_annotations.py tests/test_visualization_helper.py tests/blocks/test_rotamer_relax.py \
-            tests/test_distribution.py tests/test_pdb_io.py tests/test_modal_backend.py \
-            tests/blocks/test_mpnn.py tests/test_nanoparticle.py tests/test_example_ports.py \
-            tests/test_remaining_example_ports.py tests/test_enzyme_ports.py \
-            tests/test_biotin_dna_ports.py tests/test_ribozyme_ports.py tests/test_ccd_detection.py \
-            tests/test_smoke_mode.py tests/test_rmsd_symmetry_annotations.py \
-            tests/test_rfd1_motif_mapping.py \
-            tests/test_full_install.py tests/test_rfd3_compile.py tests/test_rfd3na_compat.py tests/test_mpnn_download_recovery.py \
-            tests/test_chunk_recovery.py tests/test_chunk_retry.py tests/test_ported_fixes.py
+          "$RUNNER_TEMP/install/bin/python" -m pytest -o pythonpath= -q tests
       - name: Optional PLIP native regression
         run: |
           "$RUNNER_TEMP/install/bin/python" -m pip install 'chaperone-pipelines[plip]'
           "$RUNNER_TEMP/install/bin/python" -m pytest -o pythonpath= -q tests/test_plip_native.py
-      - name: Keep worked examples out of the agent benchmark workspace
-        run: |
-          PYTHONPATH=src/chaperone-evals/harbor-controller \
-            "$RUNNER_TEMP/install/bin/python" -m pytest -o pythonpath= -q \
-            src/chaperone-evals/harbor-controller/tests/test_examples_isolation.py
       - name: Run a CPU Docker container without NVIDIA support
         if: matrix.artifact == 'wheel'
         env:
@@ -114,7 +98,7 @@ jobs:
           python -m pip install uv
           uv venv --python "$(command -v python)" "$RUNNER_TEMP/eval"
           uv pip install --python "$RUNNER_TEMP/eval/bin/python" torch --index-url https://download.pytorch.org/whl/cpu
-          uv pip install --python "$RUNNER_TEMP/eval/bin/python" -e 'src/chaperone-evals[test]' --override overrides.txt
+          uv pip install --python "$RUNNER_TEMP/eval/bin/python" -e . -e 'src/chaperone-evals[test]'
           uv pip check --python "$RUNNER_TEMP/eval/bin/python"
       - name: Controller, submission and isolation regression tests
         run: |

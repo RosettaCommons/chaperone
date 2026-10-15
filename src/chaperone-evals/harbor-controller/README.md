@@ -53,8 +53,10 @@ export OPENAI_API_KEY=...
 
 An existing `codex login` is also accepted. The submission host must provide
 `uv`, Apptainer, and the Slurm commands `sbatch`, `squeue`, and `sacct`.
-Bootstrap installs `../pyproject.toml` (the checkout plus the controller's
-dependencies) into the checkout's own `.venv` and links this directory to it; no virtual environment is shared between users.
+Bootstrap installs controller dependencies in `src/chaperone-evals/.venv` and
+links this directory's `.venv` to it. Host-side scoring uses the containing
+Chaperone checkout's `.venv`. Set `CHAPERONE_REPO` before bootstrap to select a
+different scoring checkout and keep it exported when launching.
 
 ## Select a cluster
 

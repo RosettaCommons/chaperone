@@ -64,10 +64,11 @@ cd src/chaperone-evals
 ./harbor-controller/scripts/bootstrap.sh
 ```
 
-Bootstrap installs the harness project (`uv pip install -e src/chaperone-evals`) into the
-checkout's `.venv`, on top of anything already installed, and links the controller to
-it. That project depends on the checkout's own `chaperone-pipelines` package, so there is no
-separate environment. Then authenticate:
+Bootstrap installs the controller into `src/chaperone-evals/.venv` and the
+selected Chaperone checkout into its own `.venv` for host-side scoring. It defaults
+to this checkout; export `CHAPERONE_REPO` before bootstrap to select another one
+and keep it exported when launching. Existing environments are not pruned.
+Then authenticate:
 
 ```bash
 export OPENAI_API_KEY=...        # or use an existing `codex login`
@@ -370,7 +371,7 @@ in a trial (digs defaults to five concurrent `gpu:small` GPUs). Held-out scoring
 
 ```bash
 cd src/chaperone-evals
-PYTHONPATH=harbor-controller ../../.venv/bin/python -m pytest harbor-controller/tests scoring
+PYTHONPATH=harbor-controller .venv/bin/python -m pytest harbor-controller/tests scoring
 ```
 
 This needs `pytest` (the harness project's `test` extra). The repository's own `pytest` only collects

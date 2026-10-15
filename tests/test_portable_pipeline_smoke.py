@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from importlib.util import find_spec
 import subprocess
 import sys
 
@@ -20,7 +21,7 @@ def test_public_packing_smoke_respects_site_and_explicit_mode(tmp_path, local, m
     }
     env.update(
         CHAPERONE_SITE="portable",
-        PYTHONPATH=str(ROOT / "src"),
+        PYTHONPATH=str(Path(find_spec("chaperone").origin).parent.parent),
     )
     if mapping:
         env.update(

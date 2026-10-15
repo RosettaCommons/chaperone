@@ -7,6 +7,7 @@ From: ubuntu:24.04
     pyproject.toml /opt/chaperone-build/pyproject.toml
     README.md /opt/chaperone-build/README.md
     LICENSE /opt/chaperone-build/LICENSE
+    THIRD_PARTY_NOTICES.md /opt/chaperone-build/THIRD_PARTY_NOTICES.md
     src/blocks /opt/chaperone-build/src/blocks
     src/chaperone /opt/chaperone-build/src/chaperone
     src/chaperone_cli /opt/chaperone-build/src/chaperone_cli
@@ -27,7 +28,10 @@ From: ubuntu:24.04
     python3 -m venv /opt/chaperone/.venv
     # The controller orchestrates GPU work in separate model containers.
     /opt/chaperone/.venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-    /opt/chaperone/.venv/bin/pip install --no-cache-dir /opt/chaperone-build
+    # Host-side scientific helpers required by the controller runtime probe.
+    # Keep PLIP/OpenBabel/lxml aligned with run_eval._SCORING_PACKAGES.
+    /opt/chaperone/.venv/bin/pip install --no-cache-dir /opt/chaperone-build \
+        ml-collections parasail plip==3.0.1 openbabel==3.2.1 lxml==6.1.1
     rm -rf /opt/chaperone-build /var/lib/apt/lists/*
 
 %environment

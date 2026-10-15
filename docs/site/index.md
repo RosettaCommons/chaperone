@@ -22,7 +22,7 @@ automatic job orchestration, data lineage tracking, and reproducible execution.
 # Install
 uv venv --python=3.12.3
 source .venv/bin/activate
-uv pip install -e '.[all]' --override overrides.txt
+uv pip install -e '.[all]'
 
 # Check which blocks and containers are available
 chaperone list-blocks

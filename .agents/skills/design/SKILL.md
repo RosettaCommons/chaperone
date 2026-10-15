@@ -110,4 +110,4 @@ See the `/auto-research` skill if the pilots stall or the scorer shows no signal
 
 In general, you should **never** run the campaign scale test without explicitly asking to do so. Typically the previous steps (1,2 and 3) should provide you with sufficient confidence in the pipeline to run at scale, giving you enough to propose a plan for the campaign-scale run.
 
-You should use the `/order-designs` skill after the final designs have been made, to convert the outputs into directly orderable genes. This skill will also detail any additional necessary procedures to appropriately log the outputs and summary of the pipeline.
+Use `/order-collection` to package final structures and metrics for handoff.

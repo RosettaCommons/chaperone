@@ -2,44 +2,24 @@
 set -euo pipefail
 
 CONTROLLER_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-# The controller is src/chaperone-evals/harbor-controller of the Chaperone
-# checkout it evaluates, and shares that checkout's environment. The nested
-# project src/chaperone-evals depends on the checkout's `chaperone-pipelines` package by
-# path and adds the harness dependencies.
-REPO_ROOT=$(cd "$CONTROLLER_ROOT/../../.." && pwd)
+PROJECT_ROOT=$(cd "$CONTROLLER_ROOT/.." && pwd)
 CHAPERONE_PYTHON_VERSION=${CHAPERONE_PYTHON_VERSION:-3.12}
-
-install_into_checkout() {
-  local checkout=$1 target=$2
-  cd "$checkout"
-  # Login images may provide /usr/bin/python3.12 even when that path does not
-  # exist on compute nodes. Requiring uv's user-managed interpreter keeps each
-  # checkout-local virtualenv executable through the shared home filesystem.
-  if [[ ! -x .venv/bin/python ]]; then
-    uv venv --python "$CHAPERONE_PYTHON_VERSION" --managed-python
-  fi
-  # Install on top of whatever is already there. `uv sync` would prune extras
-  # that were installed for other work.
-  uv pip install --python .venv/bin/python -e "$target" --override overrides.txt
-}
-
-if [[ ! -f "$REPO_ROOT/pyproject.toml" ]]; then
-  echo "Chaperone checkout not found: $REPO_ROOT" >&2
+CHAPERONE_REPO=${CHAPERONE_REPO:-$(cd "$PROJECT_ROOT/../.." && pwd)}
+CHAPERONE_REPO=$(cd "$CHAPERONE_REPO" && pwd)
+if [[ ! -f "$CHAPERONE_REPO/pyproject.toml" || ! -d "$CHAPERONE_REPO/src/chaperone" ]]; then
+  echo "Chaperone checkout not found: $CHAPERONE_REPO" >&2
   exit 2
 fi
-install_into_checkout "$REPO_ROOT" src/chaperone-evals
-# The controller's entry points run through this portable link to the
-# environment; it is not committed.
-ln -sfn ../../../.venv "$CONTROLLER_ROOT/.venv"
 
-CHAPERONE_REPO=${CHAPERONE_REPO:-$REPO_ROOT}
-if [[ "$CHAPERONE_REPO" != "$REPO_ROOT" ]]; then
-  # Held-out scoring runs in the scoring checkout's own environment.
-  if [[ ! -f "$CHAPERONE_REPO/pyproject.toml" ]]; then
-    echo "Chaperone checkout not found: $CHAPERONE_REPO" >&2
-    exit 2
+# Managed interpreters and both environments must be on shared compute storage.
+# Keep controller dependencies out of the public scientific checkout's package.
+for checkout in "$PROJECT_ROOT" "$CHAPERONE_REPO"; do
+  if [[ ! -x "$checkout/.venv/bin/python" ]]; then
+    uv venv "$checkout/.venv" --python "$CHAPERONE_PYTHON_VERSION" --managed-python
   fi
-  install_into_checkout "$CHAPERONE_REPO" '.'
-fi
-printf '%s\n' "Harness source is intentionally not configured at bootstrap time."
-printf '%s\n' "Each harness launch must provide --chaperone-path explicitly."
+done
+uv pip install --python "$PROJECT_ROOT/.venv/bin/python" -e "$CHAPERONE_REPO" -e "$PROJECT_ROOT[test]"
+uv pip install --python "$CHAPERONE_REPO/.venv/bin/python" -e "$CHAPERONE_REPO"
+ln -sfn ../.venv "$CONTROLLER_ROOT/.venv"
+printf '%s\n' "Controller installed. If selecting another scoring checkout, keep CHAPERONE_REPO exported."
+printf '%s\n' "Each harness launch also requires --chaperone-path for its agent source snapshot."

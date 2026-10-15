@@ -22,13 +22,6 @@ This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/s
 > [!TIP]
 > Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/). Start with the [simple example](https://rosettacommons.github.io/chaperone/simple/) and [core examples](https://rosettacommons.github.io/chaperone/core-examples/).
 
-## Package installation status
-
-The distribution is named **`chaperone-pipelines`**; the Python import and CLI
-remain `chaperone`. A candidate is available on
-[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.0.0/), but it has
-**not yet been released on production PyPI**. Use the source installation below. Do not install the unrelated `chaperone` package from PyPI.
-
 ## Installation (Agents)
 
 First, install `uv` and a coding agent, either Claude Code or Codex:
@@ -42,7 +35,6 @@ Then clone the repository and start your agent from its root:
 ```bash
 git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
-export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 claude    # or: codex
 ```
 
@@ -54,18 +46,19 @@ The setup guide walks through creating a venv, installing dependencies, choosing
 
 ## Installation (Manual)
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The distribution name
+is `chaperone-pipelines`; the import and CLI are `chaperone`. Install from this
+repository until the production package is published.
 
 ```bash
 git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
-export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 uv venv && source .venv/bin/activate
-uv pip install -e '.[all]' --override overrides.txt
+uv pip install -e '.[all]'
 chaperone --help
 ```
 
-The `PYTHONPATH` line stops an older checkout elsewhere on your path from shadowing this one. To confirm which copy you are running:
+Use a clean shell without a `PYTHONPATH` pointing at another checkout. To confirm which copy you are running:
 
 ```bash
 python -c "import chaperone, blocks; print(chaperone.__file__, blocks.__file__)"
@@ -242,7 +235,6 @@ You can also just talk to the agent in natural language ("design a peptide binde
 
 | Skill | What it does |
 |-------|-------------|
-| `/order-designs` | Generate DNA eblock orders from design PDBs |
 | `/rosetta-params` | Generate and debug Rosetta `.params` files for ligands |
 | `/slurm-interactive` | Persistent interactive SLURM session (GPU/CPU) for live, iterative work (written for IPD's `qlogin`; adapt elsewhere) |
 | `/slurm-background` | Submit detached SLURM jobs (engine `job_args`, sbatch, nohup) for pilots/production; covers the site settings for partitions and GPU types |

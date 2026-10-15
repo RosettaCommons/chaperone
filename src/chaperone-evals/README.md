@@ -15,8 +15,7 @@ and a private Harbor Hub snapshot, accessible only to the trusted controller.
 harbor-controller/       launcher, isolated environments, sanitizer, audit
 scoring/                 submission contract, gates and reporting shared by scorers
 evals_task/<task>/       prompt.md and inputs/ (what the agent receives)
-pyproject.toml           depends on the checkout's `chaperone-pipelines` package by path and
-                         adds the controller's dependencies
+pyproject.toml           controller dependencies; bootstrap selects the Chaperone checkout
 ```
 
 The folder is self-contained: the repository's own `pyproject.toml` does not know
@@ -119,14 +118,15 @@ credentials into images or expose broad shared code/cache trees containing secre
 
 ## Setup
 
-The controller lives inside the Chaperone checkout it evaluates and shares its
-environment. Bootstrap installs this folder's project, which brings in the
-checkout's `chaperone-pipelines` package (editable) and the controller's dependencies, on top
-of what is already in the checkout's `.venv`, and links the controller to it.
+Bootstrap creates a separate `src/chaperone-evals/.venv` for the controller
+and installs the containing Chaperone checkout into its own `.venv` for host-side
+scoring. Set `CHAPERONE_REPO` before bootstrap to select another scoring checkout;
+keep that variable exported when launching. Both environments use a managed
+Python interpreter on shared storage. Existing environments are not pruned.
 
 ```bash
 cd src/chaperone-evals
-./harbor-controller/scripts/bootstrap.sh     # uv pip install -e src/chaperone-evals  (from the repository root)
+./harbor-controller/scripts/bootstrap.sh     # install the controller and selected Chaperone checkout
 export OPENAI_API_KEY=...       # or use an existing `codex login`
 ```
 
@@ -178,7 +178,7 @@ an ordinary zero-pass trial.
 
 ```bash
 cd src/chaperone-evals
-PYTHONPATH=harbor-controller ../../.venv/bin/python -m pytest harbor-controller/tests scoring
+PYTHONPATH=harbor-controller .venv/bin/python -m pytest harbor-controller/tests scoring
 ```
 
 The environment needs `pytest` (this project's `test` extra). The repository's own `pytest`

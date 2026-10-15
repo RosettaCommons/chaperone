@@ -3,7 +3,9 @@ name = "chaperone-pipelines"
 version = "1.0.0"
 description = "Chaperone: a framework for protein design and benchmarking"
 readme = "README.md"
-license = "MIT"
+# Aggregate license expression for the bundled third-party components.
+# Chaperone-authored code remains MIT; full notices are centralized below.
+license = "MIT AND BSD-3-Clause AND CC-BY-NC-SA-4.0"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.12"
 dependencies = [
@@ -115,7 +117,7 @@ include = ["blocks", "blocks.*", "chaperone", "chaperone.*", "chaperone_cli", "c
 
 [tool.setuptools.package-data]
 chaperone = ["py.typed", "site_profiles/*.env"]
-blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
+blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]

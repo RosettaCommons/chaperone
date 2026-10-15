@@ -47,7 +47,7 @@ Do not replace an existing GPU Torch installation needed by other local work.
 Then install the framework (also use this if its import failed in an existing venv):
 
 ```bash
-uv pip install -e '.[all]' --override overrides.txt
+uv pip install -e '.[all]'
 ```
 
 ### 2. Select site configuration
@@ -211,7 +211,7 @@ Present the results as a table showing what's set and what's missing. Then use `
 
 **For `PYROSETTA_PATH`** (PyRosetta-backed blocks):
 - This should point at the PyRosetta `setup/` directory (for example `/path/to/pyrosetta/setup`).
-- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]' --override overrides.txt` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
+- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]'` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
 
 Write any user-provided paths to `.env.local` using the same pattern as step 5:
 ```bash
@@ -345,7 +345,7 @@ pre-commit install
 **Open documentation:**
 ```bash
 source .venv/bin/activate
-uv pip install -e '.[docs]' --override overrides.txt
+uv pip install -e '.[docs]'
 python docs/site/gen_block_docs.py
 mkdocs build && mkdocs serve &
 sleep 1 && open http://127.0.0.1:8000
