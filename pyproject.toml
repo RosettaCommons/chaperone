@@ -12,18 +12,13 @@ dependencies = [
     "scipy",
     "pandas",
 
-    # PyTorch (CPU-only)
+    # Host embedding readers use safetensors with framework="pt".
     "torch",
-
-    # Sequence tooling. Chaperone itself parses structures with biotite, but
-    # agents reach for these reflexively, and a failed import costs several
-    # turns to discover and work around. Cheap to ship.
-    "biopython",
-    "parasail",
 
     # Essential framework dependencies
     "pydantic",
     "pydantic-settings",
+    "pyyaml",  # Pipeline configs and prediction input builders.
     "rich",
     "rootutils",
     "tqdm",
@@ -38,13 +33,8 @@ dependencies = [
     # Biochem packages
     "biotite",
     "atomworks[ml,catcif]>=3.0.1",  # [ml]: torch, numba, einops, beartype; [catcif]: parse() reads archive.catcif:id tags
-    "einops",  # used directly; also declared by atomworks[ml]
     "peppr",
     "catcif-tools",  # concatenated CIF archive format used by handler.store()
-    "parasail",
-    "ml-collections",
-    "plip",
-    "openbabel",
 
     # CLI tools
     "absl-py",

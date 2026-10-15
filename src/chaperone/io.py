@@ -160,19 +160,6 @@ _CHAIN_RNA = 7
 _CHAIN_NON_POLYMER = 8
 
 
-class AssignTypes:
-    """
-    Assigns types to the atoms in the atom array using af3 sequence encoding scheme.
-    """
-
-    def check_input(self, data):
-        assert "atom_array" in data, "Input data must contain 'atom_array'."
-
-    def forward(self, data):
-        data["atom_array"] = assign_types_(data["atom_array"])
-        return data
-
-
 def assign_types_(atom_array):
     res_names = atom_array.res_name
     is_protein = np.isin(res_names, _AA_LIKE_RES_NAMES)

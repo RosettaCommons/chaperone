@@ -315,6 +315,21 @@ Each row has two columns:
 
 Each structure entry contains `name` (step name), `path` (structure file), and `metadata` (residue annotations like motif, interface, etc.).
 
+Core metadata contains `task`, `original_input`, `diffused_index_map`, `motif`, and
+`ligand`. Derived annotations (`interface`, `hbond`, `aromatics_near_ligand`) are
+optional keys on the relevant structure. Existing Parquet files remain readable;
+annotations survive merge, concatenation, and unpack/pack without migration.
+Request computations explicitly, e.g.
+`engine.run("annotate", annotations=["interface"], data=designs)`.
+MPNN's `aromatic_fix` and `hbond_fix` still compute missing annotations on demand.
+
+The plotting helpers consume already filtered handlers. Apply `FilterBlock`
+first, then call `plot_metrics(selected)` or `select_for_viewing(selected, outdir)`.
+Their old filter arguments and `per_atom_conjunction` helper have been removed;
+use the pipeline's filters for thresholds and quantile selection. Plots reject
+missing/nonfinite metrics, and viewing exports require a new output directory.
+
+
 ### Creating Handlers
 
 | Method | Use Case |

@@ -1,6 +1,7 @@
 """LigandMPNN adapter contracts, independent of model installation."""
 
 import json
+from pathlib import Path
 import shutil
 
 import pytest
@@ -517,3 +518,30 @@ def test_restoration_rejects_missing_native_output_instead_of_returning_stale_ci
     native.unlink()
     with pytest.raises(ValueError, match="requires the native packed PDB"):
         block.compile(sandbox)
+
+
+@pytest.mark.parametrize("annotated", [False, True])
+def test_optional_aromatic_and_hbond_constraints_reach_fixed_positions(tmp_path, monkeypatch, annotated):
+    from blocks.util_blocks import annotate
+
+    handler = input_handler(tmp_path)
+    if annotated:
+        rows = handler._df.to_dicts()
+        rows[0]["structures"][0]["metadata"].update({
+            "aromatics_near_ligand": ["Z1"], "hbond": ["Z2"],
+        })
+        handler = PipelineDataHandler(rows)
+
+        def unexpected(atoms):
+            raise AssertionError("Existing annotation should be reused")
+
+        monkeypatch.setattr(annotate, "find_aromatic_residues_near_ligand", unexpected)
+        monkeypatch.setattr(annotate, "find_hbonds_in_pdb", unexpected)
+    else:
+        monkeypatch.setattr(annotate, "find_aromatic_residues_near_ligand", lambda atoms: ["Z1"])
+        monkeypatch.setattr(annotate, "find_hbonds_in_pdb", lambda atoms: ["Z2"])
+    block = mpnn.ClassicMPNNBlock(aromatic_fix=True, hbond_fix=True)
+    command = block.create_command(handler, tmp_path / "chunk", 0)
+    fixed = json.loads(Path(option(command, "fixed_residues_multi")).read_text())
+    assert len(fixed) == 1
+    assert {"Z1", "Z2"} <= set(next(iter(fixed.values())).split())

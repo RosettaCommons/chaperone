@@ -3,11 +3,9 @@ import os
 from chaperone import BlockFunction, PipelineDataHandler
 import numpy as np
 from pydantic import Field
-from typing import List, Optional
+from typing import Literal, Optional
 from dataclasses import dataclass, field
 from scipy.spatial import cKDTree
-
-all_annotations = ["interface", "hbond", "aromatics_near_ligand", "ligand"]
 
 
 @dataclass
@@ -32,7 +30,12 @@ class AnnotateBlock(BlockFunction):
     _inline = True
     _chunked = False
 
-    annotations: List[str] = Field(default=all_annotations)
+    annotations: list[
+        Literal["interface", "hbond", "aromatics_near_ligand", "ligand"]
+    ] = Field(
+        min_length=1,
+        description="Annotations to compute; select explicitly to avoid unnecessary work.",
+    )
     overwrite: bool = Field(
         True, description="Whether to overwrite existing annotations"
     )

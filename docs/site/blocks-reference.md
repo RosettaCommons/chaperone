@@ -93,6 +93,7 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [package_submission](#package_submission) — Validate and write a sequence-only design submission
 - [remap_ligand](#remap_ligand) — Rename predicted ligand atom/residue names to match a reference CIF
 - [restore_sidechains](#restore_sidechains) — Restore selected motif rotamers from an upstream structure
+- [rotamer_relax](#rotamer_relax) — PyRosetta rotamer relaxation
 - [rotamer_sweep](#rotamer_sweep) — Enumerate explicit functional side-chain chi combinations
 - [select_chains](#select_chains) — Keep specified chains, preserving residue IDs and parent lineage
 - [select_diverse](#select_diverse) — Select a diverse design subset under sequence/structure cutoffs
@@ -1783,7 +1784,7 @@ Class: `AnnotateBlock` · Input: `True` · Resources: Not specified
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `annotations` | `list[str]` | `['interface', 'hbond', 'aromatics_near_ligand', 'ligand']` | — |
+| `annotations` | `list[Literal]` | **required** | Annotations to compute; select explicitly to avoid unnecessary work. |
 | `overwrite` | `bool` | `True` | Whether to overwrite existing annotations |
 | `interface_config` | `InterfaceConfig` | `<computed at runtime>` | Configuration for interface residue annotation |
 
@@ -1949,6 +1950,20 @@ Class: `RestoreSidechainsBlock` · Input: `True` · Resources: partition=`cpu`, 
 | `positions_json` | `str` | **required** | JSON mapping reference structure paths to residue positions. |
 | `reference_index` | `int` | `0` | Index of the reference structure in each lineage row. |
 | `align_backbone` | `bool` | `False` | Rigidly align each reference residue's backbone onto the current backbone before copying its side chain. Use for pred... |
+
+---
+
+### rotamer_relax
+
+*PyRosetta rotamer relaxation for sidechain optimization.*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/rotamer_relax.py)
+
+Class: `PyrosettaRotamerRelaxBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
 
 ---
 

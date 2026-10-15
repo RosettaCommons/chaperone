@@ -89,27 +89,3 @@ def remove_pipeline_scratch(rundir: Path, block_names: list[str]) -> None:
         shutil.rmtree(pipeline_dir, ignore_errors=True)
     except OSError:
         pass
-
-
-def remove_intermediates(step_dir: Path, rundir: Path) -> None:
-    """Remove intermediate files from a step directory after cleanup.
-
-    Removes: chunk_* dirs, cached block pickle, debug CSVs, input parquets.
-    Preserves: output.parquet, store/.
-
-    Only safe to call once the step's structures have been consolidated into a
-    store — otherwise the chunk_* dirs still hold the referenced structures.
-    """
-    # Remove chunk directories
-    for item in step_dir.iterdir():
-        if item.name.startswith("chunk_") and item.is_dir():
-            shutil.rmtree(item)
-            logger.debug(f"Removed chunk dir: {item}")
-
-    # Remove debug CSV files
-    for csv_file in step_dir.glob("*.csv"):
-        csv_file.unlink()
-        logger.debug(f"Removed debug CSV: {csv_file}")
-
-    # Remove the step's .pipeline/ scratch (input handler + cached block pickle).
-    remove_pipeline_scratch(rundir, [step_dir.name])

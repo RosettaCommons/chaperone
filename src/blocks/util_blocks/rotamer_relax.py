@@ -1,13 +1,8 @@
-import logging
-
 from blocks.constants import TIP_BY_RESTYPE
-from chaperone import PipelineDataHandler
+from chaperone import JobArgs, PipelineDataHandler
 from chaperone.block_config.inline import InlineBlockFunction
 from chaperone.data.schema import DesignMetadata
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
-
 
 class PyrosettaRotamerRelaxBlock(InlineBlockFunction):
     """PyRosetta rotamer relaxation for sidechain optimization."""
@@ -17,6 +12,7 @@ class PyrosettaRotamerRelaxBlock(InlineBlockFunction):
     _description = "PyRosetta rotamer relaxation"
     _inline = True
     _chunked = True
+    _resources = JobArgs(partition="cpu", mem_gb=8, rows_per_job=50)
 
     def execute(
         self,
@@ -29,6 +25,7 @@ class PyrosettaRotamerRelaxBlock(InlineBlockFunction):
         from blocks.utils.pyrosetta import init_pyrosetta, atom_array_to_pose
 
         init_pyrosetta()
+        sandbox_dir.mkdir(parents=True, exist_ok=True)
 
         outs = []
         for loaded in handler.get_data(which="last", load=True):
@@ -36,13 +33,16 @@ class PyrosettaRotamerRelaxBlock(InlineBlockFunction):
             pose = atom_array_to_pose(atom_array)
 
             # Perform rotamer relaxation
+            motif = loaded.metadata.get(DesignMetadata.MOTIF)
+            if not motif:
+                raise ValueError(
+                    f"rotamer_relax requires motif metadata for {loaded.path}"
+                )
             resno_to_min = [
-                pose.pdb_info().pdb2pose(idx[0], int(idx[1:]))
-                for idx in loaded.metadata[DesignMetadata.MOTIF]
+                pose.pdb_info().pdb2pose(idx[0], int(idx[1:])) for idx in motif
             ]
             if any(resno == 0 for resno in resno_to_min):
-                logger.error("Residue number mapping failed!")
-                continue
+                raise ValueError(f"Motif residues {motif} not found in {loaded.path}")
 
             min_sc_fix_tip_fix_bb(pose, resno_to_min, unfreeze_bb_in_loops=True)
 

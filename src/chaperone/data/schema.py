@@ -47,7 +47,7 @@ class DesignMetadata(StrEnum):
     LIGAND = "ligand"
     """Residue indices or name for the ligand in this structure."""
 
-    # Calculated by annotate:
+    # Optional selections populated by annotate; absent from the core schema.
     INTERFACE = "interface"
     """Residue indices belonging to the interface"""
 
@@ -96,7 +96,6 @@ class Column(StrEnum):
     """Standard column names for data processing schema."""
 
     STRUCTURES = "structures"
-    PARENT_STRUCTURE = "parent_structure"
     METRICS = "metrics"
     DESIGN_ID = "design_id"
     PARENT_DESIGN_ID = "parent_design_id"
@@ -113,9 +112,6 @@ STRUCTURE_METADATA_TYPE = pl.Struct(
         # Residue annotations all like ["A10", "B5"] (list of components)
         str(DesignMetadata.MOTIF): pl.List(pl.Utf8),
         str(DesignMetadata.LIGAND): pl.List(pl.Utf8),  # e.g. ["LG1", "LG2"]
-        str(DesignMetadata.INTERFACE): pl.List(pl.Utf8),
-        str(DesignMetadata.HBOND): pl.List(pl.Utf8),
-        str(DesignMetadata.AROMATICS_NEAR_LIGAND): pl.List(pl.Utf8),
     }
 )
 STRUCTURE_TYPE = pl.Struct(
@@ -125,9 +121,7 @@ STRUCTURE_TYPE = pl.Struct(
         str(
             StructureColumn.PATH_HANDLE
         ): pl.Utf8,  # Temporary backlinking key (stripped on merge)
-        str(
-            StructureColumn.STORE_PATH
-        ): pl.Utf8,  # Archive path (set after store())
+        str(StructureColumn.STORE_PATH): pl.Utf8,  # Archive path (set after store())
         str(
             StructureColumn.STORAGE_FORMAT
         ): pl.Utf8,  # "raw" | "catcif" (see StorageFormat)
@@ -175,13 +169,13 @@ def create_path_entries(paths: list, name: str):
 
 
 def _ensure_metadata_fields(metadata: dict | None) -> dict:
-    """Ensure metadata dict has all expected fields (with None for missing).
+    """Fill core metadata fields, preserving optional structure annotations.
 
     Also normalizes list-typed fields (SELECTABLE_METADATA_FIELDS) so that
     bare strings are wrapped in a list. This prevents polars schema conflicts
     when concatenating handlers from different blocks.
     """
-    base = {str(field): None for field in DesignMetadata}
+    base = {field.name: None for field in STRUCTURE_METADATA_TYPE.fields}
     if metadata:
         base.update(metadata)
     # Normalize: list-typed fields that are bare strings -> [string]
@@ -330,7 +324,7 @@ def _merge_metadata(parent_meta: dict, child_meta: dict) -> dict:
     parent_meta = parent_meta or {}
     child_meta = child_meta or {}
     merged = {}
-    for field in DesignMetadata:
+    for field in dict.fromkeys([*parent_meta, *child_meta]):
         child_val = child_meta.get(str(field))
         parent_val = parent_meta.get(str(field))
         merged[str(field)] = child_val if child_val is not None else parent_val
@@ -629,9 +623,9 @@ def get_mask_for_metadata(enum, atom_array, metadata, *, exclude_hetero=False):
         This prevents ligand residues in the motif list from breaking selections
         when the ligand has been removed (e.g. ``remove_ligands=True`` in AF3).
     """
-    assert enum in SELECTABLE_METADATA_FIELDS, (
-        f"Enum {enum} not in design metadata fields {SELECTABLE_METADATA_FIELDS}"
-    )
+    assert (
+        enum in SELECTABLE_METADATA_FIELDS
+    ), f"Enum {enum} not in design metadata fields {SELECTABLE_METADATA_FIELDS}"
     components = metadata.get(str(enum))
     if components is None or len(components) == 0:
         raise ValueError(

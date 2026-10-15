@@ -412,7 +412,7 @@ def _convert_sequences_to_pipeline_df(
         raise ValueError(f"Duplicate design_id values in sequence table: {duplicates}")
 
     logger.info("Loaded %d native sequence rows", len(rows))
-    return pl.DataFrame(rows)
+    return pl.DataFrame(rows, infer_schema_length=None)
 
 
 def _convert_nucleic_sequences_to_pipeline_df(
@@ -441,7 +441,7 @@ def _convert_nucleic_sequences_to_pipeline_df(
     if not rows:
         raise ValueError("No valid sequences found in input data")
     logger.info("Loaded %d typed %s sequence rows", len(rows), molecule_type)
-    return pl.DataFrame(rows)
+    return pl.DataFrame(rows, infer_schema_length=None)
 
 
 def _read_df(path: str | Path) -> pl.DataFrame:
@@ -470,7 +470,8 @@ def _to_polars(data) -> pl.DataFrame:
     if isinstance(data, list):
         if not data:
             raise ValueError("Cannot create PipelineDataHandler from empty list")
-        return pl.DataFrame(data)
+        # Optional annotations can first appear after Polars' default 100 rows.
+        return pl.DataFrame(data, infer_schema_length=None)
     if isinstance(data, (str, Path)):
         return _read_df(data)
     raise TypeError(f"Expected DataFrame, list[dict], or path, got {type(data)}")
@@ -543,7 +544,9 @@ class PipelineDataHandler:
         """Concatenate two handlers vertically (row-wise)."""
         if not isinstance(other, PipelineDataHandler):
             return NotImplemented
-        result = PipelineDataHandler(pl.concat([self._df, other._df]))
+        result = PipelineDataHandler(
+            pl.concat([self._df, other._df], how="diagonal_relaxed")
+        )
         # Union producers so a fan-in (handler_a + handler_b) records BOTH
         # parents, preserving the full DAG for downstream lineage.
         result._producing_steps = list(
@@ -953,7 +956,7 @@ class PipelineDataHandler:
                     "context_metadata": pl.Utf8,
                 }
             )
-        return pl.DataFrame(rows)
+        return pl.DataFrame(rows, infer_schema_length=None)
 
     def write_sequences_csv(self, path: str | Path) -> None:
         """Write :meth:`sequence_dataframe` to CSV."""
@@ -1231,7 +1234,7 @@ class PipelineDataHandler:
             flat_row.update(_flatten_dict(metrics))
             rows.append(flat_row)
 
-        result = pl.DataFrame(rows)
+        result = pl.DataFrame(rows, infer_schema_length=None)
 
         # Drop all-null metadata columns (e.g. protein_hunter.metadata.aromatics_near_ligand)
         metadata_cols = [c for c in result.columns if ".metadata." in c]
@@ -1300,7 +1303,9 @@ class PipelineDataHandler:
                 structures = _reconstruct_structures(row, structure_names)
                 # Collect non-structure columns into metrics
                 # Structure columns are specifically: <name>.path and <name>.metadata.*
-                structure_cols = _get_structure_column_names(structure_names)
+                structure_cols = _get_structure_column_names(
+                    structure_names, df.columns
+                )
                 metrics_flat = {
                     k: v
                     for k, v in row.items()
@@ -1333,7 +1338,9 @@ class PipelineDataHandler:
 
         # Bypass __init__ to avoid re-normalization
         handler = cls.__new__(cls)
-        handler._df = cls._ensure_design_columns(pl.DataFrame(rows))
+        handler._df = cls._ensure_design_columns(
+            pl.DataFrame(rows, infer_schema_length=None)
+        )
         handler._producing_steps = []
         return handler
 
@@ -1651,7 +1658,7 @@ class PipelineDataHandler:
 
             rows.append(_row_with_state(row, structures=remaining, metrics=metrics))
 
-        return PipelineDataHandler(pl.DataFrame(rows))
+        return PipelineDataHandler(pl.DataFrame(rows, infer_schema_length=None))
 
     def with_metrics(
         self, values_by_key: dict, *, key: str = "design_id"
@@ -1685,7 +1692,7 @@ class PipelineDataHandler:
             rows.append(
                 _row_with_state(row, structures=row[Column.STRUCTURES], metrics=merged)
             )
-        return PipelineDataHandler(pl.DataFrame(rows))
+        return PipelineDataHandler(pl.DataFrame(rows, infer_schema_length=None))
 
     def rewind_to(self, step) -> "PipelineDataHandler":
         """Truncate lineage back to a step, stashing everything after it as metrics.
@@ -1748,7 +1755,7 @@ class PipelineDataHandler:
 
             rows.append(_row_with_state(row, structures=keep, metrics=metrics))
 
-        return PipelineDataHandler(pl.DataFrame(rows))
+        return PipelineDataHandler(pl.DataFrame(rows, infer_schema_length=None))
 
     # ---------------------------------------------------------------------
     # Merge Operations
@@ -2011,9 +2018,20 @@ class PipelineDataHandler:
 
             if how == "left":
                 new_df = new_df.unique(subset=["_mk"], keep="last")
-                new_df = new_df.select("_mk", str(Column.METRICS))
+                new_df = new_df.select(
+                    "_mk", str(Column.METRICS), str(Column.STRUCTURES)
+                )
 
             joined = base_df.join(new_df, on="_mk", how=how, suffix="_new")
+
+            # This shortcut only combines metrics. Structure/annotation changes
+            # need merge_rows() even when the paths match (e.g. annotate).
+            if not joined.select(
+                pl.col(str(Column.STRUCTURES))
+                .eq_missing(pl.col(f"{Column.STRUCTURES}_new"))
+                .all()
+            ).item():
+                return None
 
             if how == "inner" and len(joined) != len(new._df):
                 return None
@@ -2056,8 +2074,8 @@ class PipelineDataHandler:
                 )
 
             result_df = joined.select(
-                pl.col(str(Column.STRUCTURES)),
-                merged_metrics,
+                merged_metrics if column == m else pl.col(column)
+                for column in base._df.columns
             )
 
             logger.info(
@@ -2162,7 +2180,7 @@ def _write_debug_csv(df: pl.DataFrame, path: Path) -> None:
             else:
                 new_row[k] = v
         rows.append(new_row)
-    pl.DataFrame(rows).write_csv(path)
+    pl.DataFrame(rows, infer_schema_length=None).write_csv(path)
 
 
 def _csv_safe_value(value):
@@ -2255,7 +2273,7 @@ def _detect_structure_names(columns: list) -> list:
     return names
 
 
-def _get_structure_column_names(structure_names: list) -> set:
+def _get_structure_column_names(structure_names: list, columns: list[str]) -> set:
     """Get all structure-related column names for the given structure names.
 
     Args:
@@ -2264,16 +2282,13 @@ def _get_structure_column_names(structure_names: list) -> set:
     Returns:
         Set of column names that belong to structures (path and metadata.*)
     """
-    from chaperone.data.schema import DesignMetadata
-
     cols = set()
     for name in structure_names:
         cols.add(f"{name}.path")
         cols.add(f"{name}.stored")
         cols.add(f"{name}.store_path")
         cols.add(f"{name}.storage_format")
-        for field in DesignMetadata:
-            cols.add(f"{name}.metadata.{field}")
+        cols.update(c for c in columns if c.startswith(f"{name}.metadata."))
     return cols
 
 

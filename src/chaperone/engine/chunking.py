@@ -1010,33 +1010,6 @@ def concat_outputs(output_parquets: List[Optional[Path]]) -> PipelineDataHandler
     )
 
 
-def cleanup_chunk_dirs(contexts: List[ChunkContext]) -> None:
-    """Clean up chunk directories, keeping only output.parquet files."""
-    import shutil
-
-    for ctx in contexts:
-        chunk_dir = ctx.chunk_dir
-        output_parquet = chunk_dir / "output.parquet"
-
-        if not output_parquet.exists():
-            continue
-
-        for item in chunk_dir.iterdir():
-            if item.name == "output.parquet":
-                continue
-            try:
-                if item.is_dir():
-                    shutil.rmtree(item)
-                else:
-                    item.unlink()
-            except Exception as e:
-                logger.warning(f"Failed to clean up {item}: {e}")
-
-    console.print(
-        f"[dim]Cleaned up {len(contexts)} chunk directories (temporary block)[/dim]"
-    )
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Local log tee
 # ─────────────────────────────────────────────────────────────────────────────
