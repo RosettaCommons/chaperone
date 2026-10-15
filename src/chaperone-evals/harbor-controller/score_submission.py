@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S bash -c 'exec "$(dirname "$0")/.venv/bin/python" "$0" "$@"'
 """Score a cleanly completed Harbor submission for any eval task."""
 
 from __future__ import annotations
