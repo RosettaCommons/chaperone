@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="docs/site/.assets/icon.png" alt="Pipelines icon" width="96">
-</p>
-
-# Chaperone
+# <img src="docs/site/.assets/icon.png" alt="Chaperone icon" width="48" align="absmiddle"> Chaperone: A Reliable and Efficient Protein Design Toolset Harness
 
 <p align="center">
   <img src="docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
@@ -24,9 +20,6 @@ This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/s
 
 > [!TIP]
 > Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/). Start with the [simple example](https://rosettacommons.github.io/chaperone/simple/) and [core examples](https://rosettacommons.github.io/chaperone/core-examples/).
-
-> [!NOTE]
-> Chaperone-authored code is [MIT licensed](https://github.com/RosettaCommons/chaperone/blob/main/LICENSE). External collaborators are welcome. Bundled third-party code and example outputs retain the terms listed in [Third-party notices](https://github.com/RosettaCommons/chaperone/blob/main/THIRD_PARTY_NOTICES.md); external tools and model weights retain their own licenses and access requirements.
 
 ## Package installation status
 
