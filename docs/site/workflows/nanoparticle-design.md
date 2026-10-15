@@ -24,7 +24,7 @@ python examples/nanoparticle-design/pipeline.py --test --rundir=/absolute/path/n
 
 Use `chaperone list-available` to inspect available image names. Add `--local`
 inside an existing GPU allocation; otherwise the engine submits to Slurm using
-your site settings. No IPD partition or private container is required. The
+your site settings. No private container is required. The
 RPXdock recipe builds pinned public RPXdock/willutil sources and bundles their
 `small_ilv_h` scoring tables. Its first build compiles native extensions.
 

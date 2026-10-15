@@ -598,7 +598,7 @@ def test_foundry_build_pins_compatible_atomworks_and_imports_real_engines():
     from blocks.networks.foundry.container import _FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER
     for image in (_FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER):
         definition = image.to_dockerfile()
-        assert "git -C /opt/foundry checkout --detach 1178aba6ee8ab34ed97ee5dddc32872cfb91cf81" in definition
+        assert "git -C /opt/foundry checkout --detach 94b766fa7c62d43d0795d24ff1353de0076065f5" in definition
         assert "atomworks[ml]==3.0.1" in definition
         assert "biotite==1.6.0" in definition
         for module in ("rfd3.engine", "rfd3na.engine", "rf3.inference_engines.rf3", "mpnn.inference_engines.mpnn"):

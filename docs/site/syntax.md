@@ -25,7 +25,7 @@ ExecutionEngine(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `rundir` | str \| Path \| None | `None` | Output directory. Falls back to `CHAPERONE_RUNDIR` env var / `.env` file; relative paths resolve under `CHAPERONE_ROOT` (default `/net/scratch/{user}/chaperone`) |
+| `rundir` | str \| Path \| None | `None` | Output directory. Falls back to `CHAPERONE_RUNDIR` env var / `.env` file; relative paths resolve under `CHAPERONE_ROOT` (default current working directory) |
 | `reinit` | bool | `True` | `True` = fresh manifest (disk-cached parquets still reused); `False` = load existing manifest to resume/extend a run |
 | `run_args_default` | RuntimeArgs \| dict \| None | `None` | Runtime defaults for `run()`; partial `run_args` dictionaries merge by key, while an explicit `RuntimeArgs` object replaces them |
 | `job_args_default` | JobArgs \| dict \| None | `None` | Fallback `JobArgs` when `run()` is called without `job_args` |
@@ -178,7 +178,7 @@ job_args = JobArgs(
 
 ### Slurm Site Configuration
 
-A block does not name cluster resources. Its `_resources` says `partition="gpu"` or `"cpu"` (a resource *class*, not a partition name) and, for GPU blocks, `gpu_class="small"` or `"large"`. The site settings turn those into a real partition and `--gres`. Set them in `.env.local`, or `.env.ipd` at IPD:
+A block does not name cluster resources. Its `_resources` says `partition="gpu"` or `"cpu"` (a resource *class*, not a partition name) and, for GPU blocks, `gpu_class="small"` or `"large"`. The site settings turn those into a real partition and `--gres`. Set them in `.env.local` or a file selected by `CHAPERONE_ENV_FILE`:
 
 | Setting | Meaning |
 |---------|---------|
@@ -190,11 +190,19 @@ A block does not name cluster resources. Its `_resources` says `partition="gpu"`
 
 With none set, a GPU block submits with `--gres=gpu:1` and no `--partition`, and a CPU block with neither. That is valid when the cluster's default partition has the GPUs; if it does not, set `CHAPERONE_GPU_PARTITION`. List a cluster's partitions and GPU types with `sinfo -o "%P %G"`.
 
-Chaperone does not check GPU types. Whatever `gres` reaches `sbatch` unchanged, so the cluster decides what is valid: IPD registers size classes (`gpu:small:1`, `gpu:large:1`) and rejects model names such as `gpu:a4000:1`, while most other clusters register model names or accept only `gpu:1`. A map given in the environment is merged key by key with one in a `.env*` file.
+Chaperone passes `gres` to `sbatch` unchanged. Use the GPU resource names your
+cluster advertises: some accept model names, others size classes or just `gpu:1`.
+A map given in the environment is merged key by key with one in a dotenv file.
 
-An optional, user-supplied `.env.ipd` in the checkout root is loaded automatically; the public repository does not track it. Without that file, installation uses portable defaults. Alternatively, select the packaged IPD preset explicitly with `CHAPERONE_SITE=digs`. The IPD preset sets `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu` and the map `small` -> `gpu:small:1`, `large` -> `gpu:large:1`, so blocks request exactly what they always did.
+Configuration files are read from lower to higher priority: repository `.env`,
+`~/.env.chaperone`, a file named by `CHAPERONE_ENV_FILE`, then `.env.local`.
+Process environment variables take precedence. `CHAPERONE_GRES_MAP` merges keys
+across these sources, so overriding `small` does not erase the site's `large`
+mapping. Keep private credentials out of committed configuration.
 
-Configuration files are read from lower to higher priority: repository `.env`, an explicitly selected `CHAPERONE_SITE` preset, optional repository `.env.ipd`, `~/.env.chaperone`, a file named by `CHAPERONE_ENV_FILE`, then repository `.env.local`. Process environment variables take precedence. `CHAPERONE_GRES_MAP` merges keys across these sources, so overriding `small` does not erase the site's `large` mapping. Keep private credentials out of committed configuration.
+Old `.env.ipd` files and packaged `CHAPERONE_SITE=digs` presets are no longer
+loaded. Select your existing site file explicitly with `CHAPERONE_ENV_FILE`
+and unset `CHAPERONE_SITE` when migrating an older installation.
 
 ### JobArgs Resolution
 
@@ -533,7 +541,7 @@ CLI flags (--rfd3.n_batches=50)  >  script kwargs (n_batches=10)  >  block Pydan
 | `--local` | Use local execution instead of SLURM |
 | `--nouse_local_gpus` | Force SLURM submission even when local GPUs are available |
 | `--pickup` | Pick up parquet from existing run directory |
-| `--partition=<str>` | SLURM partition for all GPU blocks, or `local` (CPU blocks are unaffected). If unset, uses the site's GPU partition (`CHAPERONE_GPU_PARTITION`), then `CHAPERONE_DEFAULT_PARTITION`, then the cluster default. Overriding it drops the GPU type from the block's gres (`gpu:a100:1` becomes `gpu:1`) unless `--gres` is also given. IPD example: `gpu-bf` |
+| `--partition=<str>` | SLURM partition for all GPU blocks, or `local` (CPU blocks are unaffected). If unset, uses the site's GPU partition (`CHAPERONE_GPU_PARTITION`), then `CHAPERONE_DEFAULT_PARTITION`, then the cluster default. Overriding it drops the GPU type from the block's gres (`gpu:a100:1` becomes `gpu:1`) unless `--gres` is also given |
 | `--gres=<str>` | SLURM `--gres` for all GPU blocks, passed to `sbatch` as-is (e.g. `gpu:1`, `gpu:a100:1`). Valid GPU types depend on the cluster. If unset, uses each block's size class mapped through `CHAPERONE_GRES_MAP`, else `gpu:1` |
 | `--account=<str>`, `--qos=<str>` | SLURM `--account` / `--qos` for all blocks. If unset, `CHAPERONE_DEFAULT_ACCOUNT` / `CHAPERONE_DEFAULT_QOS` |
 | `--extra_sbatch=<str>` | Extra long `sbatch` options for all blocks, space-separated and quoted, e.g. `--extra_sbatch='--reservation=mine --mail-type=END'` |

@@ -6,7 +6,7 @@ allowed-tools: ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
 
 # SLURM Background Submission
 
-> **IPD-specific values.** Partition names, GRES types, and `/net/scratch` paths below are the Baker-lab / IPD cluster's. On another cluster, set your own in `.env.local`.
+Configure your cluster's partition names, GPU types, and shared run directories in `.env.local` or a file selected by `CHAPERONE_ENV_FILE`.
 
 Run work **detached** on the cluster. Prefer one autonomous campaign driver that
 contains its bounded theories, stages, scorer calls, and promotion rules. The
@@ -31,7 +31,7 @@ Use **interactive** (`slurm-interactive` skill) when you're iterating command-by
 The engine submits each block to SLURM via submitit, auto-chunking rows across jobs. Pass `job_args` as a dict or a `JobArgs`; only the fields you set override the block's defaults:
 
 ```python
-engine = ExecutionEngine(rundir="/net/scratch/$USER/run")
+engine = ExecutionEngine(rundir="/path/to/shared/scratch/run")
 engine.run(blocks, job_args={"mem_gb": 32, "time_limit": "24:00:00",
                              "rows_per_job": 10})
 ```
@@ -40,7 +40,7 @@ Leave `partition` and `gres` out unless you need to change them: the block's CPU
 
 | `job_args` field | Default | Notes |
 |---|---|---|
-| `partition` | block's class, mapped by the site | A real partition name, passed to `sbatch` as-is. `None` means `CHAPERONE_DEFAULT_PARTITION`, else the cluster default. At IPD: `gpu` (priority, tests/pilots), `gpu-bf` (backfill, production). |
+| `partition` | block's class, mapped by the site | A real partition name, passed to `sbatch` as-is. `None` means `CHAPERONE_DEFAULT_PARTITION`, else the cluster default. |
 | `gpu_class` | block default | Portable GPU size, `small` or `large`. The site maps it to a `gres` (`CHAPERONE_GRES_MAP`); unmapped it is `gpu:1`. |
 | `gres` | from `gpu_class` | A literal `--gres` string, passed to `sbatch` unchecked, so valid GPU types are whatever your cluster registers. Beats `gpu_class`. |
 | `account` / `qos` | site default | `--account` / `--qos`. Defaults: `CHAPERONE_DEFAULT_ACCOUNT` / `CHAPERONE_DEFAULT_QOS`. |
@@ -55,7 +55,7 @@ Precedence, highest first: CLI flags (`--partition`, `--gres`, `--account`, `--q
 
 ### Site configuration
 
-A site sets these once, in `.env.local` (or `.env.ipd` for IPD). With none set, nothing cluster-specific is submitted: no `--partition`, and `--gres=gpu:1` for GPU blocks.
+A site sets these once, in `.env.local` or a file selected by `CHAPERONE_ENV_FILE`. With none set, nothing cluster-specific is submitted: no `--partition`, and `--gres=gpu:1` for GPU blocks.
 
 | Setting | Meaning |
 |---|---|
@@ -67,7 +67,6 @@ A site sets these once, in `.env.local` (or `.env.ipd` for IPD). With none set, 
 
 Find your cluster's values with `sinfo -o "%P %G %l"`. A map set in the environment is merged key by key with one in a `.env*` file.
 
-**IPD values** (from `.env.ipd`, loaded automatically at IPD): `CHAPERONE_DEFAULT_PARTITION=cpu`, `CHAPERONE_GPU_PARTITION=gpu`, `CHAPERONE_GRES_MAP={"small": "gpu:small:1", "large": "gpu:large:1"}`. IPD registers size classes only, so a model name such as `gpu:a4000:1` is rejected there.
 
 - **Parallel metric overlays:** `engine.run_parallel(...)` runs independent update blocks concurrently. Sequential design pipelines use `engine.run([...])` with a list of blocks.
 - `engine.run` **blocks until the cluster jobs finish** (it is orchestrating them). To run the *driver itself* outside the model loop, use the Chaperone monitor's `launch_and_wait` tool (see #3).
@@ -115,18 +114,12 @@ valid. The waiter keeps no registration or monitor state and returns only on
 completion, failure, or an explicit timeout. Never implement a reasoning-loop
 polling cadence.
 
-## Partitions (IPD cluster)
+## Choose a partition
 
-These are IPD's. Other clusters differ: list yours with `sinfo -o "%P %G %l"`.
-
-| Partition | Time limit | Use |
-|---|---|---|
-| `gpu` | 7 day | normal priority — tests, pilots, anything you don't want preempted |
-| `gpu-bf` | 1 day | **backfill** — production/campaigns; cheaper on fair-share, more throughput, but **preemptible** |
-| `cpu` / `cpu-bf` | 7 day / 12 h | CPU equivalents |
-| `gpu-train*`, `gpu-em` | 7 day | specialized (training) |
-
-Guidance: **test/pilot on `gpu`, run production on `gpu-bf`.** The engine tolerates `gpu-bf` preemption — re-invoking re-runs only the incomplete chunks.
+List available partitions and GPU types with `sinfo -o "%P %G %l"`. Use your
+site's recommended interactive or normal queue for bounded tests and pilots.
+For production, use a preemptible/backfill queue only when the workload tolerates
+interruptions. Re-invoking the engine resumes incomplete chunks.
 
 ## Diagnose and manage after a wait wake-up
 
@@ -141,5 +134,5 @@ squeue -u $USER -o "%i %j %T %P %M %N"     # detailed (id, name, state, partitio
 sacct -j <jobid> -o JobID,State,Elapsed,MaxRSS,NodeList   # post-hoc accounting
 scancel <jobid>                            # cancel one
 scancel -u $USER -n <name>                 # cancel by name
-tail -f <rundir>/.pipeline/.../*.out       # logs (chaperone writes per-chunk logs under the rundir)
+tail -n 80 <rundir>/.pipeline/.../*.out       # logs (chaperone writes per-chunk logs under the rundir)
 ```

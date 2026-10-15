@@ -6,7 +6,6 @@ fields rather than reading os.environ directly in blocks.
 
 from __future__ import annotations
 
-import getpass
 import os
 import shutil
 from pathlib import Path
@@ -16,11 +15,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _find_env_files() -> tuple[str, ...]:
-    """Load portable defaults, an explicit site, then user overrides.
+    """Load portable defaults, explicit shared configuration, then user overrides.
 
-    CHAPERONE_SITE=digs opts into packaged defaults; a supplied .env.ipd is
-    loaded when present. Shared cluster directories never select a site. CHAPERONE_ENV_FILE can point at a shared site/user file;
-    .env.local and process environment values take precedence.
+    CHAPERONE_ENV_FILE selects a shared site/user file. Local dotenv files and
+    process environment values take precedence; filesystem layout never selects
+    cluster defaults.
     """
     env_files: list[str] = []
     project_root = next(
@@ -30,15 +29,11 @@ def _find_env_files() -> tuple[str, ...]:
     if (project_root / ".env").is_file():
         env_files.append(str(project_root / ".env"))
     site = os.environ.get("CHAPERONE_SITE", "portable")
-    if site not in {"portable", "digs"}:
-        raise ValueError("CHAPERONE_SITE must be portable or digs")
-    if site == "digs":
-        env_files.append(str(Path(__file__).parent / "site_profiles" / "digs.env"))
-    # A supplied (untracked) IPD file is an explicit opt-in, even without a site
-    # flag. Installed wheels also accept the file in the working directory.
-    ipd_file = project_root / ".env.ipd"
-    if ipd_file.is_file():
-        env_files.append(str(ipd_file))
+    if site != "portable":
+        raise ValueError(
+            "Packaged CHAPERONE_SITE presets are no longer supported. "
+            "Use CHAPERONE_ENV_FILE=/absolute/path/to/site.env or .env.local."
+        )
     home_env = Path("~/.env.chaperone").expanduser()
     if home_env.is_file():
         env_files.append(str(home_env))
@@ -76,10 +71,7 @@ def _resolve_container_backend(value: str) -> str:
 
 
 def _get_default_chaperone_root() -> Path:
-    """Get default CHAPERONE_ROOT, resolving user properly."""
-    user = getpass.getuser()
-    if os.environ.get("CHAPERONE_SITE") == "digs":
-        return Path(f"/net/scratch/{user}/chaperone")
+    """Resolve relative run directories under the current working directory."""
     return Path.cwd()
 
 
@@ -111,7 +103,7 @@ class ChaperoneSettings(BaseSettings):
     )
     CHAPERONE_ROOT: Path = Field(
         default_factory=_get_default_chaperone_root,
-        description="Root directory for resolving relative rundirs. Defaults to the working directory (digs: /net/scratch/{user}/chaperone).",
+        description="Root directory for resolving relative rundirs. Defaults to the working directory.",
     )
     ENFORCE_RELATIVE_RUNDIR: bool = Field(
         default=False,

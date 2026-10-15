@@ -9,7 +9,8 @@ from blocks.networks.mpnn import (
     _MPNN_NUMPY_COMPATIBILITY_PATCH,
 )
 
-FOUNDRY_REVISION = "1178aba6ee8ab34ed97ee5dddc32872cfb91cf81"
+# Use the merged production commit: squash-merged PR heads are absent from fresh clones.
+FOUNDRY_REVISION = "94b766fa7c62d43d0795d24ff1353de0076065f5"
 # RFO needs independent environments: Boltz's NumPy constraint conflicts with
 # current Foundry/AtomWorks. No external installations or nested containers.
 RFOPTIMIZATION_CONTAINER = (

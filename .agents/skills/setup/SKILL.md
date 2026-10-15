@@ -47,19 +47,16 @@ Do not replace an existing GPU Torch installation needed by other local work.
 Then install the framework (also use this if its import failed in an existing venv):
 
 ```bash
-uv pip install -e '.[all]' --override overrides.txt
+uv pip install -e '.[all]'
 ```
 
 ### 2. Select site configuration
 
-Portable defaults apply when no site file is supplied. Do not infer the site
-from the existence of `/projects` or `/net`.
-
-For IPD, accept the user's `.env.ipd` in the checkout root (untracked); it is
-loaded automatically when present. Alternatively export `CHAPERONE_SITE=digs`
-before starting Python to select packaged IPD defaults. Users can point
-`CHAPERONE_ENV_FILE` at a shared or external dotenv file. An existing supplied
-site file is authorization to use its settings; do not ask again.
+Portable defaults apply when no site file is supplied. Select cluster settings
+explicitly with `CHAPERONE_ENV_FILE=/absolute/path/to/site.env`, or put local
+settings in `.env.local`. An existing supplied site file is authorization to use
+its settings; do not ask again. Institutional presets are not packaged, and
+legacy site filenames are not loaded automatically.
 
 Verify configured containers/weights exist before skipping their installation.
 Continue the compute checks: a configured path alone does not prove availability.
@@ -115,15 +112,12 @@ CHAPERONE_GRES_MAP='{"small":"gpu:a100:1","large":"gpu:h100:1"}'
 ```
 
 With these unset, blocks omit `--partition` and GPU blocks request `gpu:1`.
-IPD uses partitions `cpu`/`gpu` and types `gpu:small:1`/`gpu:large:1`.
 Process `CHAPERONE_GRES_MAP` overrides merge by key with dotenv settings.
 `CHAPERONE_DEFAULT_ACCOUNT` and `CHAPERONE_DEFAULT_QOS` are optional.
 Inspect resolved settings and run the smallest relevant block before a campaign.
 
 **Important: `.env` file structure:**
 - `.env` — generic defaults, checked into git (do NOT write user-specific values here)
-- `.env.ipd` — optional supplied IPD settings, gitignored, loaded when present
-- `CHAPERONE_SITE=digs` — optional packaged IPD preset
 - `~/.env.chaperone` / `CHAPERONE_ENV_FILE` — optional user/shared overrides
 - `.env.local` — user-specific overrides, gitignored (write overrides here)
 
@@ -154,7 +148,7 @@ python -c "from chaperone import get_settings; s = get_settings(); print(f'Compu
 
 ### 5b. Check External Dependencies & Data
 
-Check for external data mirrors, weight caches, and binaries that various blocks depend on. These are **optional** — only needed for specific blocks. At IPD a supplied `.env.ipd` or `CHAPERONE_SITE=digs` supplies these paths. Verify they exist.
+Check for external data mirrors, weight caches, and binaries that various blocks depend on. These are **optional** — only needed for specific blocks. Configure paths in `.env.local` or your selected shared dotenv file. Verify they exist.
 
 Run this check to see what's configured:
 ```bash
@@ -211,7 +205,7 @@ Present the results as a table showing what's set and what's missing. Then use `
 
 **For `PYROSETTA_PATH`** (PyRosetta-backed blocks):
 - This should point at the PyRosetta `setup/` directory (for example `/path/to/pyrosetta/setup`).
-- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]' --override overrides.txt` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
+- Use an importable PyRosetta installation, configure an existing setup path in `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]'` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
 
 Write any user-provided paths to `.env.local` using the same pattern as step 5:
 ```bash
@@ -260,7 +254,9 @@ image. On a cluster that forbids execution on login nodes, use a CPU allocation
 via the Slurm skill. Do not build containers inside a benchmark agent trial.
 
 **Containers alone are not a full evaluation installation.** Complete the
-prerequisite table and runtime-image instructions in `docs/site/evaluations.md`:
+installation and runtime-image instructions in the separate private
+[chaperone-evals repository](https://github.com/Ubiquinone-dot/chaperone-evals).
+`docs/site/evaluations.md` explains that boundary. In particular:
 
 - Install the separate harness project with its bootstrap script; authenticate
   the host Codex executable with the intended model provider.
@@ -345,7 +341,7 @@ pre-commit install
 **Open documentation:**
 ```bash
 source .venv/bin/activate
-uv pip install -e '.[docs]' --override overrides.txt
+uv pip install -e '.[docs]'
 python docs/site/gen_block_docs.py
 mkdocs build && mkdocs serve &
 sleep 1 && open http://127.0.0.1:8000

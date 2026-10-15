@@ -565,16 +565,6 @@ class Image:
                     "Apptainer directly"
                 )
                 cmd = apptainer_cmd
-                # ``--containall --no-mount bind-paths`` deliberately removes
-                # Apptainer's implicit host mounts.  Cluster sandboxes and
-                # most tool images live under /projects, so direct fallback
-                # must restore both path spellings used by existing tools.
-                # The private-namespace wrapper provides these mounts itself.
-                destinations = {dst for _, dst in all_binds}
-                if Path("/projects").is_dir() and "/projects" not in destinations:
-                    all_binds.append(("/projects", "/projects"))
-                if Path("/projects").is_dir() and "/mnt/projects" not in destinations:
-                    all_binds.append(("/projects", "/mnt/projects"))
             for src, dst in all_binds:
                 cmd.extend(["--bind", f"{src}:{dst}"])
             for key, val in all_env.items():

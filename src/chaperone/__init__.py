@@ -87,7 +87,7 @@ def get_setting_field(name: str, default=_UNSET, *, check_bin: bool = False):
         else:
             raise ValueError(
                 f"Setting {name!r} is not configured. "
-                f"Set it in .env, .env.ipd, .env.local, or as an environment variable."
+                f"Set it in .env, .env.local, CHAPERONE_ENV_FILE, or as an environment variable."
             )
 
     # Optional executable lookup via PATH

@@ -4,8 +4,8 @@ Install the optional client and authenticate with your Modal workspace:
 
 ```bash
 uv pip install -e '.[cloud]'
-modal token set --profile=baker-laboratory
-modal profile activate baker-laboratory
+modal token set --profile=my-workspace
+modal profile activate my-workspace
 export CHAPERONE_COMPUTE_BACKEND=modal
 ```
 
@@ -87,56 +87,15 @@ The mounted volumes persist between Sandbox attempts; chunk workspaces do not.
 Local-only SIF images, editable host checkouts, private-repository image builds,
 and arbitrary `command_template` overrides are not automatically portable.
 Explicit host binds require a corresponding configured Modal volume.
-RFD3NA retains its explicit cloud checkpoint guard. Scientific blocks beyond
-those listed in the validation record below require their own smoke test.
+RFD3NA retains its explicit cloud checkpoint guard. Run a small smoke test for each scientific block and checkpoint combination.
 
-## Validation and history
+## Smoke tests
 
-The predecessor `baker-laboratory/pipelines` added Modal in PR #160
-(`706cf6ef`) and hermetic staging in PR #197. The public Chaperone repository's
-initial commit (`b1df7bc`) retained documentation/examples but omitted the
-runner, cloud tests, settings and staging behavior. This implementation uses
-the current Chaperone block lifecycle and Modal's Sandbox filesystem API.
-
-On 2026-10-13, a live CPU run in the Baker Laboratory workspace passed input
-upload, remote file copying, output download, lineage and disk-cache replay.
-GPU allocation initially required a payment method. After workspace billing
-was enabled, the A10G smoke passed remote execution, output download and cache
-replay, and reported an NVIDIA A10G.
-
-The public ProteinMPNN image also built and ran successfully on a Modal CPU
-Sandbox. It generated two eight-residue sequences, preserved the input chain
-ID, and passed disk-cache replay. This smoke exposed and repaired multiline
-Dockerfile `RUN` serialization. Runtime and container regression tests passed
-(89 checks), as did the strict documentation build. Execution records identify
-the Modal Sandbox and count its allocation, rather than inheriting GPU counts
-or Slurm job IDs from the controller.
-
-The MPNN GPU smoke subsequently passed on A10G, including a CUDA tensor
-operation in the model image, two eight-residue sequences from its default
-LigandMPNN checkpoint, preserved chain ID and cache replay. This validates the
-Modal GPU execution path.
-
-The pinned Foundry CUDA image also built from source on Modal and passed
-`pip check`, Apex/CUDA imports and RFD3/RFD3NA/RF3/MPNN imports. Live RFD3 and
-RF3 tests then passed on the same image, using checkpoints mounted from a
-Modal volume. The runtime probe verified Foundry revision `c97ad246`, AtomWorks
-`2.2.1`, Biotite `1.4.0` and PyTorch `2.11.0+cu128`. The `A10G` request reported
-NVIDIA A10 hardware inside both Sandboxes.
-
-| Test | Settings | Result |
-| --- | --- | --- |
-| RFD3 | One 32-residue design, 200 steps, seed 42 | 241 atoms, finite coordinates, 51.25 recorded GPU seconds |
-| RF3 | One 32-residue sequence, 50 steps, 10 recycles, seed 42, early stopping disabled | 253 atoms, finite coordinates, pLDDT 0.7404, no clash flag, 34.76 recorded GPU seconds |
-
-Both tests passed output retrieval, compilation, expected sequence length and
-cache replay with exactly one remote execution record per model. Sandboxes
-were terminated afterward; the checkpoint volume is retained for reuse.
-The two tests took 96 seconds after the fresh image build. These short
-protein-only tests establish runtime functionality, not scientific quality,
-AtomWorks 3 equivalence, MSA/ligand coverage or production-scale behavior.
-Machine-readable evidence, checkpoint hashes and Sandbox IDs are recorded in
-`docs/validation/modal_foundry_2026-10-13.json` in the repository.
+The current Foundry recipes use AtomWorks 3. Rebuild cached images after changing
+recipe revisions and verify the installed versions before comparing results.
+The commands below exercise execution, output retrieval and caching; passing
+smoke tests does not establish scientific quality or equivalence between model
+versions.
 
 The ordinary regression suite performs no cloud submissions. Live tests are
 opt-in and may incur Modal charges:

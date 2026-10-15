@@ -94,7 +94,7 @@ RFD3, MPNN, MpnnScore, AF3, RMSD, IpSAE, ContactMS, Peppr, Filter = Blocks.getal
 # Resources for the bundled chunk (rfd3 → mpnn → af3 → rmsd → ipsae → filter).
 # Templated AF3 with variable-length binders wants the headroom of a large GPU
 # (~48 GB); GPU blocks get one, CPU blocks (mpnn, metrics) get none. The site maps
-# the "large" class to a real --gres through CHAPERONE_GRES_MAP (at IPD, gpu:large:1),
+# the "large" class to a real --gres through CHAPERONE_GRES_MAP,
 # and to a partition through CHAPERONE_GPU_PARTITION. Use "small" if your queue is
 # contended and the model fits.
 JOB_ARGS = {"gpu_class": "large", "mem_gb": 16}

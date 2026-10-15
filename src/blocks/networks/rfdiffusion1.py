@@ -48,7 +48,7 @@ Important:
 Container
 =========
 The container mounts model weights at runtime from ``RFDIFFUSION_WEIGHTS_DIR``
-(see ``.env.ipd``). The container itself contains the RFdiffusion code and
+(see ``.env.local``). The container itself contains the RFdiffusion code and
 dependencies (PyTorch, DGL, SE3-Transformer) but NOT the ~2.3 GB of model weights.
 
 The ``--writable-tmpfs`` apptainer flag is required because RFdiffusion writes

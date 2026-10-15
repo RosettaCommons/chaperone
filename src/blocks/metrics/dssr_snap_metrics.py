@@ -745,7 +745,7 @@ class DSSRSnapMetricsBlock(InlineMetricBlock):
             if not bin_path:
                 raise RuntimeError(
                     f"{self._name}: {attr} is not set. Configure X3DNA_BIN_DIR "
-                    f"in .env.ipd (or .env.local), or pass --{self._name}.{attr}=...."
+                    f"in .env.local or CHAPERONE_ENV_FILE, or pass --{self._name}.{attr}=...."
                 )
             if not Path(bin_path).exists():
                 raise FileNotFoundError(

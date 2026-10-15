@@ -8,12 +8,17 @@ import sys
 import chaperone
 from blocks import Blocks
 from chaperone import ExecutionEngine, PipelineDataHandler
+from chaperone.io import parse_to_atom_array
+import numpy as np
 
 assert metadata.metadata("chaperone-pipelines")["Name"] == "chaperone-pipelines"
+assert metadata.version("atomworks").split(".")[0] == "3"
 assert Path(chaperone.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
+assert not resources.files("chaperone").joinpath("site_profiles/digs.env").is_file()
+assert not (Path(chaperone.__file__).resolve().parent.parent / "chaperone-evals").exists()
 for command in ("--help", "list-blocks", "list-available"):
     subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)
-for package, filename in [("chaperone", "site_profiles/digs.env"), ("blocks", "scripts/ddg_protocol.xml")]:
+for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "utils/params/FAD.params")]:
     assert resources.files(package).joinpath(filename).is_file(), filename
 
 with tempfile.TemporaryDirectory() as directory:
@@ -34,4 +39,15 @@ with tempfile.TemporaryDirectory() as directory:
     cached = ExecutionEngine(**options).run(Blocks["copy"](n_multiply=2), data=data)
     assert len(cached) == 2
     assert output.stat().st_mtime_ns == mtime
-print("PASS installed distribution assets, CPU execution, and cache replay")
+    # Exercise the installed AtomWorks/CatCIF integration, including cleanup.
+    original = parse_to_atom_array(str(pdb))
+    data.store("input", root / "packed.catcif", cleanup=True)
+    restored = next(data.get_data(load=True, which="last"))
+    assert ".catcif:" in restored.path
+    assert not pdb.exists()
+    np.testing.assert_allclose(original.coord, restored.atom_array.coord, atol=1e-3)
+    for annotation in ("chain_id", "res_id", "res_name", "atom_name"):
+        np.testing.assert_array_equal(
+            getattr(original, annotation), getattr(restored.atom_array, annotation)
+        )
+print("PASS installed assets, CPU execution, cache replay, and CatCIF roundtrip")

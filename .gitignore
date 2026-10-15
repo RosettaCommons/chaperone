@@ -84,7 +84,7 @@ smol_binder_design/
 .claude/worktrees/
 analysis/
 
-# Site/user configuration is local; optional digs defaults are an explicit preset.
+# Site/user configuration is local, including legacy local site files.
 .env.ipd
 
 # Distribution build products

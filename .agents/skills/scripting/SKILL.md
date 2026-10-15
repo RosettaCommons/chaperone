@@ -74,7 +74,7 @@ print(df)
 1. The shebang line can be used to make environment activation easier to run it as: `./script.py <flags>`
 2. `init_cli()` must be called at the top of the file. This registers all block flags + global flags, sets up `absl` to handle args, and sets up logging.
 3. Use `SCRIPT_DIR` for relative paths — scripts should be portable.
-4. Set `rundir` to where production outputs go (e.g. `/net/scratch/...`).
+4. Set `rundir` to where production outputs go (e.g. `/path/to/shared/scratch/run`).
 5. CLI flags override everything — script kwargs are just defaults for the production run.
 6. **Split config from execution**: use `Blocks.getall()` to load block classes, configure all blocks as a list, then pass the list to a single `engine.run(blocks)` call. Only break into multiple `engine.run()` calls when branching logic is required (e.g. `engine.cycle`, conditional filtering, `engine.run_parallel`).
 7. **Raw structures are not tables**: the plain `ingest` block loads `.csv` or
@@ -123,7 +123,7 @@ Requires GNU coreutils `env` with `-S` support. Portable fallback: `#!/usr/bin/e
 
 **Global flags:** `--rundir`, `--recompile`, `--force_exec`, `--local`, `--nouse_local_gpus`, `--partition`, `--gres`, `--account`, `--qos`, `--extra_sbatch`. Run any pipeline script with `--help` for the full flag list.
 
-**Slurm resources.** Blocks ask for a CPU or GPU job and, for GPU blocks, a size class (`small` / `large`). The site settings `CHAPERONE_DEFAULT_PARTITION`, `CHAPERONE_GPU_PARTITION` and `CHAPERONE_GRES_MAP` turn that into a real partition and `--gres`; unset, jobs get no `--partition` and `--gres=gpu:1`. Don't hard-code partition or GPU names in scripts you share. To change them for one run use `--partition` / `--gres`, or `job_args` (`{"gpu_class": "large"}` is portable). CLI flags beat `job_args`, which beat the block default, which beats the site setting. See the `slurm-background` skill for the full list. On IPD, `.env.ipd` supplies the mapping.
+**Slurm resources.** Blocks ask for a CPU or GPU job and, for GPU blocks, a size class (`small` / `large`). The site settings `CHAPERONE_DEFAULT_PARTITION`, `CHAPERONE_GPU_PARTITION` and `CHAPERONE_GRES_MAP` turn that into a real partition and `--gres`; unset, jobs get no `--partition` and `--gres=gpu:1`. Don't hard-code partition or GPU names in scripts you share. To change them for one run use `--partition` / `--gres`, or `job_args` (`{"gpu_class": "large"}` is portable). CLI flags beat `job_args`, which beat the block default, which beats the site setting. See the `slurm-background` skill for the full list. Configure a shared site file with `CHAPERONE_ENV_FILE` or use `.env.local`.
 
 ### Block-specific flags
 
@@ -158,7 +158,7 @@ blocks = [
     RFD3(inputs=str(DATA_DIR / "rfd3_config.json"), batch_size=32, n_batches=100),
 ]
 
-engine = ExecutionEngine(rundir="/net/scratch/user/fad_binders")
+engine = ExecutionEngine(rundir="/path/to/shared/scratch/fad_binders")
 engine.run(blocks)
 
 # Cycling requires multiple engine.run calls (branching logic)
@@ -171,8 +171,8 @@ for cycle_engine in engine.cycle("opt", 5):
 
 In general, adopt a three-stage build-process:
 1. Test the script on a minimal compute task (one design for everything) to ensure everything looks good. Ideally the user has provided you a GPU (and use `--use_local_gpus`), and you use a temporary directory (`--rundir=/tmp/test_fad`).
-2. Pilot the script to probe pass rates. At IPD, pilot runs are often on partition `gpu` or `gpu-bf` depending on urgency.
-3. Production scale design: taking pilot example further or scaling the raw number of designs generated to get better hits. At IPD, production runs are almost always on partition `gpu-bf` (`--partition=gpu-bf`). Elsewhere, use the partition your site recommends for large preemptible or backfill work, if it has one.
+2. Pilot the script to probe pass rates. Use the configured GPU partition and a bounded runtime.
+3. Production scale design: taking pilot example further or scaling the raw number of designs generated to get better hits. Use the partition your site recommends for large preemptible or backfill work, if it has one.
 
 Steps 2. and 3. can sometimes be merged depending on user requests and constraints.
 

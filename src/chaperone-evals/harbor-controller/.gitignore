@@ -1,8 +1,0 @@
-.venv/
-# Run output; a symlink to scratch on hosts that have one (see _jobs_root)
-jobs
-jobs/
-snapshots/*
-__pycache__/
-*.pyc
-.env

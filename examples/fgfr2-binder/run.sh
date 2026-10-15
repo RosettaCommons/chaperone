@@ -31,7 +31,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # If you DO pass them:
 #   1. A global --partition applies to GPU blocks only and strips the GPU type from
 #      their gres (e.g. gpu:large:1 → gpu:1). If your cluster requires a type, also
-#      pass GRES. (IPD backfill: PARTITION=gpu-bf GRES=gpu:large:1.)
+#      pass GRES.
 #   2. A global --gres applies to GPU blocks only; CPU blocks like MPNN keep none.
 PARTITION="${PARTITION:-}"
 GRES="${GRES:-}"
@@ -63,7 +63,7 @@ case "$MODE" in
         ;;
     prod)
         RUNDIR="${RUNDIR:-$RUNS_BASE/prod}"
-        # NOTE: a backfill partition (IPD: gpu-bf) suits production, but a
+        # NOTE: a site-provided backfill partition suits production, but a
         # global --partition strips the GPU type from each block's gres. Set both,
         # e.g. PARTITION=gpu-bf GRES=gpu:large:1, if your cluster needs a type.
         ORCH_TIME="${ORCH_TIME:-12:00:00}"

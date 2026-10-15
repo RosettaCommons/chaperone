@@ -313,8 +313,8 @@ def test_apptainer_runs_directly_when_private_mount_namespace_is_unavailable(
 
     assert command[:2] == ["apptainer", "exec"]
     assert "unshare" not in command
-    assert "/projects:/projects" in command
-    assert "/projects:/mnt/projects" in command
+    assert "/projects:/projects" not in command
+    assert "/projects:/mnt/projects" not in command
 
 
 def test_apptainer_keeps_private_mount_wrapper_when_supported(monkeypatch):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from importlib.util import find_spec
 import polars as pl
 import pytest
 from chaperone_cli.campaign_inspect import InspectError, inspect_campaign
@@ -179,7 +180,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 def test_init_cli_supports_conventional_help_flags():
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = str(REPO / "src")
+    environment["PYTHONPATH"] = str(Path(find_spec("chaperone").origin).parent.parent)
     for help_flag in ("-h", "--help", "--helpshort", "--helpfull"):
         result = subprocess.run(
             [
@@ -325,7 +326,7 @@ def test_mcp_exposes_wait_launch_and_inspect_from_chaperone(tmp_path: Path):
     )
     environment = os.environ.copy()
     environment["HARBOR_HOST_WORKSPACE"] = str(tmp_path)
-    source = str(Path(__file__).resolve().parents[1] / "src")
+    source = str(Path(find_spec("chaperone").origin).parent.parent)
     environment["PYTHONPATH"] = source + (
         os.pathsep + environment["PYTHONPATH"] if environment.get("PYTHONPATH") else ""
     )

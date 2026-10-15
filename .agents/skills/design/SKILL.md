@@ -35,7 +35,7 @@ You MUST use the `AskUserQuestion` tool to gather the following details before c
 
 **Question 1 — Output location** (header: "Location"):
 - `examples/[pipeline_name]` — Standard examples directory (Recommended)
-- `/net/scratch/$USER` - Standard for large runs
+- A user-configured shared scratch directory for large runs
 Options should also include "Other" (automatically provided by AskUserQuestion).
 
 **Question 2 — Implementation depth** (header: "Depth"):
@@ -110,4 +110,4 @@ See the `/auto-research` skill if the pilots stall or the scorer shows no signal
 
 In general, you should **never** run the campaign scale test without explicitly asking to do so. Typically the previous steps (1,2 and 3) should provide you with sufficient confidence in the pipeline to run at scale, giving you enough to propose a plan for the campaign-scale run.
 
-You should use the `/order-designs` skill after the final designs have been made, to convert the outputs into directly orderable genes. This skill will also detail any additional necessary procedures to appropriately log the outputs and summary of the pipeline.
+Use `/order-collection` to package the selected structures, scores, and pipeline summary. Gene synthesis preparation requires a separately installed tool and the user's requested ordering specification.

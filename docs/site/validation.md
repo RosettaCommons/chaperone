@@ -27,7 +27,7 @@ needs no other input. Any `.csv` or `.parquet` with these columns works.
 
 ## Settings
 
-Set these in `.env.local` for your installation. IPD users can supply an untracked `.env.ipd`; it is optional and is not distributed as an active configuration:
+Set these in `.env.local` or a file selected by `CHAPERONE_ENV_FILE`:
 
 | Setting | Used for |
 |---------|----------|

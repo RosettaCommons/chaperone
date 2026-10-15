@@ -3,7 +3,7 @@
 `bindcraft2` wraps [PacesaLab/BindCraft2](https://github.com/PacesaLab/BindCraft2),
 pinned to revision `c0ee638d11bc010817c2c97ee58ed5c323e664e2` (package 1.0.3).
 It runs JAX/AlphaFold2 binder optimization, the bundled ProteinMPNN redesign,
-and held-out AlphaFold2 validation. Returned structures are accepted, refolded
+and validation with AlphaFold2 models separate from optimization. Returned structures are accepted, refolded
 **target–binder complexes with side chains**, accompanied by their native scores.
 
 This initial interface supports the upstream `binder` modality against **one

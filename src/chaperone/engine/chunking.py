@@ -442,7 +442,7 @@ def execute_chunk_job(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-# /net/scratch mounts with acregmax=acdirmax=120 AND nocto, so close-to-open
+# NFS mounts can use acregmax=acdirmax=120 AND nocto, so close-to-open
 # revalidation is off. A readdir bust clears a stale negative dentry most of the
 # time, but not always, so recovery is bounded by something that clears the 120s
 # TTL rather than by the bust alone. The wait is only ever paid when a chunk
@@ -680,7 +680,7 @@ def execute_chunks(
     # filter_cached_chunks() stat()'d every output path, caching negative
     # DNLC entries ("doesn't exist") for files SLURM hadn't written yet.
     # The old code slept out the whole attr-cache TTL (up to ~120s of dead
-    # wall-clock, per the /net/scratch acregmax=acdirmax=120 mount config)
+    # wall-clock, allowing an NFS acregmax=acdirmax=120 mount configuration)
     # before reading. Instead,
     # actively force a fresh readdir on each step's output directory: that
     # invalidates the stale negative entries so concat_outputs() sees the

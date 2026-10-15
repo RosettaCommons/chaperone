@@ -14,7 +14,8 @@ from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 
-_FOUNDRY_REVISION = "1178aba6ee8ab34ed97ee5dddc32872cfb91cf81"
+# Use the merged production commit: squash-merged PR heads are absent from fresh clones.
+_FOUNDRY_REVISION = "94b766fa7c62d43d0795d24ff1353de0076065f5"
 # Pin the upstream AtomWorks 3 port together with its supported Biotite version.
 _FOUNDRY_DEPENDENCIES = (
     "'atomworks[ml]==3.0.1' 'biotite==1.6.0' 'lightning==2.6.1' 'numpy==2.4.3'"

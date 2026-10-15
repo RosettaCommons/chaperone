@@ -485,7 +485,6 @@ def compile_rfd3(sandbox_dir, name="rfd3"):
 ###########################################################################
 
 
-# TODO: This is duplicate code with modelhub projects.
 def ensure_input_is_abspath(args: dict, path: str | None):
     """
     Ensures the input source is an absolute path if exists, if not it will convert

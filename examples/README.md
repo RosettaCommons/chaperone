@@ -34,7 +34,7 @@ examples/{example-name}/
 ```
 
 `pipeline.py` should only configure and run blocks. Inputs come from
-`FILES_DIR = SCRIPT_DIR / "files"`, settings from `.env.local` (or a supplied, untracked `.env.ipd` at IPD), or the command line.
+`FILES_DIR = SCRIPT_DIR / "files"`, settings from `.env.local` or `CHAPERONE_ENV_FILE`, or the command line.
 If a pipeline needs bespoke logic, keep it in a small module beside the script and
 promote it to `src/blocks/` once it is general.
 

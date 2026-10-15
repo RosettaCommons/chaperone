@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from importlib.util import find_spec
 import shutil
 import subprocess
 import sys
@@ -54,7 +55,7 @@ else:
 
 def run_python(source, cwd, *arguments):
     env = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR") if key in os.environ}
-    env.update({"PYTHONPATH": str(ROOT / "src"), "MPLCONFIGDIR": str(cwd / ".mpl")})
+    env.update({"PYTHONPATH": str(Path(find_spec("chaperone").origin).parent.parent), "MPLCONFIGDIR": str(cwd / ".mpl")})
     completed = subprocess.run(
         [sys.executable, "-c", source, *map(str, arguments)],
         cwd=cwd, env=env, text=True, capture_output=True, timeout=90,

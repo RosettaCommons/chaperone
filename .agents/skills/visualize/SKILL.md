@@ -109,24 +109,9 @@ with open("/tmp/1qys.pdb") as f:
 
 Chaperone can consolidate step outputs into `.catcif` archives (see README → *Storage formats and cleanups*). Handler paths look like `/path/to/archive.catcif:entry_id`.
 
-The recommended setup is to install the PyMOL helper once in `~/.pymolrc`:
-
-```
-run /net/software/lab/catcif_tools/utils/pymol_load_catcif.py
-```
-
-With that loaded, PyMOL's built-in `load` handles catcif paths natively — both via RPC and drag-and-drop:
-
-```python
-# single entry
-s.load("/path/to/rfd3.chunk_0.catcif:design_0")
-
-# entire archive (capped at 100 structures by default; raise with catcif_max_load)
-s.load("/path/to/rfd3.chunk_0.catcif")
-s.do("catcif_max_load 500")   # or `catcif_max_load 0` for no limit
-```
-
-If the helper isn't installed, fall back to resolving the entry in Python and sending it via `read_pdbstr` (convert CIF → PDB as shown above):
+Resolve each archive entry with Chaperone, then send it to PyMOL via
+`read_pdbstr` (convert CIF to PDB as shown above). This uses the installed CatCIF
+reader and requires no site-specific PyMOL plugin.
 
 ```python
 from chaperone.io import parse_to_atom_array

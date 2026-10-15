@@ -144,7 +144,6 @@ class LoadedStructure:
         if path is not None:
             self.path = path
         if metadata is not None:
-            # TODO: Check metadata
             self.metadata = {**self.metadata, **metadata}
         if metrics is not None:
             self.metrics = {**self.metrics, **metrics}

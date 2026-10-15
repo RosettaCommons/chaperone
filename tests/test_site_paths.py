@@ -1,15 +1,8 @@
-"""Guard: tracked files must not carry digs (IPD) site paths outside an allowlist.
+"""Guard against institutional paths in portable code, docs, and skills.
 
-Site paths belong in ``src/chaperone/site_profiles/digs.env`` and the evals
-harness. Elsewhere they leak one site's layout into code and docs that should
-work anywhere. This test scans every tracked text file for ``/home/<user>``,
-``/net/``, ``/projects``, ``/mnt/home``, ``/software/`` and ``/databases/`` and
-fails on any line not covered by ``ALLOWED``.
-
-Each ALLOWED entry is ``(path regex, line regex, reason)``: a hit is excused only
-when its file matches the path *and* the line matches the pattern. Keep both
-narrow. To add a path, prefer moving it to the site profile; if it really is a
-deliberate on-prem fallback, add an entry with a reason.
+Cluster paths belong in user-owned configuration outside the distribution.
+Narrow exceptions cover container-internal paths, mount isolation guards and
+negative-test fixtures, never packaged institutional defaults.
 """
 
 from __future__ import annotations
@@ -37,29 +30,15 @@ def _files(*names: str) -> str:
 
 
 ALLOWED: list[tuple[str, str, str]] = [
-    # -- the digs site itself ------------------------------------------------
-    (r"^src/chaperone/site_profiles/", r"", "the digs profile is where site paths live"),
-    (r"^src/chaperone-evals/", r"", "the evals harness intentionally targets digs"),
-    # -- container search roots / default roots, gated on the site -----------
     (
         _files("src/chaperone/containers.py"),
         r'^\s*"(?:/mnt)?/(?:net(?:/scratch)?|projects|mnt/net/scratch|mnt/projects)",$',
         "roots a run directory must never be bound at (safety list)",
     ),
     (
-        _files("src/chaperone/containers.py", "src/chaperone_cli/job_wait.py"),
+        _files("src/chaperone_cli/job_wait.py"),
         r"/projects|/mnt/projects",
-        "default /projects bind (and its /mnt/projects alias) when the host has it",
-    ),
-    (
-        _files("src/chaperone/settings.py"),
-        r"/net/scratch/\{user\}/chaperone",
-        "default CHAPERONE_ROOT, used only when CHAPERONE_SITE=digs",
-    ),
-    (
-        _files("src/chaperone/engine/chunking.py"),
-        r"/net/scratch.*(?:acregmax|mounts)",
-        "comments describing the digs NFS attribute-cache behaviour",
+        "reject equivalent mount aliases when validating monitor confinement",
     ),
     # -- on-prem fallbacks in blocks ------------------------------------------
     (
@@ -72,40 +51,6 @@ ALLOWED: list[tuple[str, str, str]] = [
         r'"--model_dir=/databases/alphafold",',
         "container-internal AF3 fallback, overridden by configured model directory",
     ),
-    # -- docs and skills that say they are IPD / digs specific ---------------
-    (
-        _files("docs/site/evaluations.md"),
-        r"`/projects`|/net/scratch/\$USER/chaperone-evals",
-        "evals harness isolation and its digs run root",
-    ),
-    (
-        _files("docs/site/syntax.md"),
-        r"/net/scratch/\{user\}/chaperone",
-        "documents the digs default CHAPERONE_ROOT",
-    ),
-    (
-        _files("docs/extras/containers.md"),
-        r"/projects/ml",
-        "IPD example paths and the .env.ipd trigger",
-    ),
-    (
-        _files(
-            ".agents/skills/order-designs/SKILL.md",
-            ".agents/skills/rosetta-params/SKILL.md",
-        ),
-        r"/(?:net|software)/",
-        "skill states at the top that it is IPD-specific",
-    ),
-    (
-        _files(".agents/skills/slurm-background/SKILL.md"),
-        r"/net/scratch",
-        "skill states at the top that its values are IPD-specific",
-    ),
-    (
-        _files(".agents/skills/design/SKILL.md", ".agents/skills/scripting/SKILL.md"),
-        r"/net/scratch",
-        "IPD scratch used as the example run directory",
-    ),
     (
         _files(".agents/skills/scripting/SKILL.md"),
         r"/mnt/home|/home/user/chaperone",
@@ -116,19 +61,9 @@ ALLOWED: list[tuple[str, str, str]] = [
         r'\("/mnt/home", "/mnt/home"\)',
         "example of the standard bind roots",
     ),
-    (
-        _files(".agents/skills/setup/SKILL.md"),
-        r"`/projects` or `/net`",
-        "explains how IPD is detected",
-    ),
-    (
-        _files(".agents/skills/visualize/SKILL.md"),
-        r"/net/software/lab/catcif_tools/",
-        "IPD-only PyMOL helper",
-    ),
     # -- tests: fixtures that mirror the constants above ----------------------
     (
-        _files("tests/test_proteina_complexa.py", "tests/test_rfoptimization.py"),
+        _files("tests/test_proteina_complexa.py", "tests/test_rfoptimization.py", "tests/test_bindcraft2.py"),
         r'for site_path in |assert "/net/" not in recipe',
         "negative assertions that new recipes contain no institutional paths",
     ),
@@ -181,7 +116,7 @@ def test_no_unlisted_site_paths():
             continue
         problems.extend(_scan(relative, text))
     assert not problems, (
-        "Site paths found outside the allowlist. Move them to the site profile, "
+        "Site paths found outside the allowlist. Move them to external user configuration, "
         "or add a justified entry to ALLOWED in tests/test_site_paths.py:\n"
         + "\n".join(problems[:50])
     )

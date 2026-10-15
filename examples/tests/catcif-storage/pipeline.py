@@ -26,7 +26,7 @@ FILES_DIR = SCRIPT_DIR / "files"
 RUNDIR = SCRIPT_DIR / "rundir"
 
 # Partition and GPU type come from the blocks and the CHAPERONE_* site settings.
-# On IPD, run this on backfill with ``--partition=gpu-bf``.
+# Select your cluster’s GPU partition with ``--partition``.
 GPU = dict(time_limit="1:00:00")
 
 RFD3, MPNN, AF3, RMSD = Blocks.getall("rfd3", "mpnn", "af3", "rmsd")

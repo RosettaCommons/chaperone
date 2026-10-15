@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from importlib.util import find_spec
 import subprocess
 import sys
 import importlib.util
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def resolve(tmp_path, *arguments, success=True):
     env = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR") if key in os.environ}
-    env.update(PYTHONPATH=str(ROOT / "src"), MPLCONFIGDIR=str(tmp_path / ".mpl"),
+    env.update(PYTHONPATH=str(Path(find_spec("chaperone").origin).parent.parent), MPLCONFIGDIR=str(tmp_path / ".mpl"),
                CHAPERONE_GPU_PARTITION="portable-gpu",
                CHAPERONE_GRES_MAP='{"large": "gpu:b4000:1"}')
     proc = subprocess.run([sys.executable, str(ROOT / "tests/core_gpu_batch_smoke.py"),

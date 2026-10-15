@@ -46,7 +46,7 @@ def _pyrosetta_install_instructions() -> str:
         "If you already have PyRosetta, set PYROSETTA_PATH to its 'setup' "
         "directory (for example in .env.local). "
         "Otherwise install the helper with "
-        "uv pip install -e '.[pyrosetta]' --override overrides.txt "
+        "uv pip install -e '.[pyrosetta]' "
         "and then run "
         'python -c "import pyrosetta_installer; '
         'pyrosetta_installer.install_pyrosetta()".'

@@ -1,6 +1,6 @@
 # Agent Skills
 
-Chaperone includes 14 **agent skills**: focused guides for planning, running, and debugging protein-design workflows. Each guide is a Markdown file with YAML metadata at `.agents/skills/<name>/SKILL.md`. The guides describe repository conventions and scientific workflows that an agent can follow with access to the repository and the required tools.
+Chaperone includes **agent skills**: focused guides for planning, running, and debugging protein-design workflows. Each guide is a Markdown file with YAML metadata at `.agents/skills/<name>/SKILL.md`. The guides describe repository conventions and scientific workflows that an agent can follow with access to the repository and the required tools.
 
 ## Using skills with your agent
 
@@ -10,7 +10,7 @@ Start with the repository's [agent guide](https://github.com/RosettaCommons/chap
 
 Automatic skill discovery and commands such as `/design` depend on the agent application. If your application does not discover this directory, point it directly to the relevant `SKILL.md`. Slash names below are shorthand for the guides, not a promise that every application registers those commands. Tool names and optional permissions metadata may also need adapting to your application's capabilities.
 
-Skills provide instructions; they do not install the tools or grant access to compute. Running a workflow still requires the relevant Chaperone environment, containers, model assets, and execution backend. Some guides have additional requirements: Rosetta for ligand parameters, a running PyMOL XML-RPC server for visualization, or IPD infrastructure for the current DNA-ordering workflow. The interactive Slurm guide uses IPD's `qlogin` wrapper; adapt allocation commands to your cluster.
+Skills provide instructions; they do not install the tools or grant access to compute. Running a workflow still requires the relevant Chaperone environment, containers, model assets, and execution backend. Some guides have additional requirements: Rosetta for ligand parameters, a running PyMOL XML-RPC server for visualization. Use the allocation commands and GPU resource names supported by your cluster.
 
 The inventory below follows the [skills shipped in this repository](https://github.com/RosettaCommons/chaperone/tree/main/.agents/skills). Consult each source guide for its full procedure and prerequisites.
 
@@ -35,10 +35,9 @@ General skills for protein design workflows and peripheral tooling.
 | Skill | Purpose | Typical triggers |
 |-------|---------|------------------|
 | [`/rosetta-params`](#rosetta-params) | Generate/debug Rosetta `.params` files for ligands | "make a params file", "rotamer generation", "ligand charges" |
-| [`/order-designs`](#order-designs) | Generate DNA eblock orders from design PDBs | "order these designs", "generate eblocks" |
 | [`/order-collection`](#order-collection) | Package a campaign into a handoff bundle | "collect orders", "bundle designs", "prepare handoff" |
 | [`/visualize`](#visualize) | Send structures and commands to PyMOL via XML-RPC | "visualize", "show in PyMOL", "view structure" |
-| [`/slurm-interactive`](#slurm-interactive) | Persistent interactive SLURM session (GPU/CPU) via qlogin (IPD) | "get me a gpu", "allocate a gpu/cpu", "gpu session", "qlogin" |
+| [`/slurm-interactive`](#slurm-interactive) | Persistent interactive SLURM session (GPU/CPU) using your cluster’s allocation command | "get me a gpu", "allocate a gpu/cpu", "gpu session", "qlogin" |
 | [`/slurm-background`](#slurm-background) | Submit detached SLURM jobs for pilots/production/campaigns | "submit a job", "run in background", "production run", "sbatch" |
 | [`/notebook-editing`](#notebook-editing) | Edit, create, and execute Jupyter notebooks | any `.ipynb` interaction |
 
@@ -80,10 +79,6 @@ Diagnostic reference for the "silent" input failures that surface downstream: ch
 
 Everything needed to generate and debug Rosetta small-molecule `.params` files: molfile → params conversion, rotamer libraries, partial-charge assignment, and common failure modes at the Rosetta/PyRosetta boundary.
 
-### `/order-designs`
-
-Generates DNA eblock orders from design PDBs using the `cowboy-ssm` gene-order wrapper on IPD digs. The wrapper combines JohnBercow with preflight checks, quality control, and retries. This workflow requires the IPD tools and environment described in the source guide.
-
 ### `/order-collection`
 
 Packages a completed campaign into a handoff bundle: a compressed archive of prediction structures + confidence data, a reference CSV of metrics, and a human-readable summary for the wet lab.
@@ -94,7 +89,7 @@ Sends structures (CIF, PDB, pickle) and PyMOL commands to a running PyMOL sessio
 
 ### `/slurm-interactive`
 
-Holds a persistent **interactive** allocation on a GPU or CPU node via `qlogin` (IPD's wrapper; adapt the allocation command on other clusters) inside a `tmux` session, so the agent runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
+Holds a persistent **interactive** allocation on a GPU or CPU node using the cluster’s allocation command inside a `tmux` session, so the agent runs commands live in the *same* shell on the node (one allocation, one job step — not a job per command). Useful for fast iteration on a sequence of blocks, on-node debugging, and quick probes before scaling up. **Iterating → interactive.**
 
 ### `/slurm-background`
 

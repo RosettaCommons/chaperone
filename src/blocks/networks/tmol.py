@@ -99,7 +99,7 @@ class _TmolBaseBlock(CompiledBlockFunction):
 
     Runs on CPU by default (per-structure scoring/min is fast on CPU). For large
     batches pass ``job_args={"partition": <your GPU partition>, "gres": <your gres>}``
-    (at IPD, ``{"partition": "gpu", "gres": "gpu:small:1"}``). The cu132 wheel
+    with your site’s resource names. The cu132 wheel
     covers Ampere through Blackwell (sm_120); see the build notes at the top of
     this file.
     """

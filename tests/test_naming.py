@@ -6,8 +6,8 @@ up as a project identity (imports, ``PIPELINES_*`` env vars, the ``pipelines_cli
 package, ``--pipelines-*`` flags, the display name) outside the allowlists below.
 
 Every allowlist entry carries a reason. Add to a list only for something that
-really is not our name: a path that exists on the cluster, a file already on disk,
-or ``pipelines`` used as an ordinary English noun for a design workflow.
+really is not our name, such as ``pipelines`` used as an ordinary English noun
+for a design workflow.
 """
 
 from __future__ import annotations
@@ -28,25 +28,12 @@ THIS_FILE = "tests/test_naming.py"
 SITE_AND_IMAGE_PATHS = [
     # Published distribution identity; Python imports and CLI remain chaperone.
     r"\bchaperone-pipelines\b",
-    # Shared IPD tree: weights, software, containers. Exists on disk; renaming it
-    # is a filesystem operation, not a code change.
-    r"/projects/ml/pipelines[\w./{},:-]*",
-    # The same tree as seen through the /mnt alias on compute nodes (the test
-    # fixtures also use a checkout path below it).
-    r"/mnt/projects/ml/pipelines[\w./-]*",
-    # Shared apptainer image directory.
-    r"/net/software/containers/pipelines[\w./{},:-]*",
-    # Interpreter root baked into the existing worker SIFs. The directory is part
-    # of the image; it follows the image rebuild, not this repo.
-    r"/opt/pipelines(?![\w-])",
-    # Existing agent image files on disk (base layer, hardened worker image) and
-    # the symlink the unvendored agent/ tooling refers to.
-    r"pipelines_agent(?:_base|_hardened_\d+)?\.sif",
-    r"agent/pipelines\.sif",
+
 ]
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
 NOUN_USES = [
+    (r"^src/chaperone_cli/job_wait\.py$", r"/opt/pipelines", "interpreter path inside existing worker images"),
     (r"^(?:docs/|examples/|THIRD_PARTY_NOTICES\.md$)", r"baker-laboratory/pipelines", "attribution to predecessor source"),
     (r"^(?:docs/|examples/)", r"(?:original )?pipelines `examples/", "attribution to predecessor examples"),
     (r"^docs/site/evaluations\.md$", r"Pipelines PR #351", "historical upstream pull request"),
@@ -65,17 +52,6 @@ NOUN_USES = [
     # key names the runs, not the project.
     (r"^src/chaperone_cli/campaign_inspect\.py$", r'"pipelines": \{', "output key"),
     (r"^tests/test_monitoring\.py$", r'\["pipelines"\]', "output key"),
-    # Baseline isolation must stay hostile to BOTH names: real site paths and
-    # images that predate the rename still say "pipelines".
-    (
-        r"^src/chaperone-evals/harbor-controller/environments/baseline\.py$",
-        r"pipelines",
-        "baseline isolation checks cover the pre-rename names too",
-    ),
-    # Inside the existing hardened worker image the venv root is /opt/pipelines.
-    # (The mask above covers the bare path; these lines spell it in other forms.)
-    (r"^src/chaperone-evals/harbor-controller/.*", r"/opt/pipelines", "image path"),
-    (r"^src/chaperone_cli/job_wait\.py$", r"/opt/pipelines", "image path"),
     (
         r"^docs/site/cloud\.md$",
         r"baker-laboratory/pipelines",
@@ -83,25 +59,17 @@ NOUN_USES = [
     ),
 ]
 
-# Held-out scorers, example solutions and their notes are not edited in place
-# (see the evals README). Only the *mechanical* rewrites needed for them to run
-# were applied; stale prose/comments/docstrings in them may still say pipelines.
-HELD_OUT = re.compile(
-    r"^src/chaperone-evals/evals_task/[^/]+/(score|example)/"
-    r"|^src/chaperone-evals/evals_task/audit_hints\.json$"
-)
-
 # ---------------------------------------------------------------------------
 # What counts as the old project identity.
 # ---------------------------------------------------------------------------
-# Never allowed, held-out files included: anything that would stop code running.
+# Never allow old runtime names.
 RUNTIME_IDENTITY = re.compile(
     r"(?<![A-Za-z])PIPELINES_[A-Z0-9_]+"  # env vars
     r"|\bpipelines_cli\b"  # CLI package
     r"|\b(?:from|import)\s+pipelines\b"  # imports
     r"|\bPipelinesSettings\b"
 )
-# Also not allowed outside held-out files: the old name in any other spelling.
+# Also reject the old name outside justified noun uses.
 ANY_OLD_NAME = re.compile(r"pipelines", re.IGNORECASE)
 
 SKIP_SUFFIXES = {".png", ".jpg", ".pdb", ".cif", ".ckpt", ".pt", ".sif", ".gz"}
@@ -129,7 +97,6 @@ def _mask(text: str) -> str:
 def _scan(relative: str, text: str) -> list[str]:
     """Return offending ``path:line: text`` strings for one file."""
     problems = []
-    held_out = bool(HELD_OUT.match(relative))
     noun_rules = [
         (re.compile(path_re), re.compile(text_re, re.IGNORECASE))
         for path_re, text_re, _ in NOUN_USES
@@ -140,8 +107,6 @@ def _scan(relative: str, text: str) -> list[str]:
             continue
         if RUNTIME_IDENTITY.search(line):
             problems.append(f"{relative}:{number}: {line.strip()[:140]}")
-            continue
-        if held_out:
             continue
         remaining = line
         for _, text_rule in noun_rules:
@@ -190,8 +155,6 @@ def test_scanner_flags_old_identity(line):
 @pytest.mark.parametrize(
     "line",
     [
-        "weights live in /projects/ml/pipelines/weights/boltz2",
-        "image /net/software/containers/pipelines/pipelines_agent_base.sif",
         "reproducible pipelines for design",
         "from chaperone import init_cli",
         "pip install chaperone-pipelines",

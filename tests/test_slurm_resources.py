@@ -1,4 +1,4 @@
-"""Slurm resource resolution: site mapping, new JobArgs fields, precedence, IPD parity.
+"""Slurm resource resolution: site mapping, new JobArgs fields, precedence, external site configuration.
 
 No cluster is needed. The sbatch text is rendered by submitit with a stub ``srun``.
 """
@@ -322,7 +322,7 @@ def test_bare_job_args_use_the_default_partition(site, tmp_path, monkeypatch):
 def test_gres_types_are_passed_through_unchecked(site, tmp_path, monkeypatch):
     """chaperone does not validate GPU types; the cluster decides what is valid.
 
-    IPD registers size classes (gpu:small:1) and rejects model names; most other
+    Some clusters register size classes (gpu:small:1) and rejects model names; most other
     clusters register model names (gpu:a100:1). Both reach sbatch verbatim.
     """
     for gres in ("gpu:a4000:1", "gpu:small:1", "gpu:2"):
@@ -376,13 +376,12 @@ def test_duplicate_keeps_account_qos_and_extra(site, tmp_path, monkeypatch):
     )
 
 
-# ── blocks and IPD parity ───────────────────────────────────────────────────
+# ── blocks and external site configuration ───────────────────────────────────────────────────
 
-# What every in-tree block requested before the mapping existed. These are the
-# IPD values; with .env.ipd loaded the resolved resources must still be these.
-LARGE_GPU_BLOCKS = {"bindcraft", "simplefold", "proteina_complexa", "rfoptimization"}
+# Explicit size-class site configuration must preserve each block's resource class.
+LARGE_GPU_BLOCKS = {"bindcraft", "bindcraft2", "simplefold", "proteina_complexa", "rfoptimization"}
 GPU_BLOCKS = {
-    "af3", "af3_with_target_template", "bindcraft", "boltz2", "boltz2_steered",
+    "af3", "af3_with_target_template", "bindcraft", "bindcraft2", "boltz2", "boltz2_steered",
     "boltzgen", "chai1", "colabfold", "disco", "e1", "esm2", "esmfold2",
     "openfold3", "protein_hunter", "protenix", "rf3", "rfd1", "rfd2",
     "rfd3", "rfd3_partial", "rfd3na", "simplefold", "proteina_complexa", "rfoptimization",
@@ -424,25 +423,30 @@ def test_no_bare_size_class_gres_literal_in_block_sources():
 
 
 @pytest.fixture
-def ipd_site(site, monkeypatch):
-    """Apply the Slurm settings that .env.ipd carries."""
-    ipd = ChaperoneSettings(_env_file=REPO / "src/chaperone/site_profiles/digs.env")
+def custom_site(site, monkeypatch, tmp_path):
+    """Any cluster can supply a size-class mapping in an external dotenv file."""
+    site_file = tmp_path / "cluster.env"
+    site_file.write_text(
+        "CHAPERONE_DEFAULT_PARTITION=cpu\nCHAPERONE_GPU_PARTITION=gpu\n"
+        'CHAPERONE_GRES_MAP=\'{"small":"gpu:small:1","large":"gpu:large:1"}\'\n'
+    )
+    configured = ChaperoneSettings(_env_file=site_file)
     settings = chaperone.get_settings()
     for name in SITE_FIELDS:
-        monkeypatch.setattr(settings, name, getattr(ipd, name))
-    return ipd
+        monkeypatch.setattr(settings, name, getattr(configured, name))
+    return configured
 
 
-def test_ipd_env_maps_the_size_classes(ipd_site):
-    assert ipd_site.CHAPERONE_GRES_MAP == {
+def test_custom_site_env_maps_the_size_classes(custom_site):
+    assert custom_site.CHAPERONE_GRES_MAP == {
         "small": "gpu:small:1",
         "large": "gpu:large:1",
     }
-    assert ipd_site.CHAPERONE_GPU_PARTITION == "gpu"
-    assert ipd_site.CHAPERONE_DEFAULT_PARTITION == "cpu"
+    assert custom_site.CHAPERONE_GPU_PARTITION == "gpu"
+    assert custom_site.CHAPERONE_DEFAULT_PARTITION == "cpu"
 
 
-def test_ipd_resolved_resources_are_unchanged(ipd_site):
+def test_custom_site_resolved_resources_are_unchanged(custom_site):
     for name, cls in _blocks_with_resources():
         block = cls.model_construct(name=name)
         resolved = resolve(block)
@@ -453,7 +457,7 @@ def test_ipd_resolved_resources_are_unchanged(ipd_site):
             assert (resolved.partition, resolved.gres) == ("cpu", None), name
 
 
-def test_ipd_sbatch_lines_are_unchanged(ipd_site, tmp_path, monkeypatch):
+def test_custom_site_sbatch_lines_are_unchanged(custom_site, tmp_path, monkeypatch):
     boltz2 = resolve(Blocks["boltz2"].model_construct(name="boltz2"))
     for via in ("runner", "executor"):
         lines = sbatch_lines(boltz2, tmp_path, monkeypatch, via)
@@ -467,7 +471,7 @@ def test_ipd_sbatch_lines_are_unchanged(ipd_site, tmp_path, monkeypatch):
     )
 
 
-def test_ipd_cli_partition_still_strips_the_size_class(ipd_site, cli):
+def test_custom_site_cli_partition_still_strips_the_size_class(custom_site, cli):
     cli("--partition=gpu-bf")
     resolved = resolve(Blocks["boltz2"].model_construct(name="boltz2"))
     assert (resolved.partition, resolved.gres) == ("gpu-bf", "gpu:1")

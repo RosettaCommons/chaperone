@@ -1,7 +1,7 @@
 # <img src="docs/site/.assets/icon.png" alt="Chaperone icon" width="48" align="absmiddle"> Chaperone: A Reliable and Efficient Protein Design Toolset Harness
 
 <p align="center">
-  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design pipelines, model benchmarks, model development" width="100%">
+  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design workflows, model benchmarks, model development" width="100%">
   <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
 </p>
 
@@ -10,7 +10,7 @@ Hook together design, sequencing, folding, and analysis into reproducible pipeli
 with automatic SLURM orchestration, chunking, and path tracking.
 
 Supported network blocks include RFD3NA, RFD3, RFD2, RFOptimization,
-Proteina-Complexa, BindCraft, BoltzGen, Disco,
+Proteina-Complexa, BindCraft2, BindCraft, BoltzGen, Disco,
 ProteinHunter, Protein/Ligand/FoundryMPNN, AF3, RF3, Boltz2, Chai1,
 Protenix v2, OpenFold3, ESMFold2, E1, and ESM2.
 Analysis blocks include RMSD, Foldseek, RASA, contact metrics, H-bond metrics,
@@ -21,13 +21,6 @@ This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/s
 
 > [!TIP]
 > Read the [Chaperone documentation](https://rosettacommons.github.io/chaperone/). Start with the [simple example](https://rosettacommons.github.io/chaperone/simple/) and [core examples](https://rosettacommons.github.io/chaperone/core-examples/).
-
-## Package installation status
-
-The distribution is named **`chaperone-pipelines`**; the Python import and CLI
-remain `chaperone`. A candidate is available on
-[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.0.0/), but it has
-**not yet been released on production PyPI**. Use the source installation below. Do not install the unrelated `chaperone` package from PyPI.
 
 ## Installation (Agents)
 
@@ -42,7 +35,6 @@ Then clone the repository and start your agent from its root:
 ```bash
 git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
-export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 claude    # or: codex
 ```
 
@@ -54,18 +46,19 @@ The setup guide walks through creating a venv, installing dependencies, choosing
 
 ## Installation (Manual)
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The distribution name
+is `chaperone-pipelines`; the import and CLI are `chaperone`. Install from this
+repository until the production package is published.
 
 ```bash
 git clone https://github.com/RosettaCommons/chaperone.git
 cd chaperone
-export PYTHONPATH="$(pwd -P)/src${PYTHONPATH:+:${PYTHONPATH}}"
 uv venv && source .venv/bin/activate
-uv pip install -e '.[all]' --override overrides.txt
+uv pip install -e '.[all]'
 chaperone --help
 ```
 
-The `PYTHONPATH` line stops an older checkout elsewhere on your path from shadowing this one. To confirm which copy you are running:
+Use a clean shell without a `PYTHONPATH` pointing at another checkout. To confirm which copy you are running:
 
 ```bash
 python -c "import chaperone, blocks; print(chaperone.__file__, blocks.__file__)"
@@ -76,9 +69,12 @@ Both paths should be inside this checkout.
 Optional extras:
 
 - **Jupyter kernel:** `python -m ipykernel install --user --name chaperone --display-name "Chaperone"`
-- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`. IPD users can supply an untracked `.env.ipd` pointing to their shared install.
+- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
 
-On IPD, place your site-provided `.env.ipd` in the checkout root; it is loaded when present and is not tracked in Git. Other systems do not need it. Configure your container directories, model weights, and Slurm settings in `.env.local` (or use `CHAPERONE_ENV_FILE=/absolute/path/to/site.env`). See [Slurm site configuration](docs/site/syntax.md#slurm-site-configuration) for partition and GPU mappings. The optional `CHAPERONE_SITE=digs` preset is for IPD shared infrastructure only.
+Configure container directories, model weights, and Slurm settings in `.env.local`,
+or select a shared file with `CHAPERONE_ENV_FILE=/absolute/path/to/site.env`.
+See [Slurm site configuration](docs/site/syntax.md#slurm-site-configuration) for
+partition and GPU mappings.
 
 Block containers are built on demand: `chaperone list-available` shows them and `chaperone install <name> ...` builds one (`/setup` does this for you). Model weights are separate; each block's entry in the block reference says what it needs.
 
@@ -140,11 +136,11 @@ chaperone artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
 
 ### Supported blocks
 
-**Design**: RFD3NA, RFD3, RFD3 Partial, RFD2, RFD1, BindCraft, BoltzGen, Disco, ProteinHunter
+**Design**: RFD3NA, RFD3, RFD3 Partial, RFD2, RFD1, RFOptimization, Proteina-Complexa, BindCraft2, BindCraft, BoltzGen, Disco, ProteinHunter
 
-**Sequence**: ProteinMPNN, LigandMPNN, FoundryMPNN, abMPNN-PoE
+**Sequence**: ProteinMPNN, LigandMPNN, FoundryMPNN
 
-**Prediction**: ESMFold2, OpenFold3, Boltz2, RF3/RF3 Dev, Protenix v2, Chai1, AF3, ColabFold
+**Prediction**: ESMFold2, OpenFold3, Boltz2, RF3, Protenix v2, Chai1, AF3, ColabFold
 
 **Language**: E1, ESM2
 
@@ -155,8 +151,7 @@ recipe pins Protein-Hunter commit `a3e048e96c93`, PyTorch 2.11, and CUDA 12.8,
 and embeds the LigandMPNN weights and required Python packages. Build it with
 `chaperone install protein_hunter`. Runtime still requires an NVIDIA GPU and a
 CUDA-12.8-compatible driver, plus the Boltz2 checkpoint and CCD cache configured
-by `BOLTZ_CACHE_DIR`. The image has been validated on an RTX A4000 at IPD with
-a complete Boltz → soluble LigandMPNN → Boltz optimization cycle.
+by `BOLTZ_CACHE_DIR`.
 
 ```python
 designs = engine.run(
@@ -211,11 +206,11 @@ Chaperone is designed to work hand-in-hand with [Claude Code](https://docs.anthr
 
 ## Agent evaluation containers
 
-The agent evaluation harness lives under `src/chaperone-evals/harbor-controller/`,
-separate from the installable runtime. Its images, mounts, scheduler policy, and
-model assets are configured for the evaluation site. See the
-[evaluation guide](docs/site/evaluations.md) for portable setup and the optional
-digs configuration. Running ordinary blocks does not require an agent evaluation image.
+The evaluation controller and held-out datasets are maintained separately in the
+private [chaperone-evals repository](https://github.com/Ubiquinone-dot/chaperone-evals).
+They are not included in the Chaperone package or agent workspace. See the
+[evaluation guide](docs/site/evaluations.md) for access and isolation requirements.
+Ordinary workflows do not need the evaluation harness.
 
 ## Agentic Skills
 *Read the [skills guide](docs/site/skills.md) for discovery and use with different agents.*
@@ -242,10 +237,9 @@ You can also just talk to the agent in natural language ("design a peptide binde
 
 | Skill | What it does |
 |-------|-------------|
-| `/order-designs` | Generate DNA eblock orders from design PDBs |
 | `/rosetta-params` | Generate and debug Rosetta `.params` files for ligands |
-| `/slurm-interactive` | Persistent interactive SLURM session (GPU/CPU) for live, iterative work (written for IPD's `qlogin`; adapt elsewhere) |
-| `/slurm-background` | Submit detached SLURM jobs (engine `job_args`, sbatch, nohup) for pilots/production; covers the site settings for partitions and GPU types |
+| `/slurm-interactive` | Persistent interactive SLURM session (GPU/CPU) for live, iterative work (using your cluster’s allocation command) |
+| `/slurm-background` | Submit detached SLURM jobs (engine `job_args`, `sbatch`, monitor) for pilots/production; covers the site settings for partitions and GPU types |
 | `/notebook-editing` | Edit, create, or execute Jupyter notebooks |
 | `/visualize` | Inspect structures in PyMOL |
 | `/order-collection` | Package a campaign's structures, metrics and summary into a handoff bundle |
@@ -259,7 +253,9 @@ The example below is how one might add an MD-based tool to the repo:
 > Read through /absolute/path/to/your-tool-repository and create a block using the `/build-block` skill. You should add this to the end of the test-pipeline under ./examples/benchmarks/ame on the af3 outputs with the ligand.
 ```
 
-You can ask Claude out of the box to do this, but it'll be much faster if you either also tell claude "You have a local gpu" (after getting a GPU node, e.g. `qlogin --gres=gpu` at IPD or `salloc --gres=gpu:1` elsewhere) - that is, before opening `claude` on the terminal, or tell it to use `/slurm-interactive` - which will tell it to grab a gpu (or cpu) node via a qlogin tmux session (bit less clean but works!)
+Before starting GPU work, allocate a node using your cluster’s settings (for
+example `salloc --gres=gpu:1`), or ask the agent to follow `/slurm-interactive`
+to keep one allocation for iterative testing.
 
 ## Example 2: Creating a design plan / spec
 

@@ -8,7 +8,10 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit"]
 
 Comprehensive reference for generating, modifying, and troubleshooting Rosetta `.params` files for small molecule ligands.
 
-> **IPD-specific paths.** Tool locations below (`/software/...`) are the Baker-lab / IPD digs cluster. Elsewhere, install the tools yourself and substitute your paths. Helper scripts that live in individual users' directories on digs are written as `$XTB`, `$CHEMCRAFT`, `$DUMP_ROTAMERS`, `$ADD_VXS`, `$RIGID_BODY_ROTAMERS`; get them from the lab or substitute your own equivalents.
+Install the tools you need and use their public commands or explicitly configured
+paths. Set `ROSETTA_PATH` to a Rosetta checkout containing `main/`. Optional helper
+variables (`XTB`, `CHEMCRAFT`, `DUMP_ROTAMERS`, `ADD_VXS`, `RIGID_BODY_ROTAMERS`)
+refer to your own installations; check availability before using a recipe.
 
 ## Example Questions This Skill Can Answer
 
@@ -46,7 +49,7 @@ Override the params directory with `CHAPERONE_LIGAND_PARAMS_DIR` env var.
 ### Step 1: Generate Starting 3D Structure
 
 Options (pick one):
-- **Draw in VMD**: `/software/utils/vmd`
+- **Draw in VMD**: `vmd`
 - **Draw in Chemcraft**: `$CHEMCRAFT` — copy XYZ from "Coords" tab
 - **From ChemDraw**: Save as `.sdf`, convert to SMILES, generate 3D with RDKit
 - **From PDB**: Save ligand coordinates directly (likely needs hydrogen/charge fixing in Step 2)
@@ -55,7 +58,7 @@ Options (pick one):
 
 **Add hydrogens** — use OpenBabel or PyMOL:
 ```bash
-/software/openbabel/latest/obabel -i pdb ligand.pdb -o mol2 -O ligand.mol2
+obabel -i pdb ligand.pdb -o mol2 -O ligand.mol2
 ```
 Note: OpenBabel does NOT handle Rosetta score lines — remove them first.
 
@@ -76,7 +79,7 @@ $XTB input.xyz --opt --chrg <CHARGE> --gbsa h2o -v > xtb.out
 
 **For ligands available from PDB** — use CSD conformer generator:
 ```bash
-/software/csds/CSD_2022/bin/conformer_generator charged.mol2 conformers_out.mol2 -nc <NUM_CONFORMERS>
+conformer_generator charged.mol2 conformers_out.mol2 -nc <NUM_CONFORMERS>
 ```
 
 **For custom ligands**:
@@ -91,19 +94,19 @@ Use Adam's AIMNet to score and select the best rotamers.
 
 **Basic ref2015 params** (under PyRosetta environment):
 ```bash
-python $ROSETTA_PATH/rosetta/main/source/scripts/python/public/molfile_to_params.py \
+python $ROSETTA_PATH/main/source/scripts/python/public/molfile_to_params.py \
     --keep-names ligand.mol2 -n LIG
 ```
 
 **With extra rotamers**:
 ```bash
-python2 $ROSETTA_PATH/rosetta/main/source/scripts/python/public/molfile_to_params.py \
+python2 $ROSETTA_PATH/main/source/scripts/python/public/molfile_to_params.py \
     --keep-names --clobber --extra_torsion_output --centroid ligand.mol2 -n LIG
 ```
 
 **For genpot (generic potential)**:
 ```bash
-python /software/rosetta/main/source/scripts/python/public/generic_potential/mol2genparams.py \
+python $ROSETTA_PATH/main/source/scripts/python/public/generic_potential/mol2genparams.py \
     -s ligand.mol2
 ```
 
@@ -137,7 +140,7 @@ Concatenate all rotamers into one PDB and reference it in the params file via th
 
 ```bash
 # 1. Generate individual rotamers (ref2015)
-python /software/rosetta/main/source/scripts/python/public/molfile_to_params.py \
+python $ROSETTA_PATH/main/source/scripts/python/public/molfile_to_params.py \
     ligand.sdf -n LIG
 
 # 2. Convert each rotamer PDB to mol2
@@ -146,7 +149,7 @@ for i in *.pdb; do obabel -i pdb $i -o mol2 -O ${i%.pdb}.mol2; done
 # 3. Generate genpot params for all
 conda activate common_use
 for i in *.mol2; do
-    python /software/rosetta/main/source/scripts/python/public/generic_potential/mol2genparams.py -s $i
+    python $ROSETTA_PATH/main/source/scripts/python/public/generic_potential/mol2genparams.py -s $i
 done
 # Rename to distinguish
 for i in *.params; do mv $i ${i%.params}_genpot.params; done
@@ -155,7 +158,7 @@ for i in *_*_0001.pdb; do mv $i ${i%_0001.pdb}_genpot.pdb; done
 # 4. Generate ref2015 params (for RIFgen/RIFdock)
 mkdir good_to_use && mv *_genpot* good_to_use/ && cd good_to_use/
 for i in *_genpot.mol2; do
-    python /software/rosetta/main/source/scripts/python/public/molfile_to_params.py $i --keep-names -n LIG
+    python $ROSETTA_PATH/main/source/scripts/python/public/molfile_to_params.py $i --keep-names -n LIG
 done
 mv LG.params LIG_ref2015.params
 
@@ -240,7 +243,7 @@ PROTON_CHI 3 SAMPLES 2 80 180 EXTRA 2 20 10
 2. **Rename atoms** — RIFgen/RIFdock don't recognize standard backbone names (CA, CB, N, O). Rename to C1, C2, O1, O2, H1, H2, N1, N2, etc. Change residue name to a 3-letter code, residue number to 1.
 3. **Relax the ligand** before loading:
    ```bash
-   /software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease \
+   "$ROSETTA_BIN" \
        -parser:protocol LA_relax_and_score_ligand.xml \
        -in:file:s changed.pdb -beta \
        @flags_rescore_natives \
@@ -265,19 +268,19 @@ PROTON_CHI 3 SAMPLES 2 80 180 EXTRA 2 20 10
 
 ---
 
-## Key Paths on Digs (IPD-specific)
+## Configurable tools
 
 User-installed helpers have no fixed location; the variables below are placeholders.
 
 | Tool | Path |
 |------|------|
-| OpenBabel | `/software/openbabel/latest/obabel` |
-| VMD | `/software/utils/vmd` |
+| OpenBabel | `obabel` |
+| VMD | `vmd` |
 | Chemcraft | `$CHEMCRAFT` |
 | XTB | `$XTB` |
-| CSD Conformer Gen | `/software/csds/CSD_2022/bin/conformer_generator` |
-| molfile_to_params | `$ROSETTA_PATH/rosetta/main/source/scripts/python/public/molfile_to_params.py` |
-| mol2genparams | `/software/rosetta/main/source/scripts/python/public/generic_potential/mol2genparams.py` |
+| CSD Conformer Gen | `conformer_generator` |
+| molfile_to_params | `$ROSETTA_PATH/main/source/scripts/python/public/molfile_to_params.py` |
+| mol2genparams | `$ROSETTA_PATH/main/source/scripts/python/public/generic_potential/mol2genparams.py` |
 | dump_rotamers | `$DUMP_ROTAMERS` |
 | rigid_body_rotamers | `$RIGID_BODY_ROTAMERS` |
 | add_VXs_to_params | `$ADD_VXS` |

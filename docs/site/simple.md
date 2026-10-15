@@ -12,8 +12,7 @@ Build the `foundry` container with `chaperone install foundry`, obtain the upstr
 model checkpoints, and configure `FOUNDRY_CHECKPOINT_DIRS` for your installation.
 GPU inference requires a supported NVIDIA driver and container backend. Configure
 your cluster's [Slurm settings](syntax.md#slurm-site-configuration), or run on a
-GPU workstation with `--partition=local`. IPD users can supply an untracked
-`.env.ipd`; other installations do not need it.
+GPU workstation with `--partition=local`.
 
 This is an integration example, not a validated protein-design protocol.
 Equivalence between FoundryMPNN and the `mpnn` block (LigandMPNN) has not been

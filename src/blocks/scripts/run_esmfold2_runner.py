@@ -79,7 +79,7 @@ def _seq_length(spec) -> int:
 
 
 def _model_class(esmfold2_module):
-    """Prefer the released implementation; retain support for existing IPD images."""
+    """Prefer the released implementation; retain support for existing legacy images."""
     public_model = getattr(esmfold2_module, "EsmFold2Model", None)
     if public_model is not None:
         return public_model
