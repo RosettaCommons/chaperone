@@ -933,9 +933,9 @@ Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=
 *Refine chain A of an existing complex with RF3/Boltz and MPNN.*
 
 > RFOptimization: Guiding Design Optimization with All-Atom Structure Prediction
-> [Paper](https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry/tree/69d5f735f272b78b6b23c230abba849f18315234/models/rfo) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/block.py)
+> [Paper](https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry/tree/69d5f735f272b78b6b23c230abba849f18315234/models/rfo) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/block.py)
 
-**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.
+**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.
 
 Class: `RFOptimizationBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`64GB`, time=`04:00:00` · Container: `rfoptimization`
 

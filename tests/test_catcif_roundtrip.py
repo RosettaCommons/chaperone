@@ -215,7 +215,7 @@ def test_foundry_mpnn_archived_inputs_keep_distinct_names_and_parent_lineage(tmp
 def test_rfoptimization_reads_archived_complex_and_preserves_parent(tmp_path):
     import json
     from atomworks.io.utils.io_utils import to_cif_file
-    from blocks.networks.rfoptimization.block import RFOptimizationBlock
+    from blocks.networks.foundry.rfoptimization.block import RFOptimizationBlock
 
     atoms = _peptide() + _peptide(chain_id="B", offset=20)
     source = tmp_path / "complex.cif"

@@ -9,8 +9,8 @@ import pytest
 import yaml
 from biotite.structure import Atom, array
 
-from blocks.networks.rfoptimization.block import RFOptimizationBlock
-from blocks.networks.rfoptimization.container import RFOPTIMIZATION_CONTAINER
+from blocks.networks.foundry.rfoptimization.block import RFOptimizationBlock
+from blocks.networks.foundry.rfoptimization.container import RFOPTIMIZATION_CONTAINER
 
 
 @pytest.fixture
@@ -243,7 +243,7 @@ def test_cyclic_repair_guards_source_and_disables_only_geometry_guess(
     tmp_path, monkeypatch
 ):
     import hashlib
-    from blocks.networks.rfoptimization import _compat
+    from blocks.networks.foundry.rfoptimization import _compat
 
     path = tmp_path / "pipeline.py"
     source = 'transform_overrides = {\n            "run_confidence_head": True,\n}\n'

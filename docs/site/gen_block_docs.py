@@ -345,7 +345,7 @@ def _render_block(name: str, cls) -> list[str]:
     lines.extend(_reference_lines(name, cls))
     if name == "rfoptimization":
         lines.extend([
-            "**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.",
+            "**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.",
             "",
         ])
     if name == "proteina_complexa":

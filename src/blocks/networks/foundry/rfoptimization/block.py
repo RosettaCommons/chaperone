@@ -19,7 +19,7 @@ from chaperone import (
 )
 from chaperone.block_config import ScriptSpec
 from chaperone.data import make_row
-from blocks.networks.rfoptimization.container import RFOPTIMIZATION_CONTAINER
+from blocks.networks.foundry.rfoptimization.container import RFOPTIMIZATION_CONTAINER
 
 # Execute each input independently and propagate a failed cycle as a failed job.
 _RUN_CONFIGS = """import json, subprocess, sys

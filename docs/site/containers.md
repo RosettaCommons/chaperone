@@ -50,7 +50,7 @@ site selection. That audit is static; not all images have been built or exercise
 | Recipes | Installation notes |
 |---|---|
 | `foundry`, `foundry_public` | Foundry revision `2a950eac`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
-| `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement. Uses its own compatible AtomWorks pin. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). |
+| `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement. Uses its own compatible AtomWorks pin. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). |
 | `proteina_complexa` | NVIDIA's protein binder generator with an isolated AtomWorks 2 environment. Download the two public model checkpoints and configure `checkpoint_dir`; see the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). |
 | `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |

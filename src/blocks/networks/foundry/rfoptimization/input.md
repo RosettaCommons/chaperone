@@ -60,7 +60,7 @@ residue identifiers subject to the usual PDB limits.
 
 ```python
 from chaperone import ExecutionEngine, PipelineDataHandler
-from blocks.networks.rfoptimization.block import RFOptimizationBlock
+from blocks.networks.foundry.rfoptimization.block import RFOptimizationBlock
 
 data = PipelineDataHandler.from_paths(["starting_complex.cif"], name="input")
 engine = ExecutionEngine(rundir="runs/rfo")
