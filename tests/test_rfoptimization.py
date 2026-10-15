@@ -120,7 +120,7 @@ def test_partial_runs_fail_compile(handler, tmp_path, records, final):
 
 def test_image_is_portable_and_dependency_isolated():
     recipe = RFOPTIMIZATION_CONTAINER.to_singularity()
-    assert "atomworks[ml]==2.2.1" in recipe
+    assert "atomworks[ml]==3.0.1" in recipe
     assert "/opt/boltz-env" in recipe and "/opt/mpnn-env" in recipe
     assert "/net/" not in recipe and "/mnt/home" not in recipe
     assert "sha256sum -c" in recipe
@@ -237,28 +237,3 @@ def test_published_basenames_unique_across_inputs_and_chunks(handler, tmp_path):
             (output / "start_records.json").write_text(json.dumps([{"cycle": 0}]))
         paths.extend(d.path for d in block.compile(sandbox).get_data(which="last"))
     assert len({Path(p).name for p in paths}) == 4
-
-
-def test_cyclic_repair_guards_source_and_disables_only_geometry_guess(
-    tmp_path, monkeypatch
-):
-    import hashlib
-    from blocks.networks.foundry.rfoptimization import _compat
-
-    path = tmp_path / "pipeline.py"
-    source = 'transform_overrides = {\n            "run_confidence_head": True,\n}\n'
-    path.write_text(source)
-    with pytest.raises(RuntimeError, match="Unexpected upstream"):
-        _compat.repair(path)
-    assert path.read_text() == source
-    monkeypatch.setattr(
-        _compat, "EXPECTED_SHA256", hashlib.sha256(source.encode()).hexdigest()
-    )
-    _compat.repair(path)
-    namespace = {}
-    exec(path.read_text(), namespace)
-    assert namespace["transform_overrides"] == {
-        "run_confidence_head": True,
-        "add_cyclic_bonds": False,
-        "residue_cache_dir": None,
-    }

@@ -1,7 +1,6 @@
 """Pinned, portable RFO runtime, isolated from the shared Foundry image."""
 
 import shlex
-from pathlib import Path
 
 from chaperone.containers import Image
 from blocks.networks.mpnn import (
@@ -10,12 +9,7 @@ from blocks.networks.mpnn import (
     _MPNN_NUMPY_COMPATIBILITY_PATCH,
 )
 
-FOUNDRY_REVISION = "69d5f735f272b78b6b23c230abba849f18315234"
-RFO_COMPAT_COMMAND = (
-    "/opt/rfo-env/bin/python -c "
-    + shlex.quote(Path(__file__).with_name("_compat.py").read_text())
-    + " /opt/foundry/models/rfo/src/rfo/backprop/inference_pipeline/af3_inference_pipeline.py"
-)
+FOUNDRY_REVISION = "997280e5c581283a3c39a67e6847f138713477be"
 # RFO needs independent environments: Boltz's NumPy constraint conflicts with
 # current Foundry/AtomWorks. No external installations or nested containers.
 RFOPTIMIZATION_CONTAINER = (
@@ -32,12 +26,13 @@ RFOPTIMIZATION_CONTAINER = (
     )
     .run(
         "git clone https://github.com/RosettaCommons/foundry.git /opt/foundry",
+        # Pending the upstream RFO AW3 port, fetch its immutable public commit.
+        f"git -C /opt/foundry fetch https://github.com/Ubiquinone-dot/foundry.git {FOUNDRY_REVISION}",
         f"git -C /opt/foundry checkout --detach {FOUNDRY_REVISION}",
         "python3.12 -m venv /opt/rfo-env",
         "/opt/rfo-env/bin/pip install --upgrade pip setuptools wheel",
         "/opt/rfo-env/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
-        "/opt/rfo-env/bin/pip install -e '/opt/foundry[rf3,rfo]' 'atomworks[ml]==2.2.1'",
-        RFO_COMPAT_COMMAND,
+        "/opt/rfo-env/bin/pip install -e '/opt/foundry[rf3,rfo]' 'atomworks[ml]==3.0.1' biotite==1.6.0 numpy==2.4.3 lightning==2.6.1 torch==2.11.0",
         "python3.12 -m venv /opt/boltz-env",
         "/opt/boltz-env/bin/pip install --upgrade pip setuptools wheel",
         "/opt/boltz-env/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
@@ -65,7 +60,13 @@ RFOPTIMIZATION_CONTAINER = (
         "/opt/boltz-env/bin/pip check",
         "/opt/mpnn-env/bin/pip check",
         "/opt/rfo-env/bin/rfo --help >/dev/null",
-        "/opt/rfo-env/bin/python -c 'import rfo.backprop.optimize; import rf3.inference_engines.rf3'",
+        "/opt/rfo-env/bin/python -c "
+        + shlex.quote(
+            "from importlib.metadata import version; "
+            'assert version("atomworks") == "3.0.1"; '
+            'assert version("biotite") == "1.6.0"'
+        ),
+        "/opt/rfo-env/bin/python -c 'import rfo.backprop.optimize; import rf3.inference_engines.rf3; from rfo.backprop.tools import af3_auto_detect_breaking, af3_no_breaking_point'",
         "/opt/boltz-env/bin/boltz predict --help >/dev/null",
         "/opt/mpnn-env/bin/python /opt/ligandmpnn/run.py --help >/dev/null",
         "apt-get clean && rm -rf /var/lib/apt/lists/* /root/.cache/pip",
@@ -73,7 +74,7 @@ RFOPTIMIZATION_CONTAINER = (
     .env(PATH="/opt/rfo-env/bin:$PATH", VIRTUAL_ENV="/opt/rfo-env")
     .label(
         Foundry=FOUNDRY_REVISION,
-        AtomWorks="2.2.1",
+        AtomWorks="3.0.1",
         Boltz="2.2.1",
         LigandMPNN=_MPNN_REVISION,
     )
