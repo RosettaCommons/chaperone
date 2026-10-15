@@ -99,11 +99,23 @@ def test_three_packed_branches_keep_lineage_and_distinct_structures_after_repack
 
 
 def test_multi_mpnn_refolding_uses_separate_input_directories_per_model():
+    from collections import Counter
+    from rdkit import Chem
+
     example = runpy.run_path(str(ROOT / "examples/benchmarks/multi-mpnn/pipeline.py"))
     branches = [example["refolding_blocks"](model) for model in example["MODELS"]]
     assert len({branch[0].name for branch in branches}) == 3
     assert len({branch[1].name for branch in branches}) == 3
     for af3, rmsd, gate in branches:
+        assert af3.input_mode == "json"
+        ligand = Chem.MolFromSmiles(af3.specified_smiles["BTN"])
+        atoms = parse_to_atom_array(next(example["FILES"].glob("*.cif")))
+        fixture_elements = atoms.element[
+            (atoms.res_name == "BTN") & (atoms.element != "H")
+        ]
+        assert Counter(atom.GetSymbol() for atom in ligand.GetAtoms()) == Counter(
+            fixture_elements
+        )
         assert set(gate.filters) == {
             f"{af3.name}.ranking_score",
             f"{rmsd.name}.bkbn_align.bkbn_rmsd",

@@ -216,8 +216,14 @@ def test_rpx_command_preserves_empty_residue_exclusion(tmp_path):
     handler = PipelineDataHandler(
         [make_row("prepare", path, metadata={"motif": ["A10", "A11", "A12"]})]
     )
-    block = RPXDockBlock(ignored_aas="", command_template=["python", "runner.py"])
+    cache = tmp_path / "cache"
+    block = RPXDockBlock(ignored_aas="", cache_dir=str(cache))
+    assert not cache.exists()
+    assert f"{cache}:{cache}" in block.command_template
+    assert f"HOME={cache}" in block.command_template
+    assert f"TMPDIR={cache / 'tmp'}" in block.command_template
     command = block.create_command(handler, tmp_path / "sandbox", 0)
+    assert (cache / "tmp").is_dir()
     argv = shlex.split(command[2])
     assert argv[argv.index("--ignored-aas") + 1] == ""
     staged = json.loads((tmp_path / "sandbox/inputs.json").read_text())

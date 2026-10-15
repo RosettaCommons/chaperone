@@ -13,10 +13,15 @@ rfd3 → ligand_mpnn → mpnn_score → select_top_seq
 ```
 
 The defaults generate four backbones and eight sequences per backbone. MPNN
-returns sequence rows; the confidence filter selects the top sequence per
-backbone before AF3. There is one refolding/filtering round. The final gate
+returns one packed structure per sequence; the confidence filter selects the
+top sequence per backbone before AF3. There is one refolding/filtering round. The final gate
 requires ipTM ≥ 0.7, minimum interface PAE ≤ 2 Å, backbone RMSD ≤ 3 Å, and
 ipSAE ≥ 0.4. These are computational screening criteria.
+
+PEPPR compares the packed designed complex with its AF3 prediction using
+native-contact fraction, interface RMSD, and DockQ. These measure agreement
+with the designed pose. The packed reference supplies the designed sequence
+required by PEPPR's sequence matcher.
 
 ## Inputs and conditioning
 

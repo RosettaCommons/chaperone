@@ -19,7 +19,10 @@ from chaperone import (
 )
 from chaperone.block_config import ScriptSpec
 from chaperone.data import make_row
-from blocks.networks.foundry.rfoptimization.container import RFOPTIMIZATION_CONTAINER
+from blocks.networks.foundry.rfoptimization.container import (
+    FOUNDRY_REVISION,
+    RFOPTIMIZATION_CONTAINER,
+)
 
 # Execute each input independently and propagate a failed cycle as a failed job.
 _RUN_CONFIGS = """import json, subprocess, sys
@@ -41,7 +44,7 @@ class RFOptimizationBlock(CompiledBlockFunction):
     _script_spec = ScriptSpec(
         command=["/opt/rfo-env/bin/python", "-c", _RUN_CONFIGS],
         image=RFOPTIMIZATION_CONTAINER,
-        source_url="https://github.com/RosettaCommons/foundry/tree/1178aba6ee8ab34ed97ee5dddc32872cfb91cf81/models/rfo",
+        source_url=f"https://github.com/RosettaCommons/foundry/tree/{FOUNDRY_REVISION}/models/rfo",
     )
     _resources = JobArgs(
         partition="gpu",

@@ -50,8 +50,8 @@ site selection. That audit is static; not all images have been built or exercise
 | Recipes | Installation notes |
 |---|---|
 | `bindcraft2` | Pinned PacesaLab implementation with JAX 0.11/CUDA 12 and bundled ProteinMPNN. AlphaFold2 weights use a writable cache or explicit `af2_params_dir`. See the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/input.md) for installation, supported inputs, and the upstream hosting-restricted license. |
-| `foundry`, `foundry_public` | Foundry revision `1178aba6`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
-| `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement. Uses its own compatible AtomWorks pin. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). |
+| `foundry`, `foundry_public` | Foundry 1.0.0 at `436f5848`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement, with the same Foundry 1.0.0 and AtomWorks 3.0.1 pins. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). |
 | `proteina_complexa` | NVIDIA's protein binder generator with an isolated AtomWorks 2 environment. Download the two public model checkpoints and configure `checkpoint_dir`; see the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). |
 | `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
@@ -151,3 +151,15 @@ Some CPU blocks use host tools rather than a container. For example,
 `ligand_ddg` needs Rosetta and, for its bundled Holes metric, DAlphaBall: set
 `ROSETTA_BIN` and `DALPHABALL_BIN`. Its Rosetta protocol, flags, and bundled ligand
 parameter files are included in the wheel and source distribution.
+
+### Chaperone host and agent runtime
+
+`containers/chaperone.def` installs Chaperone with AtomWorks 3.0.1 and Biotite
+1.6.0. The evaluation `agent.def` links to this same recipe. From the repository
+root, build it with `apptainer build --fakeroot chaperone.sif containers/chaperone.def`.
+Model containers and checkpoints are installed separately with `chaperone install`.
+
+The Foundry 1.0 recipes fetch PR #404 and check out the exact revision above.
+They apply source-checked inference backports for charged CIF output, generated
+nucleic-acid contigs, RF3 trajectories and RFOptimization's AtomWorks 3 inputs.
+Each image validates its compatibility fixes during its build.

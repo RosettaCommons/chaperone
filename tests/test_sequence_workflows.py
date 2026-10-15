@@ -39,6 +39,39 @@ from chaperone.io import parse_to_atom_array
 # test_sequence_native_mpnn.py
 
 
+def test_prediction_length_sort_preserves_rewound_context_and_residue_maps():
+    rows = [
+        make_row(
+            name="mpnn",
+            path=f"/{design}.cif",
+            design_id=design,
+            sequences={"A": "ACDE"},
+            metadata={"diffused_index_map": json.dumps({"A86": f"A{position}"})},
+            metrics={
+                "rfd3": {"num_residues": length},
+                "af3_apo": {"path": f"/{design}_apo.cif"},
+            },
+        )
+        for design, length, position in [
+            ("long", 200, 140),
+            ("short", 100, 62),
+            ("tied", 100, 80),
+        ]
+    ]
+    handler = PipelineDataHandler(rows)
+    handler._producing_steps = ["af3_apo_filter"]
+    sorted_handler = AlphaFold3Block().pre_chunk_sort(handler)
+    assert sorted_handler._df.to_dicts() == [
+        handler._df.to_dicts()[i] for i in [1, 2, 0]
+    ]
+    assert sorted_handler._producing_steps == handler._producing_steps
+    inputs = list(sorted_handler.get_prediction_inputs(load_context=False))
+    assert [item.path for item in inputs] == ["/short.cif", "/tied.cif", "/long.cif"]
+    assert [
+        json.loads(item.metadata["diffused_index_map"])["A86"] for item in inputs
+    ] == ["A62", "A80", "A140"]
+
+
 def test_sequence_table_is_native_and_structure_consumers_fail_clearly(tmp_path):
     handler = PipelineDataHandler.from_sequences(
         pl.DataFrame(
