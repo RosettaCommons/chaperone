@@ -271,8 +271,9 @@ prerequisite table and runtime-image instructions in `docs/site/evaluations.md`:
   and driver support (current ESMFold2 uses CUDA 13).
 - Configure Slurm partitions/GPU classes, runtime binds, task capabilities and
   writable per-trial caches. Verify nested Apptainer with `/dev/fuse` on a GPU node.
-- Keep private eval data and provider/download credentials on the trusted
-  controller. Never bind their parent directories into agent or worker containers.
+- Keep private eval data and registry/download credentials on the trusted
+  controller. Use the harness's explicit authentication handoff for the agent's
+  model provider; never bind the host home or credential directories wholesale.
 - Install the task's scoring dependencies. Biotin needs AF3 weights/container and
   HBPLUS; the controller stages pinned PLIP/OpenBabel/lxml. Other task preflights
   also require CCD, PyRosetta and X3DNA paths. Optional scientific containers do
