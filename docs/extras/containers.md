@@ -75,8 +75,8 @@ redistributing it or using it commercially.
 
 ## RFdiffusion2 image
 
-On the IPD cluster `rfd2` uses the prebuilt SIF and the checkpoint on site
-storage. Elsewhere, build the self-contained image:
+The `rfd2` block uses the same public source and checkpoint on every cluster.
+Build the self-contained image:
 
 ```bash
 chaperone install rfdiffusion2_portable   # 11-17 min, ~14 GB

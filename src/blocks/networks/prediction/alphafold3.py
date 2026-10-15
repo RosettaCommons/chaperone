@@ -149,24 +149,7 @@ ALPHAFOLD3_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            # The runner is maintained by Chaperone rather than AlphaFold and
-            # therefore is not baked into the AF3 image.  Execute it through a
-            # fixed container path instead of leaking the checkout's absolute
-            # path into the command.  This is required for contained scoring
-            # jobs, which expose only explicitly bound paths.
-            (str(SCRIPT_DIR), str(AF3_RUNTIME_SCRIPT_DIR)),
-            ("/mnt/home", "/mnt/home"),
-            ("/home", "/home"),
-            ("/projects", "/projects"),
-            # Preserve the configured host path as well as the historical
-            # /databases alias.  ALPHAFOLD3_WEIGHTS_DIR is commonly set to
-            # /net/databases/alphafold, so remapping the only bind to
-            # /databases makes the dynamically generated --model_dir vanish
-            # inside nested Apptainer jobs.
-            ("/net/databases", "/net/databases"),
-            ("/net/databases", "/databases"),
-        ],
+        binds=[(str(SCRIPT_DIR), str(AF3_RUNTIME_SCRIPT_DIR))],
         env={
             "ALPHAFOLD3_WEIGHTS_DIR": lambda: get_setting_field(
                 "ALPHAFOLD3_WEIGHTS_DIR", ""
@@ -755,8 +738,7 @@ class AlphaFold3Block(AF3LikePredictionBlock):
     _name = "af3"
     _display_name = "AlphaFold3"
     _description = "AlphaFold3 structure prediction"
-    # By default this uses /databases/alphafold through the container bind.
-    # ALPHAFOLD3_WEIGHTS_DIR can override that location.
+    # ALPHAFOLD3_WEIGHTS_DIR overrides the container-internal model path.
     _script_spec = ScriptSpec(
         command=[
             "python",

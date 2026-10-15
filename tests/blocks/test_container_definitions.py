@@ -18,17 +18,9 @@ from chaperone.containers import Image
 
 BLOCKS_DIR = Path(blocks.__file__).parent
 
-# Existing-file images that deliberately have no recipe. ``colabfold`` and
-# ``rfdiffusion2`` are on-prem SIF variants with a buildable ``*_portable``
-# counterpart.
-EXISTING_ALLOWLIST = {
-    "colabfold": "on-prem SIF variant; buildable counterpart is colabfold_portable",
-    "rfdiffusion2": "on-prem SIF variant; buildable counterpart is rfdiffusion2_portable",
-}
-PORTABLE_COUNTERPARTS = {
-    "colabfold": "colabfold_portable",
-    "rfdiffusion2": "rfdiffusion2_portable",
-}
+# All shipped block images must be buildable without private site images.
+EXISTING_ALLOWLIST = {}
+PORTABLE_COUNTERPARTS = {}
 
 # Images the audit asked to be covered explicitly, plus the buildable variants.
 EXPECTED_BUILDABLE = {

@@ -123,42 +123,8 @@ def colabfold_multimer_a3m(
 # Container
 ###########################################################################
 
-# Two variants of the ColabFold container exist:
-#
-#   1. The prebuilt on-prem SIF. IPD jobs use this one; `colabfold_batch` is on
-#      PATH inside it and the site storage trees are bound in.
-#
-#   2. A portable buildable variant (`chaperone install colabfold_portable`)
-#      with the same software stack: ColabFold 1.6.1, JAX >= 0.5.2 (sm_120
-#      Blackwell kernels), kalign, hhsuite and OpenMM + pdbfixer for AMBER
-#      relax. The AF2 params directory comes from the COLABFOLD_DATA_DIR
-#      setting and is bound in at run time. Fill it once on a networked host
-#      (colabfold_batch downloads missing params on first use): the run-time
-#      container flags (--containall) may leave the container without DNS.
-#
-# We auto-select at import time: if the on-prem SIF exists on disk, prefer it
-# (so IPD runs stay byte-identical to the past); otherwise fall back to the
-# buildable variant.
-
-_ONPREM_COLABFOLD_SIF = "/net/software/containers/colabfold.sif"
-
-# The sif's runscript execs whatever it is given.
-_COLABFOLD_SIF_CONTAINER = Image.from_existing(
-    "colabfold", _ONPREM_COLABFOLD_SIF
-).template_command(
-    exec_mode="exec",
-    # Sandboxes (/net/scratch, /net/tukwila) and the AF2 params dir (/net/...)
-    # live under /net; /projects + /mnt/home mirror the other prediction blocks.
-    # /net is a symlink to /mnt/net, so bind both — binding only the symlink
-    # leaves rundirs on an NFS tree that mounts late resolving inconsistently
-    # inside the container. This mirrors the simplefold block.
-    binds=[
-        ("/net", "/net"),
-        ("/mnt/net", "/mnt/net"),
-        ("/projects", "/projects"),
-        ("/mnt/home", "/mnt/home"),
-    ],
-)
+# A public build recipe is used consistently on every host. The configured
+# container search directories select an existing build with this interface.
 
 COLABFOLD_VERSION = "v1.6.1"
 
@@ -209,18 +175,7 @@ _COLABFOLD_PORTABLE_CONTAINER = (
 )
 
 
-def _onprem_colabfold_sif_exists() -> bool:
-    return Path(_ONPREM_COLABFOLD_SIF).is_file()
-
-
-def _pick_colabfold_container() -> Image:
-    """On-prem: use the prebuilt SIF. Elsewhere: use the buildable recipe."""
-    if _onprem_colabfold_sif_exists():
-        return _COLABFOLD_SIF_CONTAINER
-    return _COLABFOLD_PORTABLE_CONTAINER
-
-
-COLABFOLD_CONTAINER = _pick_colabfold_container()
+COLABFOLD_CONTAINER = _COLABFOLD_PORTABLE_CONTAINER
 COLABFOLD_PORTABLE_CONTAINER = _COLABFOLD_PORTABLE_CONTAINER
 
 
@@ -428,8 +383,6 @@ class ColabFoldBlock(AF3LikePredictionBlock):
 
     @classmethod
     def _get_image(cls) -> Image:
-        # Resolved from the module global so the on-prem/portable choice made
-        # at import time is the single source of truth.
         return COLABFOLD_CONTAINER
 
     def get_command_template(self) -> list[str]:
@@ -438,9 +391,8 @@ class ColabFoldBlock(AF3LikePredictionBlock):
         env = self._jit_safe_env()
         image = self._get_image()
         binds = None
-        if image is _COLABFOLD_PORTABLE_CONTAINER and self.data_dir:
-            # The portable image binds no site paths, so expose the AF2 params
-            # directory the same way the on-prem SIF sees its storage tree.
+        if self.data_dir:
+            # Expose the explicitly configured AF2 parameters directory.
             data_dir = os.path.abspath(str(self.data_dir))
             binds = [(data_dir, data_dir)]
         return image.build_command(*self._script_spec.command, env=env, binds=binds)

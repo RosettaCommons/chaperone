@@ -179,8 +179,8 @@ class RosettaFold3Block(AF3LikePredictionBlock):
         None,
         description=(
             "Absolute on-disk protein MSA roots. Chaperone exports these to both "
-            "LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MSA_DIRS (current "
-            "foundry-dev), so RF3 MSA use no longer depends on ambient worker "
+            "LOCAL_MSA_DIRS and PROTEIN_MSA_DIRS (supported Foundry versions), "
+            "so RF3 MSA use no longer depends on ambient worker "
             "environment variables."
         ),
     )

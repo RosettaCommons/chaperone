@@ -89,11 +89,7 @@ ESMFOLD2_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            ("/home", "/home"),
-            ("/mnt/home", "/mnt/home"),
-            ("/projects", "/projects"),
-        ],
+        binds=[],
         # The weights cache is supplied per run (ESM_WEIGHTS_DIR), not baked in.
         env={"HF_HUB_CACHE": lambda: get_setting_field("ESM_WEIGHTS_DIR", "")},
     )

@@ -26,6 +26,8 @@ THIS_FILE = "tests/test_naming.py"
 # the text before scanning.
 # ---------------------------------------------------------------------------
 SITE_AND_IMAGE_PATHS = [
+    # Published distribution identity; Python imports and CLI remain chaperone.
+    r"\bchaperone-pipelines\b",
     # Shared IPD tree: weights, software, containers. Exists on disk; renaming it
     # is a filesystem operation, not a code change.
     r"/projects/ml/pipelines[\w./{},:-]*",
@@ -45,6 +47,10 @@ SITE_AND_IMAGE_PATHS = [
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
 NOUN_USES = [
+    (r"^(?:docs/|examples/|THIRD_PARTY_NOTICES\.md$)", r"baker-laboratory/pipelines", "attribution to predecessor source"),
+    (r"^(?:docs/|examples/)", r"(?:original )?pipelines `examples/", "attribution to predecessor examples"),
+    (r"^docs/site/evaluations\.md$", r"Pipelines PR #351", "historical upstream pull request"),
+    (r"^\.agents/skills/setup/SKILL\.md$", r"subsequent pipelines", "generic workflows"),
     (r"^docs/README\.md$", r"original Pipelines site's", "attribution to the upstream documentation theme"),
     (r"^README\.md$", r"reproducible pipelines", "generic workflows"),
     (r"^README\.md$", r"debugging pipelines", "generic workflows"),
@@ -188,6 +194,7 @@ def test_scanner_flags_old_identity(line):
         "image /net/software/containers/pipelines/pipelines_agent_base.sif",
         "reproducible pipelines for design",
         "from chaperone import init_cli",
+        "pip install chaperone-pipelines",
     ],
 )
 def test_scanner_allows_listed_uses(line):

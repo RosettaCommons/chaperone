@@ -30,10 +30,7 @@ ESM2_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            ("/mnt/home", "/mnt/home"),
-            ("/projects/ml/pipelines", "/projects/ml/pipelines"),
-        ],
+        binds=[],
         env={"HF_HUB_CACHE": lambda: get_setting_field("HF_HUB_CACHE", "")},
     )
 )
@@ -90,6 +87,15 @@ class ESM2Block(CompiledBlockFunction):
         description="Fields to save in output safetensors",
     )
 
+    def get_command_template(self) -> list[str]:
+        cache = get_setting_field("HF_HUB_CACHE", None)
+        cache = str(Path(cache).expanduser().resolve()) if cache else None
+        binds = [(cache, cache)] if cache else []
+        return self._script_spec.image.build_command(
+            *self._script_spec.command, binds=binds,
+            env={"HF_HUB_CACHE": cache} if cache else {},
+        )
+
     def _resolve_model_name(self) -> str:
         """Resolve model shortcut to full HuggingFace path."""
         shortcuts = {
@@ -122,6 +128,9 @@ class ESM2Block(CompiledBlockFunction):
         """
         sandbox_dir = Path(sandbox_dir)
         sandbox_dir.mkdir(parents=True, exist_ok=True)
+        cache = get_setting_field("HF_HUB_CACHE", None)
+        if cache:
+            Path(cache).expanduser().resolve().mkdir(parents=True, exist_ok=True)
         input_file = sandbox_dir / "inputs.fasta"
         with open(input_file, "w") as f:
             for loaded in handler.get_data(which="last", load=True):

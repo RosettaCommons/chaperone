@@ -32,6 +32,14 @@ from chaperone.orchestration.job_args import JobArgs  # noqa: E402
 # ---------------------------------------------------------------
 BLOCK_REFERENCES: dict[str, dict[str, str]] = {
     # Networks
+    "rfoptimization": {
+        "paper": "https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2",
+        "title": "RFOptimization: Guiding Design Optimization with All-Atom Structure Prediction",
+    },
+    "proteina_complexa": {
+        "paper": "https://arxiv.org/abs/2603.27950",
+        "title": "Proteina-Complexa: Scaling Atomistic Protein Binder Design with Generative Pretraining and Test-Time Compute",
+    },
     "rfd3": {
         "paper": "https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2",
         "code": "https://github.com/RosettaCommons/foundry",
@@ -319,7 +327,7 @@ def _reference_lines(name: str, cls) -> list[str]:
 def _render_block(name: str, cls) -> list[str]:
     """Render a single block's documentation section."""
     lines = []
-    docstring = (cls.__doc__ or "").strip().split("\n")[0]
+    docstring = (cls.__doc__ or getattr(cls, "_description", "")).strip().split("\n")[0]
     resources = getattr(cls, "_resources", None)
     image = cls._get_image() if hasattr(cls, "_get_image") else None
     try:
@@ -335,6 +343,16 @@ def _render_block(name: str, cls) -> list[str]:
 
     # Reference / paper link
     lines.extend(_reference_lines(name, cls))
+    if name == "rfoptimization":
+        lines.extend([
+            "**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.",
+            "",
+        ])
+    if name == "proteina_complexa":
+        lines.extend([
+            "**Inputs and outputs:** [Binder configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). Single-pass all-atom protein binder generation from a target PDB, target selection and hotspots. Outputs include target and designed binder. Run a downstream structure predictor to evaluate binding geometry and confidence; generation alone is not a binding-quality result.",
+            "",
+        ])
     if name == "foundry_mpnn":
         lines.extend([
             "**Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.",
@@ -344,7 +362,16 @@ def _render_block(name: str, cls) -> list[str]:
         lines.extend([
             "**Backend:** `mpnn` runs LigandMPNN (`dauparas/LigandMPNN`) from the `ligandmpnn` image, with every official checkpoint baked in; install it with `chaperone install ligandmpnn`. No settings are needed. `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, `per_residue_label_membrane_mpnn` or `global_label_membrane_mpnn`) and `noise_level` selects the checkpoint version; the [container guide](containers.md) lists the valid combinations.",
             "",
+            "**Packed structures:** Use `output_mode=\"structures\"` and, for one structure per sampled sequence, `args={\"number_of_packs_per_design\": 1}`. The worked examples set these explicitly. The block default remains compact sequence output. With packed output and `args.repack_everything=0`, Chaperone restores observed coordinates of fixed protein residues after packing: the upstream packer can reconstruct and move these atoms even when their sequences are fixed. Newly completed atoms remain packed. Set `args.repack_everything=1` to allow fixed residues to be repacked, or `preserve_fixed_coordinates=False` to retain native packer reconstructions. Sequence fixing and coordinate preservation are distinct from subsequent refolding, which can move the structure.",
+            "",
         ])
+    example_notes = {
+        "rpxdock": "Input geometry must use the C3 symmetry axis as its z axis and retain the asymmetric unit's radial displacement. Outputs retain motif correspondence, input lineage and each model's RPX score. Changing scoring residue selection requires checking score thresholds; the score alone does not validate a complete cage or experimental assembly.",
+        "nanoparticle_prepare": "Requires RFdiffusion motif correspondence. Emits an asymmetric unit with motif metadata and preserved radial placement; rows exceeding the clash limit are removed. Invalid symmetry or missing correspondence fails explicitly.",
+        "select_chains": "Missing chains raise an error. The output is a new CIF; motif residues, atom selections and diffusion correspondence are restricted to retained chains. This supports a true protein-only prediction branch when a complex also contains a protein or peptide partner, which ligand removal alone would retain.",
+    }
+    if name in example_notes:
+        lines.extend([example_notes[name], ""])
     if name in METRIC_NOTES:
         lines.extend(["**Outputs and interpretation:** " + METRIC_NOTES[name], ""])
 

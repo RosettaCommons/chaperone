@@ -31,12 +31,14 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [manifest_val_structures](#manifest_val_structures) — Manifest reference PDB assemblies for prediction validation
 - [mpnn](#mpnn) — Inverse folding with LigandMPNN (protein, ligand, soluble and membrane models) [[paper](https://www.biorxiv.org/content/10.1101/2023.12.22.573103v1)]
 - [protein_hunter](#protein_hunter) — De novo binder design via Boltz structure hallucination [[paper](https://www.biorxiv.org/content/10.1101/2025.10.10.681530v1)]
+- [proteina_complexa](#proteina_complexa) — All-atom protein binder sequence/structure co-design [[paper](https://arxiv.org/abs/2603.27950)]
 - [rfd1](#rfd1) — RFdiffusion v1 backbone-level protein design
 - [rfd2](#rfd2) — RFdiffusion2 (rf_diffusion) block for atomic-level protein design
 - [rfd3](#rfd3) — RFdiffusion3 block [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
 - [rfd3_partial](#rfd3_partial) — RFdiffusion3 partial diffusion
 - [rfd3na](#rfd3na) — RFdiffusion3NA block (all-atom protein/DNA/RNA design) [[paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2)]
-- [rpxdock](#rpxdock) — CPU docking of a C3 asymmetric unit into an I3 cage
+- [rfoptimization](#rfoptimization) — RF3 gradient / Boltz-2 cycling with external MPNN sequence redesign [[paper](https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2)]
+- [rpxdock](#rpxdock) — Dock a z-oriented C3 asymmetric unit into an I3 cage and emit C3 trimers
 - [score_val_structures](#score_val_structures) — Score predictions against manifested validation references
 - [simplefold](#simplefold) — Apple SimpleFold sequence-only protein monomer prediction
 - [tmol_interface](#tmol_interface) — tmol protein-ligand interface ddG + per-term breakdown
@@ -85,13 +87,13 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [ingest](#ingest) — Ingest data from various sources
 - [materialize](#materialize) — Write stored structures to disk
 - [mutate_residues](#mutate_residues) — Create named protein sequence variants with explicit lineage
-- [nanoparticle_prepare](#nanoparticle_prepare) — Prepare a C3 asymmetric unit with aligned antigen clash checks
+- [nanoparticle_prepare](#nanoparticle_prepare) — Align antigen clash reference and preserve a C3 scaffold's symmetry axis
 - [order_collection](#order_collection) — Extract sequences, check ordered status, collect metrics
 - [package_submission](#package_submission) — Validate and write a sequence-only design submission
 - [remap_ligand](#remap_ligand) — Rename predicted ligand atom/residue names to match a reference CIF
 - [restore_sidechains](#restore_sidechains) — Restore selected motif rotamers from an upstream structure
 - [rotamer_sweep](#rotamer_sweep) — Enumerate explicit functional side-chain chi combinations
-- [select_chains](#select_chains) — Keep explicit structure chains and their motif metadata
+- [select_chains](#select_chains) — Keep specified chains, preserving residue IDs and parent lineage
 - [select_diverse](#select_diverse) — Select a diverse design subset under sequence/structure cutoffs
 - [select_motif](#select_motif) — Apply a function to select motif residues for downstream fixing
 - [selective_sidechain_repack](#selective_sidechain_repack) — Repack only explicitly selected protein sidechains
@@ -263,7 +265,7 @@ Class: `Boltz2SteeredBlock` · Input: `True` · Resources: partition=`gpu`, gpu_
 > Krishna et al. (2025) — Accelerating Biomolecular Modeling with AtomWorks and RF3
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.08.14.670328v1) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/prediction/rosettafold3.py)
 
-Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `foundry_public`
+Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`5:00:00` · Container: `foundry`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -286,7 +288,7 @@ Class: `RosettaFold3Block` · Input: `True` · Resources: partition=`gpu`, gpu_c
 | `dump_trajectories` | `bool` | `False` | Write the noisy and denoised diffusion trajectories for each sample. Trajectory files are large, place the final pred... |
 | `seed_offset` | `int` | `42` | Base random seed; each chunk increments by 1. Ignored when model_seeds is set. |
 | `model_seeds` | `Optional[list[int]]` | `None` | List of random seeds for multi-seed inference per input. Each seed runs a completely independent trunk pass, giving m... |
-| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Chaperone exports these to both LOCAL_MSA_DIRS (installed Foundry) and PROTEIN_MS... |
+| `msa_dirs` | `Optional[list[str]]` | `None` | Absolute on-disk protein MSA roots. Chaperone exports these to both LOCAL_MSA_DIRS and PROTEIN_MSA_DIRS (supported Fo... |
 | `raise_if_missing_msa_for_protein_of_length_n` | `Optional[int]` | `None` | Fail when a protein at least this many residues long has no MSA. Set to 0 to require an MSA for every protein chain. |
 | `create_bond_graph` | `bool` | `False` | Assign ligand bonds from specified_smiles and write inputs as CIF with bond topology. Required when input structures ... |
 | `input_mode` | `Literal` | `'file'` | 'file' passes CIF/PDB directly (current default). 'sequence' builds RF3 component JSON from sequences + CCD/SMILES. |
@@ -643,7 +645,7 @@ Class: `ESM2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`sm
 
 **Validation status:** Wrapper/integration coverage does not establish scientific equivalence to the `mpnn` block (LigandMPNN). The [PPI benchmark scripts](https://github.com/RosettaCommons/chaperone/tree/main/examples/benchmarks/ppi) provide a starting point for a controlled comparison; no equivalence result is asserted here.
 
-Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `foundry_public`
+Class: `FoundryMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `foundry`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -689,16 +691,7 @@ Class: `ManifestValStructuresBlock` · Input: `False` · Resources: Not specifie
 
 **Backend:** `mpnn` runs LigandMPNN (`dauparas/LigandMPNN`) from the `ligandmpnn` image, with every official checkpoint baked in; install it with `chaperone install ligandmpnn`. No settings are needed. `model_type` selects the model (`protein_mpnn`, `ligand_mpnn`, `soluble_mpnn`, `per_residue_label_membrane_mpnn` or `global_label_membrane_mpnn`) and `noise_level` selects the checkpoint version; the [container guide](containers.md) lists the valid combinations.
 
-**Packed structures:** Use `output_mode="structures"` and, for one structure per
-sampled sequence, `args={"number_of_packs_per_design": 1}`. The worked examples
-set these explicitly. The block default remains compact sequence output.
-With packed output and `args.repack_everything=0`, Chaperone restores observed
-coordinates of fixed protein residues after packing: the upstream packer can
-reconstruct and move these atoms even when their sequences are fixed.
-Newly completed atoms remain packed. Set `args.repack_everything=1` to allow fixed
-residues to be repacked, or `preserve_fixed_coordinates=False` to retain native
-packer reconstructions. Sequence fixing and coordinate preservation are distinct
-from subsequent refolding, which can move the structure.
+**Packed structures:** Use `output_mode="structures"` and, for one structure per sampled sequence, `args={"number_of_packs_per_design": 1}`. The worked examples set these explicitly. The block default remains compact sequence output. With packed output and `args.repack_everything=0`, Chaperone restores observed coordinates of fixed protein residues after packing: the upstream packer can reconstruct and move these atoms even when their sequences are fixed. Newly completed atoms remain packed. Set `args.repack_everything=1` to allow fixed residues to be repacked, or `preserve_fixed_coordinates=False` to retain native packer reconstructions. Sequence fixing and coordinate preservation are distinct from subsequent refolding, which can move the structure.
 
 Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00` · Container: `ligandmpnn`
 
@@ -710,10 +703,10 @@ Class: `ClassicMPNNBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`output_mode`</span> | `Literal` | `'sequences'` | Return compact sequence rows (default) or side-chain-packed structures. Sequence mode disables packing. |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `preserve_fixed_coordinates` | `bool` | `True` | For packed structures with repack_everything=0, restore observed finite heavy-atom coordinates of fixed protein resid... |
 | `skip_existing` | `bool` | `True` | Skip processing if outputs already exist |
 | `device` | `Optional[str]` | `None` | Force device for MPNN inference (e.g. 'cpu'). Default: auto-detect. |
 | `keep_motif_sequences_fixed` | `bool` | `True` | Keep sequences of motifs fixed (if read into the dataframe) |
-| `preserve_fixed_coordinates` | `bool` | `True` | Restore observed fixed protein atom coordinates after packing when `repack_everything=0`. |
 | `fix_interface_residues` | `bool` | `False` | Fix the sequence at the interfaces |
 | `hbond_fix` | `bool` | `False` | Fix residues involved in hydrogen bonds |
 | `aromatic_fix` | `bool` | `False` | Fix aromatic residues near ligand |
@@ -766,6 +759,34 @@ Class: `ProteinHunterBlock` · Input: `False` · Resources: partition=`gpu`, gpu
 | `ccd_path` | `str` | `<computed at runtime>` | Path to CCD molecule data directory (.pkl files) for Boltz. |
 | `boltz_model_path` | `str` | `<computed at runtime>` | Path to Boltz model checkpoint. |
 | `gpu_id` | `int` | `0` | GPU device ID. |
+
+---
+
+### proteina_complexa
+
+*Co-design all-atom protein binders around a fixed protein target.*
+
+> Proteina-Complexa: Scaling Atomistic Protein Binder Design with Generative Pretraining and Test-Time Compute
+> [Paper](https://arxiv.org/abs/2603.27950) · [Upstream code / documentation](https://github.com/NVIDIA-BioNeMo/Proteina-Complexa) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/proteina_complexa.py)
+
+**Inputs and outputs:** [Binder configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). Single-pass all-atom protein binder generation from a target PDB, target selection and hotspots. Outputs include target and designed binder. Run a downstream structure predictor to evaluate binding geometry and confidence; generation alone is not a binding-quality result.
+
+Class: `ProteinaComplexaBlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`large`, mem=`48GB`, time=`5:00:00` · Container: `proteina_complexa`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`target_pdb`</span> | `str` | **required** | Target PDB; copied into each job sandbox |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`target_selection`</span> | `str` | **required** | Upstream target input specification, e.g. A1-115 |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`hotspots`</span> | `list[str]` | **required** | Target residue identifiers, e.g. ['A37', 'A39'] |
+| <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `binder_length` | `tuple` | `(80, 120)` | Inclusive minimum and maximum binder residue count |
+| `num_designs` | `int` | `1` | Designs generated per batch |
+| `n_batches` | `int` | `1` | Independent engine jobs, each with a distinct seed |
+| `batch_size` | `int` | `1` | Simultaneous samples on one GPU |
+| `num_steps` | `int` | `400` | Flow integration steps; upstream default is 400 |
+| `seed` | `int` | `0` | Base seed, incremented by engine chunk ID |
+| `checkpoint_dir` | `str` | **required** | Directory containing public complexa.ckpt and complexa_ae.ckpt checkpoints |
 
 ---
 
@@ -829,7 +850,7 @@ Class: `RFD2Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 > Butcher, Krishna et al. (2025) — De novo Design of All-atom Biomolecular Interactions with RFdiffusion3
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfdiffusion3.py)
 
-Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry_public`
+Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -837,9 +858,10 @@ Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | Optional checkpoint path (foundry will manage checkpoints itself) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `Optional[int]` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `compile_model` | `Optional[bool]` | `None` | Compile hot diffusion modules; None inherits the Foundry runtime default. |
 | `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
@@ -853,7 +875,7 @@ Class: `RFD3Block` · Input: `False` · Resources: partition=`gpu`, gpu_class=`s
 
 > [Upstream code / documentation](https://github.com/RosettaCommons/foundry) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfdiffusion3.py)
 
-Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry_public`
+Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`small`, mem=`16GB`, time=`5:00:00` · Container: `foundry`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -861,9 +883,10 @@ Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cl
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | Optional checkpoint path (foundry will manage checkpoints itself) |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `Optional[int]` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `compile_model` | `Optional[bool]` | `None` | Compile hot diffusion modules; None inherits the Foundry runtime default. |
 | `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
@@ -881,7 +904,7 @@ Class: `RFD3PartialBlock` · Input: `True` · Resources: partition=`gpu`, gpu_cl
 > Butcher, Krishna et al. (2025) — RFdiffusion3NA multipolymer design
 > [Paper](https://www.biorxiv.org/content/10.1101/2025.09.18.676967v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfd3na.py)
 
-Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`6:00:00` · Container: `foundry_public`
+Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=`small`, mem=`32GB`, time=`6:00:00` · Container: `foundry`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -889,9 +912,10 @@ Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`ckpt_path`</span> | `Optional[str]` | `<computed at runtime>` | RFD3NA checkpoint path. Set to 'rfd3na' or None to use Foundry's checkpoint registry/search path. |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`batch_size`</span> | `int` | `8` | Number of designs to diffuse per batch |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`n_batches`</span> | `int` | `2` | Number of diffusion batches to run (in total) |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `int` | `42` | Increments seed by 1 from offset for every chunk |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`seed_offset`</span> | `Optional[int]` | `42` | Increments seed by 1 from offset for every chunk |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `compile_model` | `Optional[bool]` | `None` | Compile hot diffusion modules; None inherits the Foundry runtime default. |
 | `json_keys_subset` | `list` | `<computed at runtime>` | Keys to fetch from json |
 | `jitter_ori_sigma` | `float` | `0` | Jitter origin of the noise cloud by this standard deviation |
 | `convert_config_to_test_config` | `bool` | `False` | When True, shorten generated protein length to 50 residues and use fast inference settings for testing. Only shortens... |
@@ -904,23 +928,50 @@ Class: `RFD3NABlock` · Input: `False` · Resources: partition=`gpu`, gpu_class=
 
 ---
 
-### rpxdock
+### rfoptimization
 
-*Dock a z-oriented C3 asymmetric unit into an I3 cage and emit C3 trimers.*
+*Refine chain A of an existing complex with RF3/Boltz and MPNN.*
 
-Class: `RPXDockBlock` · Container: `rpxdock` · Resources: CPU, 8 GB, one core
+> RFOptimization: Guiding Design Optimization with All-Atom Structure Prediction
+> [Paper](https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2) · [Upstream code / documentation](https://github.com/RosettaCommons/foundry/tree/69d5f735f272b78b6b23c230abba849f18315234/models/rfo) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/block.py)
+
+**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.
+
+Class: `RFOptimizationBlock` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`64GB`, time=`04:00:00` · Container: `rfoptimization`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `nout_top` | `int` | `1` | Highest-scoring C3 trimers retained per input. |
-| `beam_size` | `int` | `10000` | Hierarchical search beam size. |
-| `ignored_aas` | `str` | `'CGP'` | Residue types excluded from scoring; an empty string includes glycine-placeholder backbone frames. |
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `total_cycles` | `int` | `10` | Number of RF3/Boltz + MPNN cycles per input. |
+| `backprop_fraction` | `float` | `0.5` | Probability of RF3 gradients per cycle; otherwise Boltz-2. |
+| `mpnn_model_type` | `Literal` | `'protein_mpnn'` | — |
+| `mpnn_temperature` | `float` | `0.1` | — |
+| `seed` | `int` | `42` | — |
+| `rf3_checkpoint` | `Optional[str]` | `None` | Public confidence-enabled RF3 checkpoint; required when RF3 is used. Defaults to configured Foundry checkpoint direct... |
+| `boltz_cache` | `str` | `<computed at runtime>` | — |
+| `rf3_config` | `Optional[str]` | `None` | Optional upstream optimizer YAML. Omit to use the pinned cycle_ppi preset. |
+| `msa_paths` | `dict` | `<computed at runtime>` | Optional chain to A3M path mapping; no remote MSA service is used. |
+| `templates` | `dict` | `<computed at runtime>` | Optional chain to template path mapping for the RF3 branch. |
+| `cyclic` | `bool` | `False` | Mark chain A cyclic in Boltz only; RF3 does not constrain its closure. |
 
-Input geometry must use the C3 symmetry axis as its z axis and retain the
-asymmetric unit's radial displacement. Outputs retain
-motif correspondence, input lineage and each model's RPX score. Changing scoring
-residue selection requires checking score thresholds; the score alone does not
-validate a complete cage or experimental assembly.
+---
+
+### rpxdock
+
+*Dock a z-oriented C3 asymmetric unit into an I3 cage and emit C3 trimers*
+
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rpxdock.py)
+
+Input geometry must use the C3 symmetry axis as its z axis and retain the asymmetric unit's radial displacement. Outputs retain motif correspondence, input lineage and each model's RPX score. Changing scoring residue selection requires checking score thresholds; the score alone does not validate a complete cage or experimental assembly.
+
+Class: `RPXDockBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`02:00:00` · Container: `rpxdock`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `nout_top` | `int` | `1` | Number of highest scoring C3 trimers per input |
+| `beam_size` | `int` | `10000` | RPXdock hierarchical search beam size |
+| `ignored_aas` | `str` | `'CGP'` | Residue types excluded from RPX scoring; use an empty string for glycine-placeholder backbones. |
 
 ---
 
@@ -1124,7 +1175,7 @@ Class: `DSSRSnapMetricsBlock` · Input: `True` · Resources: partition=`cpu`, me
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `x3dna_dssr_bin` | `Optional[str]` | `<computed at runtime>` | Path to the x3dna-dssr binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-dssr`` from the environment (set via .env.ipd on IP... |
+| `x3dna_dssr_bin` | `Optional[str]` | `<computed at runtime>` | Path to the x3dna-dssr binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-dssr`` from the environment (configure these in .en... |
 | `x3dna_snap_bin` | `Optional[str]` | `<computed at runtime>` | Path to the x3dna-snap binary. Defaults to ``$X3DNA_BIN_DIR/x3dna-snap`` from the environment. |
 | `x3dna_home` | `Optional[str]` | `<computed at runtime>` | Value to export as $X3DNA when invoking the binaries (the 3DNA install root containing config/, lib/, etc.). Defaults... |
 | `skip_snap` | `bool` | `False` | If True, skip SNAP entirely (fast path) — SNAP-derived metrics will be NaN. |
@@ -1780,20 +1831,21 @@ Class: `MutateResiduesBlock` · Input: `True` · Resources: partition=`cpu`, mem
 
 ### nanoparticle_prepare
 
-*Align an antigen clash reference and preserve a C3 scaffold's symmetry axis.*
+*Align antigen clash reference and preserve a C3 scaffold's symmetry axis*
 
-Class: `NanoparticlePrepareBlock`
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/nanoparticle.py)
+
+Requires RFdiffusion motif correspondence. Emits an asymmetric unit with motif metadata and preserved radial placement; rows exceeding the clash limit are removed. Invalid symmetry or missing correspondence fails explicitly.
+
+Class: `NanoparticlePrepareBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `motif_pdb` | `str` | Required | Original C3 antigen stub. |
-| `clash_ref_pdb` | `str` | Required | Full antigen stalk in the stub's coordinate frame. |
-| `max_clashes` | `int` | `8` | Maximum permitted aligned stalk clashes. |
-| `max_c3_rmsd` | `float` | `2.0` | Maximum C3 CA deviation in Å. |
-
-Requires RFdiffusion motif correspondence. Emits an asymmetric unit with motif
-metadata and preserved radial placement; rows exceeding the clash limit are
-removed. Invalid symmetry or missing correspondence fails explicitly.
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `motif_pdb` | `str` | **required** | The original RFdiffusion C3 antigen stub |
+| `clash_ref_pdb` | `str` | **required** | Full antigen stalk in the stub's coordinate frame |
+| `max_clashes` | `int` | `8` | — |
+| `max_c3_rmsd` | `float` | `2.0` | — |
 
 ---
 
@@ -1892,18 +1944,18 @@ Class: `SidechainRotamerSweepBlock` · Input: `True` · Resources: partition=`cp
 
 ### select_chains
 
-*Keep specified structure chains, preserving residue IDs and parent lineage.*
+*Keep specified chains, preserving residue IDs and parent lineage*
 
-Class: `SelectChainsBlock` · Execution: inline
+> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/util_blocks/select_chains.py)
+
+Missing chains raise an error. The output is a new CIF; motif residues, atom selections and diffusion correspondence are restricted to retained chains. This supports a true protein-only prediction branch when a complex also contains a protein or peptide partner, which ligand removal alone would retain.
+
+Class: `SelectChainsBlock` · Input: `True` · Resources: Not specified
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `chains` | `list[str]` | Required | Nonempty list of chain IDs to retain. |
-
-Missing chains raise an error. The output is a new CIF; motif residues, atom
-selections and diffusion correspondence are restricted to retained chains.
-This supports a true protein-only prediction branch when a complex also contains
-a protein or peptide partner, which ligand removal alone would retain.
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `chains` | `list[str]` | **required** | — |
 
 ---
 

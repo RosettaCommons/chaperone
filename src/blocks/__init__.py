@@ -159,7 +159,7 @@ def discover_all_blocks() -> dict[str, type["BlockFunction"]]:
     return dict(Blocks.items())
 
 
-# Build recipes remain discoverable even when a site selects a prebuilt SIF.
+# Keep explicit recipe names discoverable alongside block names and CPU variants.
 _CONTAINER_VARIANTS = {
     "rfdiffusion2_portable": ("blocks.networks.rfdiffusion2", "RFD2_PORTABLE_CONTAINER"),
     "colabfold_portable": ("blocks.networks.prediction.colabfold", "COLABFOLD_PORTABLE_CONTAINER"),

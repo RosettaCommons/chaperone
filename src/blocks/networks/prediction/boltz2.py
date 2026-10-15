@@ -73,7 +73,7 @@ BOLTZ2_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={"BOLTZ_CACHE_DIR": lambda: get_setting_field("BOLTZ_CACHE_DIR", "")},
     )
 )

@@ -99,11 +99,7 @@ PROTENIX_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            ("/mnt/home", "/mnt/home"),
-            ("/projects", "/projects"),
-            ("/net/databases", "/databases"),
-        ],
+        binds=[],
         env={},
     )
 )

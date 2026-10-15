@@ -165,9 +165,7 @@ RFD1_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            ("/mnt/home", "/mnt/home"),
-        ],
+        binds=[],
         env={},
     )
 )

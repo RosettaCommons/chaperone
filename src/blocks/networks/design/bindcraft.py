@@ -142,7 +142,7 @@ BINDCRAFT_CONTAINER = (
     .runscript(f'python -u {_RUNNER_DEST} "$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={"XLA_PYTHON_CLIENT_PREALLOCATE": "false"},
     )
 )

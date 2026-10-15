@@ -94,7 +94,7 @@ CHAI1_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={"CHAI_DOWNLOADS_DIR": lambda: get_setting_field("CHAI_DOWNLOADS_DIR", "")},
     )
 )

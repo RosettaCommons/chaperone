@@ -15,7 +15,7 @@ For each row, this block:
 
 The binaries are statically-linked Linux x86_64 executables; no container
 is required. Bin paths are read from the ``X3DNA_DIR`` and ``X3DNA_BIN_DIR``
-settings (configured in ``.env.ipd`` for IPD digs); override per-run via
+settings (configure these in ``.env.local``); override per-run via
 ``--dssr_snap_metrics.x3dna_dssr_bin=...`` if needed.
 
 Reference parsing logic ported from
@@ -618,7 +618,7 @@ class DSSRSnapMetricsBlock(InlineMetricBlock):
         description=(
             "Path to the x3dna-dssr binary. Defaults to "
             "``$X3DNA_BIN_DIR/x3dna-dssr`` from the environment "
-            "(set via .env.ipd on IPD digs)."
+            "(configure these in .env.local)."
         ),
     )
     x3dna_snap_bin: str | None = Field(

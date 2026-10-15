@@ -32,35 +32,8 @@ from chaperone.data.schema import DesignMetadata
 
 logger = logging.getLogger(__name__)
 
-# Two variants of the RFdiffusion2 container exist:
-#
-#   1. The prebuilt on-prem SIF. IPD jobs use this one; the RFdiffusion2 code
-#      and checkpoints live on site storage and are bound in.
-#
-#   2. A portable buildable variant (`chaperone install rfdiffusion2_portable`)
-#      that follows the upstream spec (RosettaCommons/RFdiffusion2,
-#      rf_diffusion/exec/rf_diffusion_aa.spec) and clones the public repo into
-#      /opt/RFdiffusion2 at build time, along with the RFD_173.pt checkpoint
-#      (downloaded and sha256-checked during the build).
-#
-# We auto-select at import time: if the on-prem SIF exists on disk, prefer it
-# (so IPD runs stay byte-identical to the past); otherwise fall back to the
-# buildable variant.
-
-_ONPREM_RFD2_SIF = (
-    "/net/software/containers/versions/rf_diffusion_aa/24-05-21/rf_diffusion_aa.sif"
-)
-_ONPREM_RFD2_CODE = "/net/tukwila/rohith/RFdiffusion2"
-_ONPREM_RFD2_CKPT = "/net/databases/lab/aa-diffusion/models/RFD_140_ORI_tipatom.pt"
-
-_RFD2_SIF_CONTAINER = Image.from_existing(
-    "rfdiffusion2", _ONPREM_RFD2_SIF
-).template_command(
-    binds=[
-        (_ONPREM_RFD2_CODE, _ONPREM_RFD2_CODE),
-        ("/net/databases/lab/aa-diffusion", "/net/databases/lab/aa-diffusion"),
-    ]
-)
+# Use the same public source and checkpoint on every host. Container locations
+# are resolved by CHAPERONE_CONTAINER_DIRS, never by probing a private checkout.
 
 # Upstream commit the portable recipe is pinned to.
 RFD2_REPO_URL = "https://github.com/RosettaCommons/RFdiffusion2"
@@ -156,24 +129,11 @@ _RFD2_PORTABLE_CONTAINER = (
 )
 
 
-def _onprem_rfd2_sif_exists() -> bool:
-    return Path(_ONPREM_RFD2_SIF).is_file()
-
-
-def _pick_rfd2_container() -> Image:
-    """On-prem: use the prebuilt SIF. Elsewhere: build from the public repo."""
-    if _onprem_rfd2_sif_exists():
-        return _RFD2_SIF_CONTAINER
-    return _RFD2_PORTABLE_CONTAINER
-
-
-RFD2_CONTAINER = _pick_rfd2_container()
+RFD2_CONTAINER = _RFD2_PORTABLE_CONTAINER
 RFD2_PORTABLE_CONTAINER = _RFD2_PORTABLE_CONTAINER
 
 
 def _default_ckpt_path() -> str:
-    if RFD2_CONTAINER is not _RFD2_PORTABLE_CONTAINER:
-        return _ONPREM_RFD2_CKPT
     return _RFD2_BAKED_CKPT
 
 
@@ -321,29 +281,20 @@ class RFD2Block(CompiledBlockFunction):
 
     @classmethod
     def _get_image(cls) -> Image:
-        # Resolved from the module global so the on-prem/portable choice made
-        # at import time is the single source of truth.
         return RFD2_CONTAINER
 
     def get_command_template(self) -> List[str]:
-        image = self._get_image()
-        if image is _RFD2_PORTABLE_CONTAINER:
-            # Code and the default checkpoint are baked into the image; a custom
-            # ckpt_path is bound in from the host.
-            binds = []
-            if self.ckpt_path != _RFD2_BAKED_CKPT:
-                ckpt_dir = os.path.dirname(os.path.abspath(self.ckpt_path))
-                binds.append((ckpt_dir, ckpt_dir))
-            # The checkpoint's embedded training config interpolates $USER,
-            # which --cleanenv would otherwise leave unset.
-            return image.build_command(
-                f"{_RFD2_CODE_DIR}/rf_diffusion/run_inference.py",
-                env={"PYTHONPATH": _RFD2_CODE_DIR, "USER": getpass.getuser()},
-                binds=binds,
-            )
-        return image.build_command(
-            f"{_ONPREM_RFD2_CODE}/rf_diffusion/run_inference.py",
-            env={"PYTHONPATH": f"{_ONPREM_RFD2_CODE}/"},
+        # Code and the default checkpoint are baked into the image. Expose only
+        # an explicitly configured host checkpoint, not an entire site's tree.
+        binds = []
+        if self.ckpt_path != _RFD2_BAKED_CKPT:
+            ckpt_dir = os.path.dirname(os.path.abspath(self.ckpt_path))
+            binds.append((ckpt_dir, ckpt_dir))
+        # The checkpoint's training config interpolates $USER under --cleanenv.
+        return self._get_image().build_command(
+            f"{_RFD2_CODE_DIR}/rf_diffusion/run_inference.py",
+            env={"PYTHONPATH": _RFD2_CODE_DIR, "USER": getpass.getuser()},
+            binds=binds,
         )
 
     inputs: str | List[str] = Field(

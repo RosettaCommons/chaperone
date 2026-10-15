@@ -598,12 +598,23 @@ def test_foundry_build_pins_compatible_atomworks_and_imports_real_engines():
     from blocks.networks.foundry.container import _FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER
     for image in (_FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER):
         definition = image.to_dockerfile()
-        assert "git -C /opt/foundry checkout --detach c97ad246877e2c7cb3b50e60aab7d76d02e8d393" in definition
-        assert "atomworks[ml]==2.2.1" in definition
-        assert "biotite==1.4.0" in definition
+        assert "git -C /opt/foundry checkout --detach 2a950eac6d3912ba1fa69e05557bda865602c6a3" in definition
+        assert "atomworks[ml]==3.0.1" in definition
+        assert "biotite==1.6.0" in definition
         for module in ("rfd3.engine", "rfd3na.engine", "rf3.inference_engines.rf3", "mpnn.inference_engines.mpnn"):
             assert f"import {module}" in definition
         assert "pip check" in definition
+
+
+@pytest.mark.parametrize("name", ["rfd3", "rfd3na", "foundry_mpnn", "rf3"])
+def test_shared_foundry_blocks_select_atomworks3_recipe(name):
+    from blocks import Blocks
+    from blocks.networks.foundry.container import FOUNDRY_CONTAINER
+
+    image = Blocks[name]._get_image()
+    assert image is FOUNDRY_CONTAINER
+    assert image._labels["AtomWorks"] == "3.0.1"
+    assert "atomworks[ml]==3.0.1" in image.to_dockerfile()
 
 
 @pytest.mark.parametrize("name", ["boltz2", "chai1"])

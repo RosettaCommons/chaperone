@@ -73,12 +73,9 @@ METAL3D_CONTAINER = (
     )
     .label(Version="metal3d-2022.08", Source="lcbc-epfl/metal-site-prediction")
     .runscript('"$@"')
-    # Bind both /home and /mnt/home: the wrapper script lives outside the
-    # image and __file__ on IPD machines often resolves via /mnt/home,
-    # which is not bound by default.
     .template_command(
         exec_mode="exec",
-        binds=[("/home", "/home"), ("/mnt/home", "/mnt/home")],
+        binds=[],
     )
 )
 

@@ -37,6 +37,21 @@ concatenation APIs in place of the predecessor's unavailable `submit/gather`.
 Each designed sequence produces one packed structure (`output_mode="structures"`,
 `number_of_packs_per_design=1`); packing does not multiply the sample count.
 
+### Ligand chemistry limitation
+
+The historical packing fixture is not a stereochemical quality control. A
+comparison with the biotin example's explicit N-pentyl-biotinamide SMILES found
+the same connectivity but two inverted stereocenters in its coordinates
+(`C2`: intended S, observed R; `C5`: intended R, observed S). Its `BTN` atom
+names also require custom component definitions for AtomWorks 3; the CIF
+contains only atom-site records. The historical coordinates are retained for
+packing-preservation regression coverage. Use the original
+[biotin ligand input](https://github.com/RosettaCommons/chaperone/blob/main/examples/biotin-binder/files/biotin_all.pdb)
+and its explicit chemistry for ligand-quality evaluation. The Foundry
+AtomWorks 3 ligand smoke test uses that verified reference with complete custom
+component definitions. Preserving the historical fixture's coordinates is not
+evidence of correct ligand stereochemistry.
+
 ## GPU checkpoint and packing validation
 
 A bounded CoreWeave H200 diagnostic exercised all **14 public sequence

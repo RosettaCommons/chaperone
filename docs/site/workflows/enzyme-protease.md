@@ -14,7 +14,7 @@ The [source recipe](https://github.com/RosettaCommons/chaperone/tree/main/exampl
 
 Install Foundry, LigandMPNN, and AlphaFold 3 runtimes using the [container guide](../containers.md), including the RFD3 and RF3 checkpoints and licensed AF3 weights. Site configuration supplies the scheduler and GPU requests.
 
-The public port uses **regular RF3**, with substrate chain B selected as a template and ground-truth conformer, 50 diffusion steps, and five recycles. The original internal `rf3_dev` wrapper exposed additional auto-templating and classifier-free-guidance controls; this is a supported public replacement, not a numerical reproduction of that development model.
+The public port uses **regular RF3**, with substrate chain B selected as a template and ground-truth conformer, 50 diffusion steps, and five recycles. This workflow uses the public Foundry container and checkpoint.
 
 ## Run
 

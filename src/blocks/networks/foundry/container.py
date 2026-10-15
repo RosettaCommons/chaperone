@@ -15,14 +15,16 @@ from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 
-_FOUNDRY_REVISION = "c97ad246877e2c7cb3b50e60aab7d76d02e8d393"
-# This source imports APIs removed in AtomWorks 3. Keep the known compatible
-# scientific stack together instead of following Foundry's open lower bounds.
+_FOUNDRY_REVISION = "2a950eac6d3912ba1fa69e05557bda865602c6a3"
+# Pin the upstream AtomWorks 3 port together with its supported Biotite version.
 _FOUNDRY_DEPENDENCIES = (
-    "'atomworks[ml]==2.2.1' 'biotite==1.4.0' " "'lightning==2.6.1' 'numpy==2.4.3'"
+    "'atomworks[ml]==3.0.1' 'biotite==1.6.0' 'lightning==2.6.1' 'numpy==2.4.3'"
 )
 _FOUNDRY_IMPORT_CHECK = (
-    "/opt/foundry-env/bin/python -c 'import rfd3.engine; import rfd3na.engine; "
+    "/opt/foundry-env/bin/python -c 'from importlib.metadata import version; "
+    'assert version("atomworks") == "3.0.1"; '
+    'assert version("biotite") == "1.6.0"; '
+    "import rfd3.engine; import rfd3na.engine; "
     "import rf3.inference_engines.rf3; import mpnn.inference_engines.mpnn'"
 )
 
@@ -32,6 +34,14 @@ _RFD3NA_COMPAT_COMMAND = (
     "/opt/foundry-env/bin/python -c "
     + shlex.quote(Path(__file__).with_name("_rfd3na_compat.py").read_text())
     + " /opt/foundry/models/rfd3na/src/rfd3na/inference --check"
+)
+
+
+# Override checkpoint training caches before constructing RF3 inference features.
+_RF3_PORTABILITY_COMMAND = (
+    "/opt/foundry-env/bin/python -c "
+    + shlex.quote(Path(__file__).with_name("_rf3_portability.py").read_text())
+    + " /opt/foundry/models/rf3/src/rf3/inference_engines/rf3.py --check"
 )
 
 
@@ -52,33 +62,8 @@ def _checkpoint_binds() -> list[tuple[str, str]]:
 
 
 def _foundry_binds() -> list[tuple[str, str]]:
-    """Bind list for the foundry container.
-
-    foundry.sif hardcodes /mnt/projects for its CCD mirror, so on hosts where
-    that path does not exist we alias /projects onto it. But when the host has
-    a real /mnt/projects — as managed workers do, with workspaces living
-    under it — that alias shadows the workspace: a path inside the container
-    resolves to a different inode than the same path outside, and blocks fail
-    with FileNotFoundError on files that plainly exist. So bind the real
-    directory through instead, which satisfies the CCD mirror either way.
-    """
-    binds = [("/mnt/home", "/mnt/home"), ("/projects", "/projects")]
-    # Active run and runtime-workspace paths are injected centrally by
-    # Image.build_command when the controller enables the exact-path options.
-    # Never restore broad /net or /mnt/net mounts here.
-    alias, target = Path("/mnt/projects"), Path("/projects")
-    # Compare device+inode rather than testing for a symlink: a bind-mounted
-    # /mnt/projects is a real directory too, and would still shadow.
-    try:
-        distinct = alias.is_dir() and alias.stat()[:2] != target.stat()[:2]
-    except OSError:
-        distinct = False
-    binds.append(
-        ("/mnt/projects", "/mnt/projects")
-        if distinct
-        else ("/projects", "/mnt/projects")
-    )
-    return binds + _checkpoint_binds()
+    """Mount configured checkpoints; the engine supplies workspace/run mounts."""
+    return _checkpoint_binds()
 
 
 # ── CUDA variant (default for Linux / GPU clusters) ─────────────────────
@@ -130,6 +115,7 @@ _FOUNDRY_CUDA_CONTAINER = (
         "print(torch.__version__, torch.version.cuda)'",
         _FOUNDRY_IMPORT_CHECK,
         _RFD3NA_COMPAT_COMMAND,
+        _RF3_PORTABILITY_COMMAND,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -140,10 +126,11 @@ _FOUNDRY_CUDA_CONTAINER = (
     )
     .label(
         RFD3NAInputFix="generated-contigs-v1",
+        RF3ResidueCache="disabled-for-inference",
         Version=_FOUNDRY_REVISION,
         CUDA="12.8",
         PyTorch="2.11.0",
-        AtomWorks="2.2.1",
+        AtomWorks="3.0.1",
     )
     .runscript('"$@"')
     .template_command(
@@ -192,6 +179,7 @@ _FOUNDRY_PUBLIC_CONTAINER = (
         ". /opt/foundry-env/bin/activate && pip check",
         _FOUNDRY_IMPORT_CHECK,
         _RFD3NA_COMPAT_COMMAND,
+        _RF3_PORTABILITY_COMMAND,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -200,10 +188,11 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     )
     .label(
         RFD3NAInputFix="generated-contigs-v1",
+        RF3ResidueCache="disabled-for-inference",
         Version=_FOUNDRY_REVISION,
         Platform="cpu",
         PyTorch="2.11.0",
-        AtomWorks="2.2.1",
+        AtomWorks="3.0.1",
     )
     .runscript('"$@"')
     .template_command(

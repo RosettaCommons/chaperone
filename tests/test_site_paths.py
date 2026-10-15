@@ -36,28 +36,6 @@ def _files(*names: str) -> str:
     return "^(?:" + "|".join(re.escape(name) for name in names) + ")$"
 
 
-# Blocks that bind the standard digs roots into their container. Missing roots
-# are dropped for buildable images (see ``Image.build_command``).
-BIND_ROOTS = r'\("/(?:mnt/home|projects)(?:/ml/\w+)?", "/(?:mnt/home|projects)(?:/ml/\w+)?"\)'
-BIND_ROOT_FILES = _files(
-    "src/blocks/networks/design/bindcraft.py",
-    "src/blocks/networks/design/boltzgen.py",
-    "src/blocks/networks/design/disco/disco.py",
-    "src/blocks/networks/foundry/container.py",
-    "src/blocks/networks/hallucination/protein_hunter.py",
-    "src/blocks/networks/plm/esm2.py",
-    "src/blocks/networks/prediction/alphafold3.py",
-    "src/blocks/networks/prediction/boltz2.py",
-    "src/blocks/networks/prediction/chai1.py",
-    "src/blocks/networks/prediction/colabfold.py",
-    "src/blocks/networks/prediction/esmfold2.py",
-    "src/blocks/networks/prediction/openfold3.py",
-    "src/blocks/networks/prediction/protenix.py",
-    "src/blocks/networks/prediction/simplefold.py",
-    "src/blocks/networks/rfdiffusion1.py",
-    "src/blocks/networks/tmol.py",
-)
-
 ALLOWED: list[tuple[str, str, str]] = [
     # -- the digs site itself ------------------------------------------------
     (r"^src/chaperone/site_profiles/", r"", "the digs profile is where site paths live"),
@@ -74,11 +52,6 @@ ALLOWED: list[tuple[str, str, str]] = [
         "default /projects bind (and its /mnt/projects alias) when the host has it",
     ),
     (
-        _files("src/blocks/networks/foundry/container.py"),
-        r"/projects|/mnt/projects",
-        "aliases /projects onto /mnt/projects (or back) so checkpoint paths resolve",
-    ),
-    (
         _files("src/chaperone/settings.py"),
         r"/net/scratch/\{user\}/chaperone",
         "default CHAPERONE_ROOT, used only when CHAPERONE_SITE=digs",
@@ -89,41 +62,15 @@ ALLOWED: list[tuple[str, str, str]] = [
         "comments describing the digs NFS attribute-cache behaviour",
     ),
     # -- on-prem fallbacks in blocks ------------------------------------------
-    (BIND_ROOT_FILES, BIND_ROOTS, "standard digs bind roots; dropped when absent"),
-    (
-        _files("src/blocks/metrics/metal3d.py"),
-        r"/mnt/home",
-        "wrapper script resolves via /mnt/home on IPD machines; bound with /home",
-    ),
-    (
-        _files("src/blocks/networks/prediction/alphafold3.py"),
-        r"/(?:net/)?databases",
-        "AF3 database bind and its container-side alias",
-    ),
-    (
-        _files("src/blocks/networks/prediction/protenix.py"),
-        r'"/net/databases"',
-        "Protenix database bind",
-    ),
-    (
-        _files("src/blocks/networks/prediction/colabfold.py"),
-        r"/net/|/projects|_ONPREM_COLABFOLD_SIF",
-        "on-prem ColabFold SIF and its /net binds",
-    ),
-    (
-        _files("src/blocks/networks/rfdiffusion2.py"),
-        r"/net/",
-        "on-prem RFdiffusion2 SIF, code and checkpoint (_ONPREM_RFD2_*)",
-    ),
     (
         _files("src/blocks/scripts/ddg_protocol.xml"),
         r"/software/psipred4/",
         "commented-out psipred filter in the default ddG protocol",
     ),
     (
-        _files("src/blocks/networks/foundry/rfd3na.md"),
-        r"/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na_1190\.ckpt",
-        "labelled as the default IPD checkpoint",
+        _files("src/blocks/networks/prediction/alphafold3.py"),
+        r'"--model_dir=/databases/alphafold",',
+        "container-internal AF3 fallback, overridden by configured model directory",
     ),
     # -- docs and skills that say they are IPD / digs specific ---------------
     (
@@ -140,11 +87,6 @@ ALLOWED: list[tuple[str, str, str]] = [
         _files("docs/extras/containers.md"),
         r"/projects/ml",
         "IPD example paths and the .env.ipd trigger",
-    ),
-    (
-        _files("examples/fgfr2-binder/README.md"),
-        r"/net/scratch",
-        "example run base on digs",
     ),
     (
         _files(
@@ -185,6 +127,11 @@ ALLOWED: list[tuple[str, str, str]] = [
         "IPD-only PyMOL helper",
     ),
     # -- tests: fixtures that mirror the constants above ----------------------
+    (
+        _files("tests/test_proteina_complexa.py", "tests/test_rfoptimization.py"),
+        r'for site_path in |assert "/net/" not in recipe',
+        "negative assertions that new recipes contain no institutional paths",
+    ),
     (
         _files(
             "tests/blocks/test_container_definitions.py",
@@ -291,7 +238,7 @@ def test_scanner_ignores_other_text(line):
 
 def test_scanner_allows_listed_use_only_in_listed_file():
     line = 'binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")]'
-    assert not _scan("src/blocks/networks/design/bindcraft.py", line)
+    assert _scan("src/blocks/networks/design/bindcraft.py", line)
     assert _scan("src/blocks/metrics/chirality.py", line)
     # In a listed file, an unrelated site path is still caught.
     assert _scan("src/blocks/networks/design/bindcraft.py", "x = '/home/alice/w'")

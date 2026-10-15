@@ -3,6 +3,7 @@ import glob
 import csv
 import shutil
 import logging
+from pathlib import Path
 
 from pydantic import Field, field_validator
 from typing import Optional
@@ -48,7 +49,7 @@ BOLTZGEN_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={
             "HF_HUB_CACHE": lambda: get_setting_field("HF_HUB_CACHE", ""),
             # Site-provided job scratch can disappear between the outer Slurm
@@ -157,6 +158,15 @@ class BoltzGenBlock(CompiledBlockFunction):
         description="Number of independent BoltzGen runs",
     )
 
+    def get_command_template(self) -> list[str]:
+        cache = get_setting_field("HF_HUB_CACHE", None)
+        cache = str(Path(cache).expanduser().resolve()) if cache else None
+        binds = [(cache, cache)] if cache else []
+        return self._script_spec.image.build_command(
+            *self._script_spec.command, binds=binds,
+            env={"HF_HUB_CACHE": cache} if cache else {},
+        )
+
     @field_validator("config")
     def ensure_config_exists(cls, v):
         if not os.path.exists(v):
@@ -172,6 +182,9 @@ class BoltzGenBlock(CompiledBlockFunction):
     def create_command(self, handler, sandbox_dir, chunk_id):
         sandbox_dir = os.path.abspath(sandbox_dir)
         os.makedirs(sandbox_dir, exist_ok=True)
+        cache = get_setting_field("HF_HUB_CACHE", None)
+        if cache:
+            Path(cache).expanduser().resolve().mkdir(parents=True, exist_ok=True)
 
         # Copy config into sandbox for reproducibility
         config_dest = os.path.join(sandbox_dir, "design_spec.yaml")

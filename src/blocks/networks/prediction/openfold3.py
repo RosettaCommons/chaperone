@@ -4,6 +4,7 @@ import glob
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, model_validator
@@ -68,7 +69,7 @@ OPENFOLD3_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={},
     )
 )
@@ -144,9 +145,11 @@ class OpenFold3Block(AF3LikePredictionBlock):
         # DeepSpeed JIT-compiles evoformer CUDA kernels; needs CUTLASS headers
         env["CUTLASS_PATH"] = "DS_USE_CUTLASS_PYTHON_BINDINGS"
         if self.cache_dir:
+            self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
             env["OPENFOLD_CACHE"] = self.cache_dir
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env or None
+            *self._script_spec.command, env=env or None,
+            binds=[(self.cache_dir, self.cache_dir)] if self.cache_dir else [],
         )
 
     @model_validator(mode="before")
@@ -171,6 +174,8 @@ class OpenFold3Block(AF3LikePredictionBlock):
 
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
         sandbox_dir, inputdir, outputdir = self._setup_io_dirs(sandbox_dir)
+        if self.cache_dir:
+            Path(self.cache_dir).expanduser().resolve().mkdir(parents=True, exist_ok=True)
 
         # Build the queries dict with one entry per design
         queries = {}

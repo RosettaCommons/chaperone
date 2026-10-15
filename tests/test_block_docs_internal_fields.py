@@ -5,6 +5,7 @@ import runpy
 
 from pydantic import Field
 
+from blocks import Blocks
 from blocks.networks.prediction.alphafold3 import AlphaFold3Block
 from blocks.networks.prediction.rosettafold3 import RosettaFold3Block
 from blocks.networks.prediction.esmfold2 import ESMFold2Block
@@ -14,6 +15,16 @@ class APIOnlyFieldBlock(AlphaFold3Block):
     public_api_setting: dict = Field(
         default_factory=dict, json_schema_extra={"cli_type": None}
     )
+
+
+def test_private_development_rf3_is_not_registered_or_advertised():
+    assert "rf3" in Blocks
+    assert "rf3_dev" not in Blocks
+    reference = (
+        Path(__file__).resolve().parents[1] / "docs/site/blocks-reference.md"
+    ).read_text()
+    assert "rf3_dev" not in reference
+    assert "RF3 via local foundry-dev" not in reference
 
 
 def test_docs_hide_internal_revisions_but_keep_public_python_api_fields():

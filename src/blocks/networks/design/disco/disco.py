@@ -142,7 +142,7 @@ DISCO_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home")],
+        binds=[],
         env={"HF_HUB_CACHE": lambda: get_setting_field("HF_HUB_CACHE", "")},
     )
 )

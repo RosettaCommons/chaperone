@@ -90,13 +90,7 @@ SIMPLEFOLD_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[
-            ("/home", "/home"),
-            ("/mnt/home", "/mnt/home"),
-            ("/net", "/net"),
-            ("/mnt/net", "/mnt/net"),
-            ("/projects", "/projects"),
-        ],
+        binds=[],
         env={},
     )
 )

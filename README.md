@@ -9,7 +9,8 @@ Chaperone is a unified framework for making structural biology tools interoperab
 Hook together design, sequencing, folding, and analysis into reproducible pipelines
 with automatic SLURM orchestration, chunking, and path tracking.
 
-Supported network blocks include RFD3NA, RFD3, RFD2, BindCraft, BoltzGen, Disco,
+Supported network blocks include RFD3NA, RFD3, RFD2, RFOptimization,
+Proteina-Complexa, BindCraft, BoltzGen, Disco,
 ProteinHunter, Protein/Ligand/FoundryMPNN, AF3, RF3, Boltz2, Chai1,
 Protenix v2, OpenFold3, ESMFold2, E1, and ESM2.
 Analysis blocks include RMSD, Foldseek, RASA, contact metrics, H-bond metrics,

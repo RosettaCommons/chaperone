@@ -33,7 +33,7 @@ from blocks.networks.prediction.rosettafold3 import (
     RosettaFold3Block,
     compile_rf3,
 )
-from blocks.networks.rfdiffusion2 import _RFD2_SIF_CONTAINER
+from blocks.networks.rfdiffusion2 import RFD2_CONTAINER
 
 
 # test_af3_seeds.py
@@ -433,10 +433,7 @@ def test_rf3_manifest_backlinks_duplicate_ids_by_exact_source_path(tmp_path):
 # test_rfdiffusion2_container.py
 
 
-def test_rfdiffusion2_rebinds_external_code_and_weights():
-    command = _RFD2_SIF_CONTAINER.build_command("python", "--version")
-
-    assert (
-        "/net/tukwila/rohith/RFdiffusion2:/net/tukwila/rohith/RFdiffusion2" in command
-    )
-    assert "/net/databases/lab/aa-diffusion:/net/databases/lab/aa-diffusion" in command
+def test_rfdiffusion2_uses_public_buildable_image():
+    assert not RFD2_CONTAINER.is_existing
+    command = RFD2_CONTAINER.build_command("python", "--version")
+    assert "${CONTAINER:rfdiffusion2_portable}" in command

@@ -26,6 +26,65 @@ from blocks.networks.foundry.container import FOUNDRY_CONTAINER
 logger = logging.getLogger(__name__)
 
 
+def _stage_rfd3_virtual_atoms(path: Path, sandbox_dir: Path) -> Path:
+    """Remove only RFD3's atom14 UNK placeholders in a private CIF copy.
+
+    RFD3 constants define V0..V8 as the nine virtual sidechain slots, with
+    element V. AtomWorks 3 validates names before MPNN can discard them. Real
+    ligand atoms, known amino acids, backbone coordinates and CCD categories
+    are kept verbatim; the original structure is never rewritten.
+    """
+    import gzip
+    import hashlib
+    import numpy as np
+    from biotite.structure.io.pdbx import CIFCategory, CIFColumn, CIFFile
+
+    if not (path.name.endswith(".cif") or path.name.endswith(".cif.gz")):
+        return path
+    opener = gzip.open if path.name.endswith(".gz") else open
+    with opener(path, "rt") as handle:
+        document = CIFFile.read(handle)
+    site = document.block.get("atom_site")
+    if site is None:
+        return path
+    def column(name):
+        return site[name].as_array(str)
+    names = column("label_atom_id")
+    candidate = (
+        (column("label_comp_id") == "UNK")
+        & (column("type_symbol") == "V")
+        & np.isin(names, [f"V{i}" for i in range(9)])
+        & (column("group_PDB") == "ATOM")
+    )
+    if not candidate.any():
+        return path
+    chains, residues = column("label_asym_id"), column("label_seq_id")
+    models = column("pdbx_PDB_model_num") if "pdbx_PDB_model_num" in site else np.full(len(names), "1")
+    if np.isin(chains[candidate], [".", "?", ""]).any() or np.isin(residues[candidate], [".", "?", ""]).any():
+        raise ValueError("RFD3 virtual atoms require unambiguous label_asym_id/label_seq_id before MPNN staging")
+    # A complete UNK peptide backbone distinguishes the atom14 representation
+    # from an unrelated nonpolymer with a V-prefixed atom name.
+    remove = np.zeros(len(names), dtype=bool)
+    for model, chain, residue in set(zip(models[candidate], chains[candidate], residues[candidate])):
+        mask = (models == model) & (chains == chain) & (residues == residue)
+        if {"N", "CA", "C", "O", "CB"} <= set(names[mask]):
+            remove |= mask & candidate
+    if not remove.any():
+        return path
+    document.block["atom_site"] = CIFCategory({
+        key: CIFColumn(
+            site[key].data.array[~remove],
+            None if site[key].mask is None else site[key].mask.array[~remove],
+        ) for key in site
+    })
+    digest = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:16]
+    destination = sandbox_dir / "mpnn_inputs" / digest / path.name.removesuffix(".gz")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    document.write(destination)
+    logger.info("Removed %d RFD3 virtual UNK atoms from staged MPNN input", int(remove.sum()))
+    return destination
+
+
 class FoundryMPNNBlock(CompiledBlockFunction):
     """Foundry Protein/LigandMPNN for inverse folding.
 
@@ -128,6 +187,7 @@ class FoundryMPNNBlock(CompiledBlockFunction):
             input_path = os.path.abspath(
                 str(self.stage_file(data.path, sandbox_dir, subdir="inputs"))
             )
+            input_path = str(_stage_rfd3_virtual_atoms(Path(input_path), Path(sandbox_dir)))
             basename = Path(input_path).stem
             if basename.endswith(".cif"):
                 basename = basename[:-4]

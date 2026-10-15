@@ -123,13 +123,40 @@ class CompiledBlockFunction(BlockFunction):
                 self.command_template = self.get_command_template()
             self._generated_command_template = list(self.command_template)
 
+    def _needs_container_staging(self, src: str | Path) -> bool:
+        """Whether an input lies outside the exact mounts available to a tool.
+
+        Resolve symlinks before checking visibility: a link in the workspace
+        does not make an external target visible inside a contained process.
+        """
+        if self.cloud:
+            return True
+        if self._get_image() is None:
+            return False
+        from contextlib import nullcontext
+        from chaperone import get_settings
+        from chaperone.containers import (
+            _runtime_rundir_bind, _runtime_workspace_bind,
+            container_runtime_bind_settings,
+        )
+
+        source = Path(src).expanduser().resolve()
+        saved = getattr(self, "_container_bind_settings", None)
+        with container_runtime_bind_settings(saved) if saved is not None else nullcontext():
+            settings = get_settings()
+            roots = (_runtime_rundir_bind(settings), _runtime_workspace_bind(settings))
+        return not any(
+            source.is_relative_to(Path(bind[0]).resolve())
+            for bind in roots if bind is not None
+        )
+
     def stage_file(
         self,
         src: str | Path | None,
         sandbox_dir: str | Path | None,
         subdir: str = "staged",
     ) -> Path | None:
-        """Materialize a catcif entry, otherwise return a local path unchanged."""
+        """Materialize CatCIF or copy an input outside the tool's exact mounts."""
         # 1. None always passes through silently.
         if src is None:
             return None
@@ -158,14 +185,14 @@ class CompiledBlockFunction(BlockFunction):
                 dest.write_text(catcif_tools.get_structure(src))
             return dest
 
-        if self.cloud and sandbox_dir:
+        if sandbox_dir and self._needs_container_staging(src):
             from chaperone.orchestration.modal_backend import stage_file
 
-            return stage_file(src, Path(sandbox_dir) / subdir)
+            return stage_file(Path(src).expanduser(), Path(sandbox_dir) / subdir)
         return Path(src)
 
     def stage_or_copy(self, src: str | Path, dst: str | Path) -> None:
-        """Symlink a local file or materialize a catcif entry.
+        """Symlink a visible input; copy external inputs or materialize CatCIF.
 
         Drop-in replacement for os.symlink(src, dst). Catcif-tag sources
         (``archive.catcif:entry_id``) are materialized by writing the entry's
@@ -184,10 +211,13 @@ class CompiledBlockFunction(BlockFunction):
             dst.write_text(catcif_tools.get_structure(src))
             return
 
-        src, dst = Path(src), Path(dst)
+        src, dst = Path(src).expanduser(), Path(dst)
+        needs_copy = self._needs_container_staging(src)
+        if dst.is_symlink() and needs_copy:
+            dst.unlink()  # replace a previously staged link with a contained copy
         if dst.exists():
             return
-        if self.cloud:
+        if needs_copy:
             import shutil
 
             mkdir_p(dst.parent)

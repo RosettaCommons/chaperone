@@ -33,6 +33,7 @@ import csv
 import glob
 import logging
 import os
+from pathlib import Path
 import re
 
 from pydantic import Field
@@ -159,7 +160,7 @@ PROTEIN_HUNTER_CONTAINER = (
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
-        binds=[("/mnt/home", "/mnt/home"), ("/projects", "/projects")],
+        binds=[],
         env={},
     )
 )
@@ -337,9 +338,16 @@ class ProteinHunterBlock(CompiledBlockFunction):
     gpu_id: int = Field(0, description="GPU device ID.")
 
     def get_command_template(self) -> list[str]:
+        self.ccd_path = str(Path(self.ccd_path).expanduser().resolve())
+        self.boltz_model_path = str(Path(self.boltz_model_path).expanduser().resolve())
+        model_dir = str(Path(self.boltz_model_path).parent)
         cmd = self._image.build_command(
             "python",
             "/opt/protein_hunter/boltz_ph/design.py",
+            binds=[
+                (self.ccd_path, self.ccd_path),
+                (model_dir, model_dir),
+            ],
         )
         # Insert --pwd and --writable-tmpfs before the container image ref.
         # --pwd: LigandMPNN uses relative paths (./LigandMPNN/run.py)

@@ -29,19 +29,29 @@ Configure Slurm queues, account and GPU mapping separately in the
 
 Cloud (Modal) execution is available for compiled blocks; see [cloud setup](cloud.md). Otherwise run with `local` or `slurm` using Docker or Apptainer.
 
-Portable variants remain available even when a local IPD SIF is selected:
-`colabfold_portable`, `rfdiffusion2_portable`, `foundry`, and `foundry_public`. For a deliberate rebuild, name that variant and use
-`--force`. A plain block name can select an already supplied site image.
+Blocks default to buildable public-source recipes, including
+`colabfold_portable`, `rfdiffusion2_portable`, `foundry`, and `foundry_public`.
+They do not switch models or source checkouts when institutional files happen
+to exist on the host. To use a prebuilt image, place it under its registered
+recipe name in a directory listed in `CHAPERONE_CONTAINER_DIRS`. Use `--force`
+for a deliberate rebuild.
+
+For existing Digs installations, this also makes RFdiffusion2 default to the
+public `RFD_173.pt` checkpoint rather than the formerly auto-selected private
+`RFD_140_ORI_tipatom.pt`. Treat that as a model change when comparing runs;
+configure `ckpt_path` explicitly when using another compatible checkpoint.
 
 ## Recipe audit
 
-The release checks render all **22** source recipes for Docker and Apptainer,
+The release checks render the source recipes for Docker and Apptainer,
 check shell syntax and local copy inputs, and exercise installer staging and
 site selection. That audit is static; not all images have been built or exercised. Validate one small workload on your cluster before scaling up.
 
 | Recipes | Installation notes |
 |---|---|
-| `foundry`, `foundry_public` | Public source/registry paths for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `foundry`, `foundry_public` | Foundry revision `2a950eac`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement. Uses its own compatible AtomWorks pin. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/rfoptimization/input.md). |
+| `proteina_complexa` | NVIDIA's protein binder generator with an isolated AtomWorks 2 environment. Download the two public model checkpoints and configure `checkpoint_dir`; see the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). |
 | `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
 | `alphafold3` | Source recipe available; model parameters require the upstream access process. |
 | `esmfold2` | Uses released `esm==3.4.1.post1` and Torch 2.11/CUDA 13. The removed Transformers fork was unavailable. Check GPU/driver support and upstream model terms. Existing older IPD images keep their legacy import path. |
@@ -53,8 +63,38 @@ site selection. That audit is static; not all images have been built or exercise
 
 Docker builds use an isolated build context containing the recipe's declared
 scripts and source checkouts. Apptainer builds use the same declared inputs.
-Missing institutional default mounts are omitted for portable recipes; explicit
+Blocks mount configured model caches, inputs, and working directories. Explicit
 input mounts and mounts on supplied existing images remain required.
+
+### Upgrading an existing Foundry image
+
+Updating Chaperone does not replace an already installed container. Rebuild it
+to move the four shared Foundry blocks to AtomWorks 3:
+
+```bash
+chaperone install foundry --force
+# CPU-only installations:
+# chaperone install foundry_public --force
+```
+
+The build checks the installed AtomWorks and Biotite versions, imports all four
+model engines, and exercises RNA/DNA input parsing. RFOptimization and
+Proteina-Complexa have separate recipes and dependency pins.
+RF3 inference explicitly disables the private residue-feature cache inherited
+from upstream training configuration, making that behavior independent of host
+filesystem contents.
+
+AtomWorks 3 validates ligand atom names against the Chemical Component
+Dictionary (CCD). Ligands with custom atom names need their corresponding
+`chem_comp_atom` and `chem_comp_bond` definitions in the input CIF. An atom-site-only
+file can be usable by classic LigandMPNN yet fail this validation in Foundry.
+Supply the component definitions or use a structure with canonical CCD names;
+renaming atoms without a verified chemical mapping can change the model input.
+
+For RFD3-to-FoundryMPNN chaining, Chaperone removes RFD3's virtual `V0`–`V8`
+sidechain slots from `UNK` peptide residues in a staged CIF copy. Backbone and
+real ligand atoms, custom component definitions, and the original input remain
+intact; this does not disable AtomWorks' chemical-name validation.
 
 Build on a host that permits Apptainer's build namespaces. A cluster login node
 can permit Slurm submission while rejecting `%post` with `Failed to set mount

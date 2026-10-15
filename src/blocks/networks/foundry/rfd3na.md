@@ -10,10 +10,10 @@ JSON file per design.
 
 Upstream source: [RosettaCommons/foundry `models/rfd3na`](https://github.com/RosettaCommons/foundry/tree/production/models/rfd3na).
 
-Install the shared runtime with `chaperone install foundry`. The default IPD
-checkpoint is `/projects/ml/pipelines/weights/foundry/checkpoints/rfd3na_1190.ckpt`;
-outside that environment, pass `ckpt_path="rfd3na"` after installing the
-checkpoint with Foundry's checkpoint installer.
+Install the shared runtime with `chaperone install foundry`. The block resolves
+`rfd3na_1190.ckpt` from `FOUNDRY_CHECKPOINT_DIRS` when configured; otherwise it
+uses Foundry's `rfd3na` checkpoint registry name. Install the checkpoint with
+Foundry's checkpoint installer, or pass `ckpt_path` for an explicit file.
 
 ## Block usage
 

@@ -1,4 +1,4 @@
-"""Guarded input-parser repair for the pinned AtomWorks 2 Foundry image.
+"""Guarded input-parser repair for the pinned AtomWorks 3 Foundry image.
 
 The upstream builder already understands R/D contig suffixes, but its validator
 rejects them without a motif input. Only wholly generated contigs may omit that
@@ -45,7 +45,7 @@ _TOKENS_NEW = """    def get_tokens(self, aa):
 _PATCHES = (
     (
         "input_parsing.py",
-        "87d0c6d4eb8be43b52020f7b9d43b524dfce4b323807401e8f575789615ab118",
+        "9f7d6b48dbb85b0446ee63cd20d7d827069e95f53e93a710362b3b7b4d373581",
         _INPUT_OLD,
         _INPUT_NEW,
     ),
