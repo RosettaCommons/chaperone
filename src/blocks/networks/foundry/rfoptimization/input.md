@@ -1,7 +1,7 @@
 # RFOptimization input and output
 
 `rfoptimization` refines an existing PDB/CIF complex through the pinned public
-[Foundry RFO implementation](https://github.com/Ubiquinone-dot/foundry/tree/997280e5c581283a3c39a67e6847f138713477be/models/rfo).
+[Foundry RFO implementation](https://github.com/RosettaCommons/foundry/tree/1178aba6ee8ab34ed97ee5dddc32872cfb91cf81/models/rfo).
 The RF3/RFO environment uses AtomWorks **3.0.1**, matching the major version
 used by the shared Foundry blocks. Boltz and MPNN retain separate environments
 for dependency compatibility. The pinned Foundry source includes the RFO port:
@@ -9,7 +9,9 @@ current selection imports, explicit parser configuration, and compact template
 range handling, stable chain order, and explicit protein reconstruction. It also disables geometry-based cyclic-bond guessing from
 sequence-only placeholder coordinates and overrides the checkpoint's private
 training residue cache with `None`. The upstream changes are in
-[Foundry PR #405](https://github.com/RosettaCommons/foundry/pull/405).
+[Foundry PR #405](https://github.com/RosettaCommons/foundry/pull/405); native RF3
+cache, environment, and trajectory fixes follow in
+[Foundry PR #406](https://github.com/RosettaCommons/foundry/pull/406).
 
 Its stages are RF3 gradient-guided sequence optimization **or** Boltz-2 prediction,
 followed by upstream ProteinMPNN/LigandMPNN redesign. Each input receives an

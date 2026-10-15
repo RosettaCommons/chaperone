@@ -41,7 +41,7 @@ class RFOptimizationBlock(CompiledBlockFunction):
     _script_spec = ScriptSpec(
         command=["/opt/rfo-env/bin/python", "-c", _RUN_CONFIGS],
         image=RFOPTIMIZATION_CONTAINER,
-        source_url="https://github.com/Ubiquinone-dot/foundry/tree/997280e5c581283a3c39a67e6847f138713477be/models/rfo",
+        source_url="https://github.com/RosettaCommons/foundry/tree/1178aba6ee8ab34ed97ee5dddc32872cfb91cf81/models/rfo",
     )
     _resources = JobArgs(
         partition="gpu",

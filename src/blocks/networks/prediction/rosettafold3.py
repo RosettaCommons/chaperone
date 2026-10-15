@@ -341,31 +341,9 @@ class RosettaFold3Block(AF3LikePredictionBlock):
     def _build_base_cmd(self, input_path, outputdir):
         """Build the common command prefix shared by all input modes."""
         command_template = self.command_template
-        if self.dump_trajectories or self.msa_dirs is not None:
-            compat_script = os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "..",
-                    "..",
-                    "scripts",
-                    "rf3_trajectory_compat.py",
-                )
-            )
-            if command_template[-2:] == ["rf3", "fold"]:
-                command_template = command_template[:-2]
-            elif command_template[-1] == "fold" and command_template[-3] == "python":
-                command_template = command_template[:-3]
-            else:
-                raise ValueError(
-                    "RF3 compatibility handling requires a command ending in "
-                    "'rf3 fold' or 'python <compat-script> fold'"
-                )
-            command_template = command_template + ["python", compat_script, "fold"]
-
         if self.msa_dirs is not None:
             msa_dirs = ",".join(self.msa_dirs)
             msa_environment = [
-                f"CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                 f"LOCAL_MSA_DIRS={msa_dirs}",
                 f"PROTEIN_MSA_DIRS={msa_dirs}",
             ]
@@ -374,7 +352,6 @@ class RosettaFold3Block(AF3LikePredictionBlock):
                     [
                         f"APPTAINERENV_LOCAL_MSA_DIRS={msa_dirs}",
                         f"APPTAINERENV_PROTEIN_MSA_DIRS={msa_dirs}",
-                        f"APPTAINERENV_CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                     ]
                 )
             elif "singularity" in command_template:
@@ -382,7 +359,6 @@ class RosettaFold3Block(AF3LikePredictionBlock):
                     [
                         f"SINGULARITYENV_LOCAL_MSA_DIRS={msa_dirs}",
                         f"SINGULARITYENV_PROTEIN_MSA_DIRS={msa_dirs}",
-                        f"SINGULARITYENV_CHAPERONE_LOCAL_MSA_DIRS={msa_dirs}",
                     ]
                 )
             command_template = [

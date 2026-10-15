@@ -7,7 +7,6 @@ supported on Apple Silicon (MPS MLIR bug).
 """
 
 from pathlib import Path
-import shlex
 
 from chaperone import get_setting_field
 from chaperone.common import is_apple_silicon
@@ -15,7 +14,7 @@ from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 
-_FOUNDRY_REVISION = "2a950eac6d3912ba1fa69e05557bda865602c6a3"
+_FOUNDRY_REVISION = "1178aba6ee8ab34ed97ee5dddc32872cfb91cf81"
 # Pin the upstream AtomWorks 3 port together with its supported Biotite version.
 _FOUNDRY_DEPENDENCIES = (
     "'atomworks[ml]==3.0.1' 'biotite==1.6.0' 'lightning==2.6.1' 'numpy==2.4.3'"
@@ -28,20 +27,16 @@ _FOUNDRY_IMPORT_CHECK = (
     "import rf3.inference_engines.rf3; import mpnn.inference_engines.mpnn'"
 )
 
-# Keep this source-level compatibility repair explicit and pinned. The build
-# exercises real RNA, DNA, and mixed contigs before accepting either image.
-_RFD3NA_COMPAT_COMMAND = (
-    "/opt/foundry-env/bin/python -c "
-    + shlex.quote(Path(__file__).with_name("_rfd3na_compat.py").read_text())
-    + " /opt/foundry/models/rfd3na/src/rfd3na/inference --check"
-)
-
-
-# Override checkpoint training caches before constructing RF3 inference features.
-_RF3_PORTABILITY_COMMAND = (
-    "/opt/foundry-env/bin/python -c "
-    + shlex.quote(Path(__file__).with_name("_rf3_portability.py").read_text())
-    + " /opt/foundry/models/rf3/src/rf3/inference_engines/rf3.py --check"
+# Exercise native upstream inference contracts without modifying installed source.
+_FOUNDRY_INFERENCE_CHECK = (
+    "/opt/foundry-env/bin/python -c '"
+    "from rfd3na.inference.input_parsing import DesignInputSpecification; "
+    "from biotite.structure import get_residue_starts; "
+    "from rf3.inference_engines.rf3 import RF3InferenceEngine; "
+    'atoms = DesignInputSpecification(contig="2,/0,3R,/0,4D", length="9").build(); '
+    "assert len(get_residue_starts(atoms)) == 9; "
+    'assert RF3InferenceEngine(ckpt_path="unused.ckpt").transform_overrides["residue_cache_dir"] is None'
+    "'"
 )
 
 
@@ -114,8 +109,7 @@ _FOUNDRY_CUDA_CONTAINER = (
         'import fused_layer_norm_cuda; assert torch.version.cuda == "12.8"; '
         "print(torch.__version__, torch.version.cuda)'",
         _FOUNDRY_IMPORT_CHECK,
-        _RFD3NA_COMPAT_COMMAND,
-        _RF3_PORTABILITY_COMMAND,
+        _FOUNDRY_INFERENCE_CHECK,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -125,7 +119,6 @@ _FOUNDRY_CUDA_CONTAINER = (
         VIRTUAL_ENV="/opt/foundry-env",
     )
     .label(
-        RFD3NAInputFix="generated-contigs-v1",
         RF3ResidueCache="disabled-for-inference",
         Version=_FOUNDRY_REVISION,
         CUDA="12.8",
@@ -178,8 +171,7 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     .run(
         ". /opt/foundry-env/bin/activate && pip check",
         _FOUNDRY_IMPORT_CHECK,
-        _RFD3NA_COMPAT_COMMAND,
-        _RF3_PORTABILITY_COMMAND,
+        _FOUNDRY_INFERENCE_CHECK,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -187,7 +179,6 @@ _FOUNDRY_PUBLIC_CONTAINER = (
         VIRTUAL_ENV="/opt/foundry-env",
     )
     .label(
-        RFD3NAInputFix="generated-contigs-v1",
         RF3ResidueCache="disabled-for-inference",
         Version=_FOUNDRY_REVISION,
         Platform="cpu",

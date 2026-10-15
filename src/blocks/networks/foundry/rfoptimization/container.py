@@ -9,7 +9,7 @@ from blocks.networks.mpnn import (
     _MPNN_NUMPY_COMPATIBILITY_PATCH,
 )
 
-FOUNDRY_REVISION = "997280e5c581283a3c39a67e6847f138713477be"
+FOUNDRY_REVISION = "1178aba6ee8ab34ed97ee5dddc32872cfb91cf81"
 # RFO needs independent environments: Boltz's NumPy constraint conflicts with
 # current Foundry/AtomWorks. No external installations or nested containers.
 RFOPTIMIZATION_CONTAINER = (
@@ -26,8 +26,6 @@ RFOPTIMIZATION_CONTAINER = (
     )
     .run(
         "git clone https://github.com/RosettaCommons/foundry.git /opt/foundry",
-        # Pending the upstream RFO AW3 port, fetch its immutable public commit.
-        f"git -C /opt/foundry fetch https://github.com/Ubiquinone-dot/foundry.git {FOUNDRY_REVISION}",
         f"git -C /opt/foundry checkout --detach {FOUNDRY_REVISION}",
         "python3.12 -m venv /opt/rfo-env",
         "/opt/rfo-env/bin/pip install --upgrade pip setuptools wheel",

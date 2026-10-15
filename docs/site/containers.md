@@ -50,7 +50,7 @@ site selection. That audit is static; not all images have been built or exercise
 | Recipes | Installation notes |
 |---|---|
 | `bindcraft2` | Pinned PacesaLab implementation with JAX 0.11/CUDA 12 and bundled ProteinMPNN. AlphaFold2 weights use a writable cache or explicit `af2_params_dir`. See the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/input.md) for installation, supported inputs, and the upstream hosting-restricted license. |
-| `foundry`, `foundry_public` | Foundry revision `2a950eac`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `foundry`, `foundry_public` | Foundry revision `1178aba6`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
 | `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement. Uses its own compatible AtomWorks pin. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). |
 | `proteina_complexa` | NVIDIA's protein binder generator with an isolated AtomWorks 2 environment. Download the two public model checkpoints and configure `checkpoint_dir`; see the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). |
 | `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
@@ -81,9 +81,14 @@ chaperone install foundry --force
 The build checks the installed AtomWorks and Biotite versions, imports all four
 model engines, and exercises RNA/DNA input parsing. RFOptimization and
 Proteina-Complexa have separate recipes and dependency pins.
-RF3 inference explicitly disables the private residue-feature cache inherited
+Native upstream RF3 inference disables the private residue-feature cache inherited
 from upstream training configuration, making that behavior independent of host
-filesystem contents.
+filesystem contents. The pinned source also fixes RFD3NA generated contigs and
+RF3 trajectory serialization with AtomWorks 3. Chaperone no longer rewrites
+Foundry source or substitutes a trajectory entrypoint. These native fixes are
+tracked in [Foundry PR #406](https://github.com/RosettaCommons/foundry/pull/406). Rebuild existing images
+with `chaperone install foundry --force` (or `foundry_public`); for RFO use
+`chaperone install rfoptimization --force`.
 
 AtomWorks 3 validates ligand atom names against the Chemical Component
 Dictionary (CCD). Ligands with custom atom names need their corresponding
