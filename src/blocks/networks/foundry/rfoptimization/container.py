@@ -1,7 +1,6 @@
 """Pinned, portable RFO runtime, isolated from the shared Foundry image."""
 
 import shlex
-from pathlib import Path
 
 from chaperone.containers import Image
 from blocks.networks.mpnn import (
@@ -17,14 +16,6 @@ from blocks.networks.foundry.container import _FOUNDRY_REVISION as FOUNDRY_REVIS
 RFOPTIMIZATION_CONTAINER = (
     Image("rfoptimization")
     .base_image("ubuntu:24.04")
-    .copy(
-        str(Path(__file__).parents[1] / "_aw3_compat.py"),
-        "/opt/chaperone-compat/_aw3_compat.py",
-    )
-    .copy(
-        str(Path(__file__).parents[1] / "atomworks3.patch"),
-        "/opt/chaperone-compat/atomworks3.patch",
-    )
     .packages(
         "build-essential",
         "git",
@@ -68,7 +59,6 @@ RFOPTIMIZATION_CONTAINER = (
         "/opt/rfo-env/bin/pip check",
         "/opt/boltz-env/bin/pip check",
         "/opt/mpnn-env/bin/pip check",
-        "/opt/rfo-env/bin/python /opt/chaperone-compat/_aw3_compat.py /opt/foundry /opt/chaperone-compat/atomworks3.patch --check",
         "/opt/rfo-env/bin/rfo --help >/dev/null",
         "/opt/rfo-env/bin/python -c "
         + shlex.quote(
@@ -92,8 +82,5 @@ RFOPTIMIZATION_CONTAINER = (
     .runscript('"$@"')
     # RF3's gradient path hits an incompatible cuEquivariance triangle kernel
     # with the public checkpoint. Use Foundry's supported PyTorch fallback.
-    .template_command(
-        exec_mode="exec",
-        env={"DISABLE_CUEQUIVARIANCE": "1", "PYTHON_DOTENV_DISABLED": "1"},
-    )
+    .template_command(exec_mode="exec", env={"DISABLE_CUEQUIVARIANCE": "1"})
 )

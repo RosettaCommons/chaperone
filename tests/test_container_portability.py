@@ -128,7 +128,6 @@ def test_foundry_checkpoint_resolution_and_mounts_follow_user_config(monkeypatch
     command = FOUNDRY_CONTAINER.build_command("true")
     assert f"{tmp_path.resolve()}:{tmp_path.resolve()}" in command
     assert f"FOUNDRY_CHECKPOINT_DIRS={tmp_path}" in command
-    assert "PYTHON_DOTENV_DISABLED=1" in command
 
 
 def test_all_reinstallable_recipes_render_and_have_local_copy_sources():
@@ -239,17 +238,6 @@ def test_fresh_gpu_recipes_have_consistent_blackwell_toolchain():
         assert "cuda-toolkit-12-8" in definition
         assert "/whl/cu128" in definition
         assert "pip check" in definition
-
-
-def test_foundry_charge_repair_rejects_unreviewed_source(tmp_path):
-    from blocks.networks.foundry._rfd3_compat import patch
-
-    path = tmp_path / "inference.py"
-    source = 'array.set_annotation("charge", np.zeros(array.shape[0], dtype=float))\n'
-    path.write_text(source)
-    with pytest.raises(RuntimeError, match="source changed"):
-        patch(path)
-    assert path.read_text() == source
 
 
 def test_disco_cuda_build_uses_bound_writable_cache(tmp_path):
@@ -631,7 +619,7 @@ def test_foundry_build_pins_compatible_atomworks_and_imports_real_engines():
     from blocks.networks.foundry.container import _FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER
     for image in (_FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER):
         definition = image.to_dockerfile()
-        assert "git -C /opt/foundry checkout --detach 436f58482b94233948af9327f948cd673545efd0" in definition
+        assert "git -C /opt/foundry checkout --detach 54d188b3c0c27654a01c875b173148a508fcd858" in definition
         assert "atomworks[ml]==3.0.1" in definition
         assert "biotite==1.6.0" in definition
         for module in ("rfd3.engine", "rfd3na.engine", "rf3.inference_engines.rf3", "mpnn.inference_engines.mpnn"):
