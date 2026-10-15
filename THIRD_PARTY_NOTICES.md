@@ -68,3 +68,19 @@ Other ported example fixtures retain the inputs of the original
 `baker-laboratory/pipelines` examples at snapshot `95ef0b6`. Workflow guides
 identify their provenance and any changes. These fixtures are example inputs,
 not newly generated validation results or evidence of experimental activity.
+
+## Documentation images
+
+`docs/site/.assets/{icon,pipeline,baselines,decorators}.png` are unchanged
+from `baker-laboratory/pipelines` commit
+`95ef0b6fd87eb27e1e73d2cfaa1482a39a0a132f`. The baseline plot is a historical
+illustration from that snapshot, not validation evidence for this release.
+
+The three illustrations in `src/blocks/networks/foundry/.assets/` are unchanged
+from [`RosettaCommons/foundry`, commit
+`c97ad246877e2c7cb3b50e60aab7d76d02e8d393`](https://github.com/RosettaCommons/foundry/tree/c97ad246877e2c7cb3b50e60aab7d76d02e8d393/models/rfd3/docs/.assets):
+`input_selection.png`, `input_selection_large.png`, and `partial_diff.png`.
+They accompany the adapted RFD3 input reference. Copyright (c) 2025, Institute
+for Protein Design, University of Washington; the upstream BSD 3-Clause license
+is retained in `src/blocks/networks/foundry/.assets/LICENSE.md` and included
+alongside the images in package distributions.

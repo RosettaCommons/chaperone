@@ -1,7 +1,11 @@
-# Chaperone <img src="https://raw.githubusercontent.com/RosettaCommons/chaperone/main/docs/site/.assets/icon.png" alt="icon" width="32" align="right"/>
+<p align="center">
+  <img src="docs/site/.assets/icon.png" alt="Pipelines icon" width="96">
+</p>
+
+# Chaperone
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RosettaCommons/chaperone/main/docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
+  <img src="docs/site/.assets/pipeline.png" alt="Pipeline.py" width="100%">
   <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
 </p>
 
@@ -28,7 +32,7 @@ This repo ships with [agent skills](https://rosettacommons.github.io/chaperone/s
 
 The distribution is named **`chaperone-pipelines`**; the Python import and CLI
 remain `chaperone`. A candidate is available on
-[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.5.1rc1/), but it has
+[TestPyPI](https://test.pypi.org/project/chaperone-pipelines/1.0.0/), but it has
 **not yet been released on production PyPI**. Use the source installation below. Do not install the unrelated `chaperone` package from PyPI.
 
 ## Installation (Agents)

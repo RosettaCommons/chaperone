@@ -8,6 +8,7 @@ edit_uri: edit/main/docs/site/
 docs_dir: docs/site
 exclude_docs: |
   gen_block_docs.py
+  !.assets/
 
 theme:
   name: material

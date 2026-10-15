@@ -594,16 +594,11 @@ select_fixed_atoms:
   LIG: ''  # selects no atoms (i.e. unfixes the atoms for ligands named `LIG`)
 ```
 
-<!--<p align="center">
-  <img src=".assets/input_selection.png" alt="InputSelection language for foundry" width=500>
-</p>-->
-```{figure} .assets/input_selection.png
----
-alt: Input selection language for foundry.
-width: 500px
----
-Graphical representation of the different ways to specify portions of a structure using RFD3's InputSelection mini-language. 
-```
+<p align="center">
+  <img src=".assets/input_selection.png" alt="InputSelection language for Foundry" width="500">
+</p>
+
+Graphical representation of the different ways to specify portions of a structure using RFD3's InputSelection mini-language.
 
 
 (contig-strings)=
@@ -677,13 +672,9 @@ In the following example, RFD3 will noise out by 15 angstroms and constrain atom
 }
 ```
 Below is an example of what the output should look like (diffusion outputs in teal, original native in navajo white):
-<!--<p align="center">
-  <img src=".assets/partial_diff.png" alt="Partial diffusion" width=650>
-</p>-->
-```{image} .assets/partial_diff.png
-:alt: Partial diffusion.
-:width: 650px
-```
+<p align="center">
+  <img src=".assets/partial_diff.png" alt="Partial diffusion" width="650">
+</p>
 
 (cif-parser-options)=
 ### CIF Parser Options
@@ -745,10 +736,6 @@ Let us know if you have any additional questions, we'd be happy to answer them e
 ## Further examples of InputSelection syntax
 
 Below is a reference for more examples of different ways you can specify inputs to select from your pdb in configs; we hope the community can find use in this flexible system for future models!
-<!--<p align="center">
-  <img src=".assets/input_selection_large.png" alt="Input selection syntax" width=650>
-</p>-->
-```{image} .assets/input_selection_large.png
-:alt: Input selection syntax.
-:width: 650px
-```
+<p align="center">
+  <img src=".assets/input_selection_large.png" alt="Input selection syntax" width="650">
+</p>
