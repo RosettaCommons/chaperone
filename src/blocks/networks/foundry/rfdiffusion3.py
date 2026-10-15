@@ -61,13 +61,18 @@ class RFD3Block(CompiledBlockFunction):
         cache = str(Path(cache).expanduser().resolve())
         if not Path(cache).is_dir():
             raise ValueError("Create RFD3_COMPILE_CACHE_DIR before running RFD3")
+        # Keep TMPDIR short: multiprocessing places Unix-domain sockets here,
+        # whose paths are limited to 108 bytes on Linux. Host cache paths can
+        # easily exceed that limit on shared cluster filesystems.
+        container_cache = "/chaperone-rfd3-cache"
         return self._script_spec.image.build_command(
             *self._script_spec.command,
-            binds=[(cache, cache)],
+            binds=[(cache, container_cache)],
             # Apptainer's private /tmp may be noexec on cluster nodes. Inductor
             # executes short compiler probes there unless TMPDIR is explicit.
-            env={"TMPDIR": cache, "TORCHINDUCTOR_CACHE_DIR": f"{cache}/inductor",
-                 "TRITON_CACHE_DIR": f"{cache}/triton"},
+            env={"TMPDIR": container_cache,
+                 "TORCHINDUCTOR_CACHE_DIR": f"{container_cache}/inductor",
+                 "TRITON_CACHE_DIR": f"{container_cache}/triton"},
         )
 
     # Model and input configuration

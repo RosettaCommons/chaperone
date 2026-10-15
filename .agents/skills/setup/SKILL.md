@@ -277,20 +277,19 @@ installation and runtime-image instructions in the separate private
 - Run controller `--dry-run`, then one real single-design trial and scoring. A
   container listing or successful import does not prove end-to-end readiness.
 
-### 7b. Warm RFD3's compilation cache on the target GPU
+### 7b. Offer optional RFD3 GPU precompilation
 
-For a full install including GPU warmup, combine the phases:
+A normal full install ends after building and checking the containers. Offer
+precompilation as a separate follow-up: **“Do you want me to precompile RFD3 on
+your GPUs? This uses GPU time now to populate a reusable compilation cache.”**
+Wait for the user's answer before allocating a GPU for this optional step. If the
+user already requested precompilation, proceed without asking again.
 
-```bash
-chaperone install --full --jobs=2 --warmup_rfd3 \
-  --warmup_cache_dir="$HOME/.cache/chaperone/rfd3" \
-  --warmup_run_dir=/absolute/shared/path/rfd3-warmup
-```
-
-This builds containers first, then submits warmup through the engine. Add
-`--warmup_local` only when the installer is already running in a GPU allocation.
-A failed build prevents warmup; retrying skips completed images.
-
+Explain that the cache is specific to the GPU architecture, software versions
+and workload shapes; one warmup cannot eliminate compilation for every design.
+Choose a representative public input and a writable persistent cache on storage
+visible to the compute nodes. Do not automatically add `--warmup_rfd3` to a
+normal `chaperone install --full` command.
 
 Use the pinned public Foundry's supported `compile_model` interface. Do not select
 a private `foundry_fast.sif`, change the model weights, or copy PR #351's unsupported
@@ -314,6 +313,8 @@ Persist `RFD3_COMPILE_CACHE_DIR=/absolute/cache/path` in `.env.local` and use
 `RFD3(compile_model=True)` in subsequent pipelines. The directory must already
 exist, be writable, and allow execution of compiler probes (`TMPDIR` is routed
 there because container `/tmp` can be non-executable); it is bound explicitly for local Apptainer/Docker execution.
+Inside the container it uses the short path `/chaperone-rfd3-cache`, so long
+shared-filesystem paths do not exceed multiprocessing's Unix-socket path limit.
 The cache does not contain model weights. GPU architecture, software version,
 shape, and diffusion batch size affect reuse; new combinations may compile again.
 Cold compile can take several minutes and is not always worthwhile for a short

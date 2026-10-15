@@ -18,15 +18,18 @@ def test_compile_and_seed_zero_reach_runtime(cls, tmp_path):
     )
 
 
-def test_compile_cache_bound_for_rfd3_only(monkeypatch, tmp_path):
+@pytest.mark.parametrize("cache_name", ["cache", "shared-cluster-cache-" * 8])
+def test_compile_cache_bound_for_rfd3_only(monkeypatch, tmp_path, cache_name):
+    tmp_path = tmp_path / cache_name
+    tmp_path.mkdir()
     settings = get_settings()
     monkeypatch.setattr(settings, "CHAPERONE_CONTAINER_BACKEND", "apptainer")
     monkeypatch.setattr(settings, "RFD3_COMPILE_CACHE_DIR", str(tmp_path))
     command = RFD3Block(cloud=False).command_template
-    assert f"{tmp_path}:{tmp_path}" in command
-    assert f"TORCHINDUCTOR_CACHE_DIR={tmp_path}/inductor" in command
-    assert f"TRITON_CACHE_DIR={tmp_path}/triton" in command
-    assert f"TMPDIR={tmp_path}" in command
+    assert f"{tmp_path}:/chaperone-rfd3-cache" in command
+    assert "TORCHINDUCTOR_CACHE_DIR=/chaperone-rfd3-cache/inductor" in command
+    assert "TRITON_CACHE_DIR=/chaperone-rfd3-cache/triton" in command
+    assert "TMPDIR=/chaperone-rfd3-cache" in command
     assert not any(
         "TORCHINDUCTOR" in x for x in RFD3NABlock(cloud=False).command_template
     )

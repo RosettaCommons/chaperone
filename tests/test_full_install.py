@@ -62,7 +62,10 @@ def test_full_preset_can_be_extended_without_duplicate_builds(monkeypatch, tmp_p
     assert sorted(built) == sorted([*install.CORE_CONTAINERS, "tmol"])
 
 
-def test_cli_runs_warmup_only_after_successful_builds(monkeypatch, tmp_path):
+@pytest.mark.parametrize("precompile", [False, True])
+def test_cli_runs_warmup_only_when_requested_after_successful_builds(
+    monkeypatch, tmp_path, precompile
+):
     from chaperone_cli import warmup
 
     values = dict(
@@ -70,7 +73,7 @@ def test_cli_runs_warmup_only_after_successful_builds(monkeypatch, tmp_path):
         jobs=2,
         force=False,
         dry_run=True,
-        warmup_rfd3=True,
+        warmup_rfd3=precompile,
         warmup_cache_dir=str(tmp_path / "cache"),
         warmup_run_dir=str(tmp_path / "run"),
         warmup_local=False,
@@ -83,7 +86,10 @@ def test_cli_runs_warmup_only_after_successful_builds(monkeypatch, tmp_path):
     monkeypatch.setattr(warmup, "main", lambda args: calls.append(args))
     install.main(["chaperone"])
     assert calls[0] == "build"
-    assert calls[1][-1] == "--dry-run"
+    if precompile:
+        assert calls[1][-1] == "--dry-run"
+    else:
+        assert calls == ["build"]
 
     def fail(*args, **kwargs):
         raise RuntimeError("build failed")
