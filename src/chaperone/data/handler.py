@@ -1074,7 +1074,8 @@ class PipelineDataHandler:
         Args:
             output_dir: Directory to write materialized files into.
             nest_by_step: If True, organize files into subdirectories by step name
-                (e.g. ``output_dir/rfd3/design.cif``, ``output_dir/af3/pred.cif``).
+                (e.g. ``output_dir/rfd3/design_<digest>.cif``). Filenames include
+                archive/entry identity to avoid collisions; design IDs are unchanged.
             expand_catcif: If True (default), extract catcif-stored entries to
                 individual files. If False, leave catcif paths as self-describing
                 ``archive.catcif:entry_id`` tags (readers resolve them transparently).
@@ -1088,7 +1089,7 @@ class PipelineDataHandler:
         if not self.is_stored:
             raise ValueError("Handler has no store; call store() first.")
 
-        from chaperone.data.catcif import split_catcif_path
+        from chaperone.data.catcif import catcif_entry_filename
 
         output_dir = Path(output_dir)
 
@@ -1123,11 +1124,11 @@ class PipelineDataHandler:
                     if tag in seen_tags:
                         continue
                     seen_tags.add(tag)
-                    _archive, entry_id = split_catcif_path(tag)
+                    filename = catcif_entry_filename(tag)
                     if nest_by_step and tag in path_to_step:
-                        out_path = output_dir / path_to_step[tag] / f"{entry_id}.cif"
+                        out_path = output_dir / path_to_step[tag] / filename
                     else:
-                        out_path = output_dir / f"{entry_id}.cif"
+                        out_path = output_dir / filename
                     out_path.parent.mkdir(parents=True, exist_ok=True)
                     out_path.write_text(catcif_tools.get_structure(tag))
                     path_map[tag] = str(out_path)

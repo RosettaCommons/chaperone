@@ -163,22 +163,23 @@ class CompiledBlockFunction(BlockFunction):
 
         # 2. Catcif tag: materialize the entry before any further staging logic.
         #    The inner tool never sees the ``archive.catcif:entry_id`` syntax.
-        from chaperone.data.catcif import is_catcif_path, split_catcif_path
+        from chaperone.data.catcif import is_catcif_path, catcif_entry_filename
 
-        if isinstance(src, str) and is_catcif_path(src):
+        if is_catcif_path(str(src)):
             import catcif_tools
 
-            _, entry_id = split_catcif_path(src)
+            src = str(src)
+            filename = catcif_entry_filename(src)
             if sandbox_dir:
                 dest_dir = Path(sandbox_dir) / subdir
                 mkdir_p(dest_dir)
-                dest = dest_dir / f"{entry_id}.cif"
+                dest = dest_dir / filename
             else:
                 import tempfile as _tempfile
 
                 dest = Path(
                     _tempfile.NamedTemporaryFile(
-                        suffix=".cif", delete=False, prefix=f"{entry_id}_"
+                        suffix=".cif", delete=False, prefix=f"{Path(filename).stem}_"
                     ).name
                 )
             if not dest.exists() or dest.stat().st_size == 0:
@@ -201,14 +202,14 @@ class CompiledBlockFunction(BlockFunction):
         """
         from chaperone.data.catcif import is_catcif_path
 
-        if isinstance(src, str) and is_catcif_path(src):
+        if is_catcif_path(str(src)):
             import catcif_tools
 
             dst = Path(dst)
             if dst.exists():
                 return
             mkdir_p(dst.parent)
-            dst.write_text(catcif_tools.get_structure(src))
+            dst.write_text(catcif_tools.get_structure(str(src)))
             return
 
         src, dst = Path(src).expanduser(), Path(dst)

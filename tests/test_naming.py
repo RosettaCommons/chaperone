@@ -47,6 +47,7 @@ SITE_AND_IMAGE_PATHS = [
 
 # (path regex, text regex, reason). The text is matched case-insensitively.
 NOUN_USES = [
+    (r"^src/blocks/networks/foundry/_rf3_portability\.py$", r"rf3\.data\.pipelines\.build_af3_transform_pipeline", "upstream RF3 module path"),
     (r"^(?:docs/|examples/|THIRD_PARTY_NOTICES\.md$)", r"baker-laboratory/pipelines", "attribution to predecessor source"),
     (r"^(?:docs/|examples/)", r"(?:original )?pipelines `examples/", "attribution to predecessor examples"),
     (r"^docs/site/evaluations\.md$", r"Pipelines PR #351", "historical upstream pull request"),

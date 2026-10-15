@@ -25,6 +25,11 @@ execution on every supported cluster.
 | [Prediction validation cohort](validation.md) | Structure predictors evaluated against reference PDB assemblies with lDDT and PEPPR metrics, with explicit target and chain coverage. |
 | [CatCIF storage example](https://github.com/RosettaCommons/chaperone/tree/main/examples/tests/catcif-storage) | Archiving, reading, and materializing structures; an engineering demonstration, not a scientific benchmark. |
 
+CatCIF storage preserves design IDs, parent lineage, metadata, and metrics.
+Staged and materialized filenames include an archive/entry digest so matching
+entry names from different archives cannot overwrite each other. Use handler
+design IDs for identity rather than inferring identity from extracted filenames.
+
 ## What “benchmark” means here
 
 A benchmark script specifies a task, an input set, and metrics to compare a

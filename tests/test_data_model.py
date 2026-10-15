@@ -66,7 +66,12 @@ def test_store_is_catcif_only(tmp_path, monkeypatch):
 
     materialized = handler.materialize(tmp_path / "materialized")
     extracted = next(materialized.get_data(load=False, which="last"))
-    assert extracted.path.endswith("materialized/design/design.cif")
+    from pathlib import Path
+
+    assert Path(extracted.path).parent == tmp_path / "materialized" / "design"
+    assert Path(extracted.path).name.startswith("design_")
+    assert Path(extracted.path).suffix == ".cif"
+    assert extracted.design_id == archived.design_id
     assert open(extracted.path).read() == "data_design\n#\n"
 
 

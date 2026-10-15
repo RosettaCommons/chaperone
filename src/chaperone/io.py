@@ -352,6 +352,7 @@ def parse_to_atom_array(
     # Can be removed once atomworks bundles catcif support in parse() itself.
     from chaperone.data.catcif import is_catcif_path
 
+    temporary_cif = None
     if is_catcif_path(str(p)):
         import catcif_tools
 
@@ -363,8 +364,13 @@ def parse_to_atom_array(
         ) as _tmp:
             _tmp.write(cif_str)
             p = _tmp.name
+            temporary_cif = Path(p)
 
-    data = _parse_structure(p, parser_kwargs)
+    try:
+        data = _parse_structure(p, parser_kwargs)
+    finally:
+        if temporary_cif is not None:
+            temporary_cif.unlink(missing_ok=True)
 
     if "atom_array" not in data:
         assembly_ids = list(data["assemblies"].keys())

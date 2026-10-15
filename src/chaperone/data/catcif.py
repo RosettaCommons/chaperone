@@ -53,6 +53,18 @@ def list_catcif_entries(archive_path: str | Path) -> list[str]:
     return list(catcif_tools.get_tags(str(archive_path)))
 
 
+def catcif_entry_filename(path: str) -> str:
+    """Safe filename unique to an archive and entry, including across archives."""
+    import hashlib
+    import re
+
+    archive, entry_id = split_catcif_path(path)
+    identity = f"{Path(archive).expanduser().resolve()}:{entry_id}"
+    digest = hashlib.sha256(identity.encode()).hexdigest()[:16]
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", entry_id)[:100]
+    return f"{safe_id}_{digest}.cif"
+
+
 def read_catcif_cif_bytes(path: str) -> bytes:
     """Read an ``archive.catcif:entry_id`` tag and return its CIF text as bytes."""
     import catcif_tools
@@ -111,8 +123,13 @@ def _unique_entry_id(stem: str, counts: dict[str, int]) -> str:
     if stem not in counts:
         counts[stem] = 0
         return stem
-    counts[stem] += 1
-    return f"{stem}_{counts[stem]}"
+    suffix = counts[stem] + 1
+    while f"{stem}_{suffix}" in counts:
+        suffix += 1
+    counts[stem] = suffix
+    entry_id = f"{stem}_{suffix}"
+    counts[entry_id] = 0
+    return entry_id
 
 
 def write_handler_step_to_catcif(
@@ -217,12 +234,9 @@ def write_handler_step_to_catcif(
                     struct[StructureColumn.STORE_PATH] = archive_str
                     struct[StructureColumn.STORAGE_FORMAT] = StorageFormat.CATCIF
             new_structures.append(struct)
-        new_rows.append(
-            {
-                Column.STRUCTURES: new_structures,
-                Column.METRICS: row[Column.METRICS],
-            }
-        )
+        new_row = dict(row)
+        new_row[Column.STRUCTURES] = new_structures
+        new_rows.append(new_row)
     handler._df = PipelineDataHandler(new_rows)._df
 
     if cleanup:

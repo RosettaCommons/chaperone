@@ -80,7 +80,7 @@ if __name__ == "__main__":
     handler.store("all", engine.rundir / "packaged")
 
     # Optional: extract every archived entry back to loose ``.cif`` files
-    # under ``rundir/materialized/<step>/<entry_id>.cif`` — useful for handoff
+    # under ``rundir/materialized/<step>/<entry_id>_<digest>.cif`` — useful for handoff
     # or quick PyMOL loading without a catcif-aware client.
     handler.materialize(engine.rundir / "materialized", expand_catcif=True)
 
