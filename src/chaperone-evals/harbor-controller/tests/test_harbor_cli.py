@@ -99,6 +99,9 @@ class ReadableTrialNameTests(unittest.TestCase):
             "HARBOR_SBATCH_SOCKET",
             "CHAPERONE_SLURM_PYTHON",
             "CHAPERONE_SLURM_ARRAY_PARALLELISM",
+            "CHAPERONE_DEFAULT_PARTITION",
+            "CHAPERONE_GPU_PARTITION",
+            "CHAPERONE_GRES_MAP",
             "FOUNDRY_CHECKPOINT_DIRS",
             "HBPLUS_COPY",
             "CCD_MIRROR_PATH",
@@ -107,6 +110,8 @@ class ReadableTrialNameTests(unittest.TestCase):
             assert (
                 required_name in parsed["mcp_servers"]["campaign-monitor"]["env_vars"]
             )
+        exposed = set(parsed["mcp_servers"]["campaign-monitor"]["env_vars"])
+        assert not {"CHAPERONE_EVALS_PRIVATE", "OPENAI_API_KEY", "SLURM_JWT"} & exposed
         assert parsed["mcp_servers"]["campaign-monitor"]["tool_timeout_sec"] == 21600
 
     def test_codex_mcp_namespace_matches_exposed_tool_name(self) -> None:

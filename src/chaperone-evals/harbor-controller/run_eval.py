@@ -1884,6 +1884,8 @@ def _sbatch_command(args: argparse.Namespace, run_name: str) -> list[str]:
     return [
         "sbatch",
         "--parsable",
+        # Harbor/Codex state is not checkpointed for a Slurm batch restart.
+        "--no-requeue",
         *([f"--partition={args.cpu_partition}"] if args.cpu_partition else []),
         *[
             f"--{key}={get_site()[key]}"

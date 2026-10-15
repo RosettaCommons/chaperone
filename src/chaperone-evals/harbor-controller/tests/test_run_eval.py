@@ -853,6 +853,14 @@ class RunEvalTest(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY must be an executable"):
                     run_eval._scoring_site_environment(root, {}, task_name="biotin_binder_design")
 
+    def test_outer_job_does_not_requeue_nonresumable_agent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            args = SimpleNamespace(cpu_partition="interactive", time_limit="00:40:00", memory_gb=16)
+            with patch.object(run_eval, "JOBS_ROOT", Path(temporary)):
+                command = run_eval._sbatch_command(args, "smoke")
+            self.assertIn("--no-requeue", command)
+            self.assertIn("--partition=interactive", command)
+
     def test_compute_runtime_probe_uses_shared_scratch_and_cpu_site_policy(self):
         completed = SimpleNamespace(returncode=0, stdout="", stderr="")
         with tempfile.TemporaryDirectory() as temporary:

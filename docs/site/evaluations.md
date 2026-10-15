@@ -275,6 +275,11 @@ For the baseline arm, leave out `--chaperone-path`:
   --run-name biotin-baseline-smoke
 ```
 
+Use a CPU partition suitable for an uninterrupted agent session. The outer job
+uses `--no-requeue`: Harbor/Codex sessions are not checkpointed for a Slurm restart.
+A preempted trial is an infrastructure failure; start a new trial after resolving
+the scheduling issue. Scientific worker retries are managed separately.
+
 The launcher checks your setup, submits a CPU-only Slurm job that runs the agent in an
 isolated Apptainer workspace, and starts a detached watcher that scores the result
 when the agent finishes. It returns once both are accepted.

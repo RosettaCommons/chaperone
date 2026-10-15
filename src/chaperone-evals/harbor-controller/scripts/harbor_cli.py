@@ -20,6 +20,8 @@ from collections import defaultdict
 from harbor.agents.installed.codex import Codex
 from harbor.models.trial.config import TrialConfig
 
+from site_config import ENV_NAMES
+
 
 _TRIAL_NAME_COUNTS: defaultdict[str, int] = defaultdict(int)
 _ORIGINAL_FILE_HANDLER_CLOSE = logging.FileHandler.close
@@ -46,17 +48,8 @@ _CAMPAIGN_MONITOR_ENV_VARS = (
     "CHAPERONE_CONTAINER_BIND_RUNDIR",
     "CHAPERONE_CONTAINER_BIND_WORKSPACE",
     "CHAPERONE_SLURM_ARRAY_PARALLELISM",
-    "CHAPERONE_CONTAINER_DIRS",
-    "HF_HUB_CACHE",
-    "BOLTZ_CACHE_DIR",
-    "AF3_JAX_CACHE_DIR",
-    "ALPHAFOLD3_WEIGHTS_DIR",
-    "OPENFOLD3_CACHE_DIR",
-    "HBPLUS_COPY",
-    "FOLDSEEK_EXEC",
-    "FOUNDRY_CHECKPOINT_DIRS",
-    "CCD_MIRROR_PATH",
-    "PDB_MIRROR_PATH",
+    "HARBOR_MAX_REQUESTED_GPUS_PER_SUBMISSION",
+    *sorted(ENV_NAMES),
 )
 
 
