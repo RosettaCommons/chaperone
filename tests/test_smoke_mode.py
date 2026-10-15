@@ -213,6 +213,14 @@ Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default
         assert sum(block["type"] == "rfd3" for block in blocks) == (1 if "full" in example else 2)
     if "fgfr2" in example:
         import polars as pl
+
+        mpnn = next(block["config"] for block in blocks if block["type"] == "mpnn")
+        peppr = next(block["config"] for block in blocks if block["type"] == "peppr")
+        assert mpnn["output_mode"] == "structures"
+        assert mpnn["args"]["number_of_packs_per_design"] == 1
+        assert peppr["which"] == [-2, -1]
+        assert set(peppr["metrics"]) == {"fnat", "irmsd", "dockq"}
+        assert peppr["tolerate_exceptions"] is False
         scores = pl.read_csv(tmp_path / "custom-run/scores.csv")
         assert scores.height == 1
         assert "af3.iptm" in scores.columns

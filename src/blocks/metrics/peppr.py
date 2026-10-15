@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 from typing import List
 
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, connect_via_residue_names
 import numpy as np
 from pydantic import Field
 
@@ -53,9 +53,9 @@ def peppr_metrics(
         np.isfinite(prediction_atoms.coord).all(axis=-1)
     ]
     if reference_atoms.bonds is None:
-        raise ValueError("reference atom array has no bonds")
+        reference_atoms.bonds = connect_via_residue_names(reference_atoms)
     if prediction_atoms.bonds is None:
-        raise ValueError("prediction atom array has no bonds")
+        prediction_atoms.bonds = connect_via_residue_names(prediction_atoms)
 
     selected_metrics = list(PepprMetric) if metrics is None else metrics
     result = {}
@@ -90,7 +90,8 @@ class PepprBlock(InlineMetricBlock):
     """Compute structural evaluation metrics using peppr.
 
     Computes metrics (RMSD, TM-score, lDDT, lDDT-PLI, fnat, iRMSD, LRMSD, DockQ)
-    between the first (reference) and last (prediction) structures in each row.
+    between selected reference and prediction structures in each row (first
+    and last by default).
     """
 
     _name = "peppr"
@@ -112,9 +113,15 @@ class PepprBlock(InlineMetricBlock):
         default=True,
         description="If True, continue when individual metrics fail (e.g., lDDT-PLI with no ligand). Failed metrics are stored as None.",
     )
+    which: List[int] = Field(
+        default=[0, -1],
+        min_length=2,
+        max_length=2,
+        description="Reference and prediction indices in the structure lineage.",
+    )
 
     def get_data_kwargs(self):
-        return {"which": "all", "load": True}
+        return {"which": self.which, "load": True}
 
     def compute_metrics(self, loaded, *, context=None, index=0):
         first_loaded, last_loaded = loaded

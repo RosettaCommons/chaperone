@@ -233,6 +233,10 @@ class DISCOBlock(CompiledBlockFunction):
         ),
         description="Hugging Face model cache mounted into the container",
     )
+    compile_cache_dir: str = Field(
+        default_factory=lambda: str(Path.home() / ".cache" / "chaperone" / "disco"),
+        description="Writable CUDA extension and temporary build cache; may be node-local.",
+    )
 
     @field_validator("inputs")
     def ensure_inputs_exist(cls, v):
@@ -248,12 +252,24 @@ class DISCOBlock(CompiledBlockFunction):
 
     def get_command_template(self) -> list[str]:
         self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
-        binds = [(self.cache_dir, self.cache_dir)]
+        self.compile_cache_dir = str(
+            Path(self.compile_cache_dir).expanduser().resolve()
+        )
+        binds = [
+            (self.cache_dir, self.cache_dir),
+            (self.compile_cache_dir, self.compile_cache_dir),
+        ]
         if self.ckpt_path:
             binds.append((self.ckpt_path, self.ckpt_path))
         return self._script_spec.image.build_command(
             *self._script_spec.command,
-            env={"HF_HUB_CACHE": self.cache_dir},
+            env={
+                "HF_HUB_CACHE": self.cache_dir,
+                "TMPDIR": str(Path(self.compile_cache_dir) / "tmp"),
+                "TORCH_EXTENSIONS_DIR": str(
+                    Path(self.compile_cache_dir) / "extensions"
+                ),
+            },
             binds=binds,
         )
 
@@ -265,6 +281,10 @@ class DISCOBlock(CompiledBlockFunction):
 
     def create_command(self, handler, sandbox_dir, chunk_id):
         Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        for directory in ("tmp", "extensions"):
+            (Path(self.compile_cache_dir) / directory).mkdir(
+                parents=True, exist_ok=True
+            )
         sandbox_dir = os.path.abspath(sandbox_dir)
         os.makedirs(sandbox_dir, exist_ok=True)
 

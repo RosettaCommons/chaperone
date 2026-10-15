@@ -85,13 +85,27 @@ class RPXDockBlock(CompiledBlockFunction):
         "CGP",
         description="Residue types excluded from RPX scoring; use an empty string for glycine-placeholder backbones.",
     )
+    cache_dir: str = Field(
+        default_factory=lambda: str(Path.home() / ".cache" / "chaperone" / "rpxdock"),
+        description="Writable home for decompressed RPXdock scoring and symmetry caches.",
+    )
 
     def get_command_template(self):
+        self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
         return self._image.build_command(
-            "python", "/opt/run_rpxdock.py", exec_mode="exec"
+            # Apptainer reserves HOME during startup; set it for the tool
+            # process after entering the container, before importing willutil.
+            "env",
+            f"HOME={self.cache_dir}",
+            "python",
+            "/opt/run_rpxdock.py",
+            exec_mode="exec",
+            binds=[(self.cache_dir, self.cache_dir)],
+            env={"TMPDIR": str(Path(self.cache_dir) / "tmp")},
         )
 
     def create_command(self, handler, sandbox_dir, chunk_id):
+        (Path(self.cache_dir) / "tmp").mkdir(parents=True, exist_ok=True)
         root = Path(sandbox_dir).resolve()
         root.mkdir(parents=True, exist_ok=True)
         commands, inputs = [], []

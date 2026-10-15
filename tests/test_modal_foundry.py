@@ -107,8 +107,8 @@ def test_live_modal_foundry(tmp_path, monkeypatch, model):
     assert np.ptp(output.atom_array.coord, axis=0).max() < 1000
     assert sum(map(len, output.sequence.values())) == 32
     runtime = json.loads(next((tmp_path / "run").rglob("runtime.json")).read_text())
-    assert runtime["atomworks"] == "2.2.1"
-    assert runtime["biotite"] == "1.4.0"
+    assert runtime["atomworks"] == "3.0.1"
+    assert runtime["biotite"] == "1.6.0"
     assert runtime["foundry_revision"] == _FOUNDRY_REVISION
     assert len(engine.run(block, data=data)) == 1
     (record,) = load_execution_records(tmp_path / "run" / model)

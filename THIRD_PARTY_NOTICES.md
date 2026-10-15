@@ -68,3 +68,12 @@ They accompany the adapted RFD3 input reference. Copyright (c) 2025, Institute
 for Protein Design, University of Washington; the upstream BSD 3-Clause license
 is retained in `src/blocks/networks/foundry/.assets/LICENSE.md` and included
 alongside the images in package distributions.
+
+## Foundry inference compatibility backports
+
+`src/blocks/networks/foundry/atomworks3.patch` adapts RF3 and RFOptimization
+inference fixes from RosettaCommons/foundry commit
+`1178aba6ee8ab34ed97ee5dddc32872cfb91cf81` to the model-owned modules in Foundry
+1.0. Copyright (c) 2025, Institute for Protein Design, University of Washington.
+The BSD 3-Clause terms are retained in
+`src/blocks/networks/foundry/.assets/LICENSE.md` and included in distributions.

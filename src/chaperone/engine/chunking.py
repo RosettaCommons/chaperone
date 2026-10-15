@@ -334,6 +334,12 @@ def execute_chunk_job(
 
             # Intermediate cache (allows chain resumption)
             output_path = step.chunk_dir / "output.parquet"
+            if len(handler) == 0 and getattr(block, "_requires_input", True):
+                logger.info("Skipping %s: no input rows remain", block.name)
+                # Empty upstream results must also supersede a stale nonempty
+                # child cache. Publish the empty result for normal collection.
+                _atomic_write_parquet(handler, output_path)
+                continue
             if (
                 output_path.exists()
                 and not recompile

@@ -256,20 +256,20 @@ class AF3LikePredictionBlock(CompiledBlockFunction):
             )
             return handler
         tie_breaker_col = "__pre_chunk_sort_idx"
-        sorted_df = (
-            df.with_row_index(tie_breaker_col)
-            .sort(
-                [self.sort_length_key, tie_breaker_col],
-                nulls_last=True,
-                maintain_order=True,
-            )
-            .drop(tie_breaker_col)
+        sorted_df = df.with_row_index(tie_breaker_col).sort(
+            [self.sort_length_key, tie_breaker_col],
+            nulls_last=True,
+            maintain_order=True,
         )
         logger.info(
             f"[{self.name}] pre_chunk_sort: sorted {len(sorted_df)} rows by "
             f"'{self.sort_length_key}'"
         )
-        return PipelineDataHandler(sorted_df)
+        # Reorder the original rows. Repacking the flattened view can discard
+        # nested residue maps and replace a rewound context with a stashed path.
+        result = PipelineDataHandler(handler)
+        result._df = handler._df[sorted_df[tie_breaker_col].to_list()]
+        return result
 
     def _jit_safe_env(self) -> dict:
         """Env vars that force JIT/temp writes to writable in-container paths.

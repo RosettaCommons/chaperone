@@ -1,7 +1,7 @@
 # RFOptimization input and output
 
 `rfoptimization` refines an existing PDB/CIF complex through the pinned public
-[Foundry RFO implementation](https://github.com/RosettaCommons/foundry/tree/1178aba6ee8ab34ed97ee5dddc32872cfb91cf81/models/rfo).
+[Foundry RFO implementation](https://github.com/RosettaCommons/foundry/tree/436f58482b94233948af9327f948cd673545efd0/models/rfo).
 The RF3/RFO environment uses AtomWorks **3.0.1**, matching the major version
 used by the shared Foundry blocks. Boltz and MPNN retain separate environments
 for dependency compatibility. The pinned Foundry source includes the RFO port:

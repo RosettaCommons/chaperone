@@ -128,7 +128,7 @@ ALLOWED: list[tuple[str, str, str]] = [
     ),
     # -- tests: fixtures that mirror the constants above ----------------------
     (
-        _files("tests/test_proteina_complexa.py", "tests/test_rfoptimization.py"),
+        _files("tests/test_bindcraft2.py", "tests/test_proteina_complexa.py", "tests/test_rfoptimization.py"),
         r'for site_path in |assert "/net/" not in recipe',
         "negative assertions that new recipes contain no institutional paths",
     ),

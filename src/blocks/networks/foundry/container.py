@@ -7,6 +7,7 @@ supported on Apple Silicon (MPS MLIR bug).
 """
 
 from pathlib import Path
+import shlex
 
 from chaperone import get_setting_field
 from chaperone.common import is_apple_silicon
@@ -14,20 +15,21 @@ from chaperone.containers import Image
 from blocks.constants import CUDA_INSTALL
 
 
-_FOUNDRY_REVISION = "1178aba6ee8ab34ed97ee5dddc32872cfb91cf81"
-# Pin the upstream AtomWorks 3 port together with its supported Biotite version.
+_FOUNDRY_REVISION = "436f58482b94233948af9327f948cd673545efd0"
+# Foundry 1.0 (PR #404): pin all model images to the same reviewed source.
 _FOUNDRY_DEPENDENCIES = (
     "'atomworks[ml]==3.0.1' 'biotite==1.6.0' 'lightning==2.6.1' 'numpy==2.4.3'"
 )
 _FOUNDRY_IMPORT_CHECK = (
     "/opt/foundry-env/bin/python -c 'from importlib.metadata import version; "
+    'assert version("rc-foundry") == "1.0.0"; '
     'assert version("atomworks") == "3.0.1"; '
     'assert version("biotite") == "1.6.0"; '
     "import rfd3.engine; import rfd3na.engine; "
     "import rf3.inference_engines.rf3; import mpnn.inference_engines.mpnn'"
 )
 
-# Exercise native upstream inference contracts without modifying installed source.
+# Check native CLI contracts after applying the reviewed inference backports.
 _FOUNDRY_INFERENCE_CHECK = (
     "/opt/foundry-env/bin/python -c '"
     "from rfd3na.inference.input_parsing import DesignInputSpecification; "
@@ -37,6 +39,28 @@ _FOUNDRY_INFERENCE_CHECK = (
     "assert len(get_residue_starts(atoms)) == 9; "
     'assert RF3InferenceEngine(ckpt_path="unused.ckpt").transform_overrides["residue_cache_dir"] is None'
     "'"
+)
+
+
+_RFD3NA_COMPAT_COMMAND = (
+    "/opt/foundry-env/bin/python -c "
+    + shlex.quote(Path(__file__).with_name("_rfd3na_compat.py").read_text())
+    + " /opt/foundry/models/rfd3na/src/rfd3na/inference --check"
+)
+
+
+# Both RFD3 engines initialize float charges, which breaks charged CIF output.
+_RFD3_COMPAT_COMMAND = (
+    "/opt/foundry-env/bin/python -c "
+    + shlex.quote(Path(__file__).with_name("_rfd3_compat.py").read_text())
+    + " /opt/foundry/models/rfd3/src/rfd3/utils/inference.py"
+    + " /opt/foundry/models/rfd3na/src/rfd3na/utils/inference.py --check"
+)
+
+
+_AW3_COMPAT_COMMAND = (
+    "/opt/foundry-env/bin/python /opt/chaperone-compat/_aw3_compat.py "
+    "/opt/foundry /opt/chaperone-compat/atomworks3.patch --check"
 )
 
 
@@ -66,6 +90,14 @@ def _foundry_binds() -> list[tuple[str, str]]:
 _FOUNDRY_CUDA_CONTAINER = (
     Image("foundry")
     .base_image("ubuntu:24.04")
+    .copy(
+        str(Path(__file__).with_name("_aw3_compat.py")),
+        "/opt/chaperone-compat/_aw3_compat.py",
+    )
+    .copy(
+        str(Path(__file__).with_name("atomworks3.patch")),
+        "/opt/chaperone-compat/atomworks3.patch",
+    )
     .packages(
         "build-essential",
         "ninja-build",
@@ -90,6 +122,7 @@ _FOUNDRY_CUDA_CONTAINER = (
     )
     .run(
         "cd /opt && git clone -b production https://github.com/RosettaCommons/foundry.git",
+        "git -C /opt/foundry fetch origin refs/pull/404/head",
         f"git -C /opt/foundry checkout --detach {_FOUNDRY_REVISION}",
         ". /opt/foundry-env/bin/activate && cd /opt/foundry && pip install -e '.[all]' "
         + _FOUNDRY_DEPENDENCIES,
@@ -109,6 +142,9 @@ _FOUNDRY_CUDA_CONTAINER = (
         'import fused_layer_norm_cuda; assert torch.version.cuda == "12.8"; '
         "print(torch.__version__, torch.version.cuda)'",
         _FOUNDRY_IMPORT_CHECK,
+        _RFD3NA_COMPAT_COMMAND,
+        _RFD3_COMPAT_COMMAND,
+        _AW3_COMPAT_COMMAND,
         _FOUNDRY_INFERENCE_CHECK,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
@@ -120,6 +156,9 @@ _FOUNDRY_CUDA_CONTAINER = (
     )
     .label(
         RF3ResidueCache="disabled-for-inference",
+        RFD3ChargeFix="integer-formal-charge-v1",
+        RFD3NAInputFix="generated-contigs-v1",
+        Foundry="1.0.0",
         Version=_FOUNDRY_REVISION,
         CUDA="12.8",
         PyTorch="2.11.0",
@@ -130,9 +169,11 @@ _FOUNDRY_CUDA_CONTAINER = (
         exec_mode="exec",
         binds=_foundry_binds,
         env={
+            # Foundry loads blank source .env values with override=True.
+            "PYTHON_DOTENV_DISABLED": "1",
             "FOUNDRY_CHECKPOINT_DIRS": lambda: get_setting_field(
                 "FOUNDRY_CHECKPOINT_DIRS", ""
-            )
+            ),
         },
     )
 )
@@ -143,6 +184,14 @@ _FOUNDRY_CUDA_CONTAINER = (
 _FOUNDRY_PUBLIC_CONTAINER = (
     Image("foundry_public")
     .base_image("ubuntu:24.04")
+    .copy(
+        str(Path(__file__).with_name("_aw3_compat.py")),
+        "/opt/chaperone-compat/_aw3_compat.py",
+    )
+    .copy(
+        str(Path(__file__).with_name("atomworks3.patch")),
+        "/opt/chaperone-compat/atomworks3.patch",
+    )
     .packages(
         "build-essential",
         "ninja-build",
@@ -163,6 +212,7 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     )
     .run(
         "cd /opt && git clone -b production https://github.com/RosettaCommons/foundry.git",
+        "git -C /opt/foundry fetch origin refs/pull/404/head",
         f"git -C /opt/foundry checkout --detach {_FOUNDRY_REVISION}",
         ". /opt/foundry-env/bin/activate && cd /opt/foundry && pip install -e '.[all]' "
         + _FOUNDRY_DEPENDENCIES,
@@ -171,6 +221,9 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     .run(
         ". /opt/foundry-env/bin/activate && pip check",
         _FOUNDRY_IMPORT_CHECK,
+        _RFD3NA_COMPAT_COMMAND,
+        _RFD3_COMPAT_COMMAND,
+        _AW3_COMPAT_COMMAND,
         _FOUNDRY_INFERENCE_CHECK,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
@@ -180,6 +233,9 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     )
     .label(
         RF3ResidueCache="disabled-for-inference",
+        RFD3ChargeFix="integer-formal-charge-v1",
+        RFD3NAInputFix="generated-contigs-v1",
+        Foundry="1.0.0",
         Version=_FOUNDRY_REVISION,
         Platform="cpu",
         PyTorch="2.11.0",
@@ -190,9 +246,11 @@ _FOUNDRY_PUBLIC_CONTAINER = (
         exec_mode="exec",
         binds=_checkpoint_binds,
         env={
+            # Foundry loads blank source .env values with override=True.
+            "PYTHON_DOTENV_DISABLED": "1",
             "FOUNDRY_CHECKPOINT_DIRS": lambda: get_setting_field(
                 "FOUNDRY_CHECKPOINT_DIRS", ""
-            )
+            ),
         },
     )
 )

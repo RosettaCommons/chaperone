@@ -73,8 +73,9 @@ jobs:
             tests/test_biotin_dna_ports.py tests/test_ribozyme_ports.py tests/test_ccd_detection.py \
             tests/test_smoke_mode.py tests/test_rmsd_symmetry_annotations.py \
             tests/test_rfd1_motif_mapping.py \
-            tests/test_full_install.py tests/test_rfd3_compile.py tests/test_rfd3na_compat.py tests/test_mpnn_download_recovery.py \
-            tests/test_chunk_recovery.py tests/test_chunk_retry.py tests/test_ported_fixes.py
+            tests/test_full_install.py tests/test_rfd3_compile.py tests/test_foundry_native_inference.py tests/test_rfd3na_compat.py tests/test_mpnn_download_recovery.py \
+            tests/test_chunk_recovery.py tests/test_chunk_retry.py tests/test_ported_fixes.py \
+            tests/test_empty_chunk_chain.py tests/test_sequence_workflows.py tests/blocks/test_peppr_lineage.py
       - name: Optional PLIP native regression
         run: |
           "$RUNNER_TEMP/install/bin/python" -m pip install 'chaperone-pipelines[plip]'
