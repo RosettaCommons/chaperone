@@ -1,0 +1,74 @@
+site_name: Chaperone Documentation
+site_description: A framework for making structural biology tools interoperable
+site_author: Chaperone Team
+site_url: https://rosettacommons.github.io/chaperone/
+repo_url: https://github.com/RosettaCommons/chaperone
+repo_name: RosettaCommons/chaperone
+edit_uri: edit/main/docs/site/
+docs_dir: docs/site
+exclude_docs: |
+  gen_block_docs.py
+  !.assets/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/claude.css?v=2cab4243
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Simple Example: simple.md
+  - Core Examples:
+      - Overview: core-examples.md
+      - Nanoparticle scaffolds: workflows/nanoparticle-design.md
+      - Peptide binders: workflows/peptide-binder.md
+      - Biotin binders: workflows/biotin-binder.md
+      - DNA binders: workflows/dna-binder.md
+      - Antibody design: workflows/antibody-design.md
+      - Glycosidase design: workflows/enzyme-glycosidase.md
+      - Protease design: workflows/enzyme-protease.md
+      - Hammerhead ribozymes: workflows/ribozyme-hammerhead.md
+      - Multi-MPNN comparison: workflows/multi-mpnn.md
+  - All Blocks: blocks-reference.md
+  - Container Installation: containers.md
+  - Cloud Execution: cloud.md
+  - Syntax Reference: syntax.md
+  - Validation: validation.md
+  - Evaluations: evaluations.md
+  - Agent Skills: skills.md

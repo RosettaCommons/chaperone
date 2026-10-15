@@ -1,0 +1,9 @@
+{
+    "peptide_binder": {
+        "input": "target.pdb",
+        "contig": "60-100,/0,B1-15",
+        "length": "75-115",
+        "select_hotspots": "B1-15",
+        "infer_ori_strategy": "hotspots"
+    }
+}

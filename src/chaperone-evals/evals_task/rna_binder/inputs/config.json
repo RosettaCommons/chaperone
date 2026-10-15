@@ -1,0 +1,24 @@
+{
+    "rna_binder": {
+        "input": "target.pdb",
+        "contig": "70-110,/0,B1-20",
+        "length": "90-130",
+        "select_hotspots": "B10-15",
+        "infer_ori_strategy": "hotspots",
+        "is_non_loopy": true,
+        "select_hbond_donor": {
+            "B11": "N6",
+            "B13": "N4",
+            "B14": "N6",
+            "B15": "N4"
+        },
+        "select_hbond_acceptor": {
+            "B10": "O6,N7,N3",
+            "B11": "N1,N7,N3",
+            "B12": "O2,O4",
+            "B13": "O2",
+            "B14": "N1,N7,N3",
+            "B15": "O2"
+        }
+    }
+}

@@ -1,0 +1,28 @@
+{
+    "dna_binder": {
+        "input": "target.pdb",
+        "contig": "B1-12,/0,C1-12,/0,120-150",
+        "length": "144-174",
+        "select_hotspots": "B1-12,C1-12",
+        "infer_ori_strategy": "hotspots",
+        "is_non_loopy": true,
+        "select_hbond_donor": {
+            "B1": "N4",
+            "B3": "N4",
+            "B5": "N6",
+            "B6": "N6",
+            "B9": "N4",
+            "B11": "N4"
+        },
+        "select_hbond_acceptor": {
+            "B2": "O6,N7",
+            "B4": "O6,N7",
+            "B5": "N7",
+            "B6": "N7",
+            "B7": "O4",
+            "B8": "O4",
+            "B10": "O6,N7",
+            "B12": "O6,N7"
+        }
+    }
+}

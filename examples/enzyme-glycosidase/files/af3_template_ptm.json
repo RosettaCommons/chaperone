@@ -1,0 +1,20 @@
+{
+    "name": "Glycosidase with ptm from template",
+    "modelSeeds": [1],
+    "sequences": [
+        {
+        "protein": {
+            "id": "A",
+            "unpairedMsa": "",
+            "unpairedMsaPath": null,
+            "pairedMsa": "",
+            "pairedMsaPath": null,
+            "sequence": null,
+            "templates": [],
+            "modifications": []
+        }
+    }],
+    "userCCD": "data_L:1\n#\n_chem_comp.id L:1\n_chem_comp.name 'custom molecule L:1'\n_chem_comp.type non-polymer\n_chem_comp.formula 'C 10 N 1 O 7'\n_chem_comp.mon_nstd_parent_comp_id ?\n_chem_comp.pdbx_synonyms ?\n_chem_comp.formula_weight ?\n#\nloop_\n_chem_comp_atom.comp_id\n_chem_comp_atom.atom_id\n_chem_comp_atom.type_symbol\n_chem_comp_atom.charge\n_chem_comp_atom.pdbx_leaving_atom_flag\n_chem_comp_atom.pdbx_model_Cartn_x_ideal\n_chem_comp_atom.pdbx_model_Cartn_y_ideal\n_chem_comp_atom.pdbx_model_Cartn_z_ideal\nL:1 N N 0 N 5.447 0.597 -0.916\nL:1 CA C 0 N 4.512 0.766 0.199\nL:1 C C 0 N 4.761 -0.274 1.265\nL:1 O O 0 N 4.641 -1.464 1.018\nL:1 CB C 0 N 3.064 0.713 -0.322\nL:1 CG C 0 N 2.045 1.101 0.758\nL:1 CD C 0 N 0.658 1.071 0.201\nL:1 OE1 O 0 N 0.151 2.123 -0.277\nL:1 OE2 O 0 N -0.044 -0.140 0.172\nL:1 C9 C 0 N -1.371 -0.267 -0.338\nL:1 C10 C 0 N -2.390 0.395 0.620\nL:1 C11 C 0 N -3.752 -0.327 0.587\nL:1 O12 O 0 N -4.765 0.577 0.949\nL:1 C13 C 0 N -4.019 -0.901 -0.817\nL:1 O14 O 0 N -5.218 -1.634 -0.826\nL:1 C15 C 0 N -2.847 -1.818 -1.254\nL:1 O16 O 0 N -1.669 -1.642 -0.481\nL:1 F17 O 0 N -1.911 0.386 1.921\n#\nloop_\n_chem_comp_bond.atom_id_1\n_chem_comp_bond.atom_id_2\n_chem_comp_bond.value_order\n_chem_comp_bond.pdbx_aromatic_flag\nN CA SING N\nCA C SING N\nC O DOUB N\nCA CB SING N\nCB CG SING N\nCG CD SING N\nCD OE1 DOUB N\nCD OE2 SING N\nC9 C10 SING N\nC10 C11 SING N\nC11 O12 SING N\nC11 C13 SING N\nC13 O14 SING N\nC13 C15 SING N\nC9 O16 SING N\nC15 O16 SING N\nC10 F17 SING N\nOE2 C9 SING N\n#",
+    "dialect": "alphafold3",
+    "version": 1
+}

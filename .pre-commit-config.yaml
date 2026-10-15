@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: .venv/bin/ruff format --check
+        language: system
+        types: [python]
+        exclude: '\.ipynb$'
+      - id: ruff
+        name: ruff check
+        entry: .venv/bin/ruff check --fix --exit-non-zero-on-fix
+        language: system
+        types: [python]
+        exclude: '\.ipynb$'

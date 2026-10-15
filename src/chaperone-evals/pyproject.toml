@@ -1,0 +1,26 @@
+[project]
+name = "chaperone-evals"
+version = "0.1.0"
+license = "MIT"
+description = "Agent evaluation harness for Chaperone"
+requires-python = ">=3.12"
+dependencies = [
+    "chaperone-pipelines",
+    "harbor==0.16.1",
+    "markdown>=3.7",
+    "python-dotenv>=1.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.4"]
+
+# Bootstrap installs this project with the containing Chaperone checkout, or
+# the explicit CHAPERONE_REPO override, into separate controller/scoring environments.
+
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+# Nothing to install: the controller runs from this directory.
+[tool.setuptools]
+packages = []
