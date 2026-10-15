@@ -126,11 +126,6 @@ def test_image_is_portable_and_dependency_isolated():
     assert "refs/pull/404/head" in recipe
     assert "atomworks[ml]==3.0.1" in recipe
     assert "/opt/boltz-env" in recipe and "/opt/mpnn-env" in recipe
-    # Build-time COPY sources are checkout-local; installed runtime paths are portable.
-    for source, target in RFOPTIMIZATION_CONTAINER._copies:
-        assert Path(source).is_file()
-        recipe = recipe.replace(source, "<build-source>")
-        assert target.startswith("/opt/chaperone-compat/")
     assert "/net/" not in recipe and "/mnt/home" not in recipe
     assert "sha256sum -c" in recipe
     assert RFOPTIMIZATION_CONTAINER._command_config.get("binds", []) == []

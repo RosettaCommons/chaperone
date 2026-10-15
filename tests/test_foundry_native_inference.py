@@ -1,37 +1,25 @@
-"""Foundry 1.0 uses native CLIs with source-checked AtomWorks 3 backports."""
+"""Foundry fixes live upstream; Chaperone uses its unmodified native CLI."""
 
 import subprocess
-from pathlib import Path
+from importlib.resources import files
 
 import pytest
 from blocks.networks.foundry.container import (
     _FOUNDRY_CUDA_CONTAINER,
     _FOUNDRY_PUBLIC_CONTAINER,
     _FOUNDRY_INFERENCE_CHECK,
-    _RFD3_COMPAT_COMMAND,
-    _RFD3NA_COMPAT_COMMAND,
-    _AW3_COMPAT_COMMAND,
 )
 from blocks.networks.prediction.rosettafold3 import RosettaFold3Block
 
 
-def test_both_images_check_native_inference_and_formal_charge_serialization():
+def test_both_images_check_native_inference_without_source_rewriting():
     for image in (_FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER):
         commands = [cmd for group in image._commands for cmd in group]
         assert _FOUNDRY_INFERENCE_CHECK in commands
-        assert _RFD3_COMPAT_COMMAND in commands
-        assert "/rfd3/utils/inference.py" in _RFD3_COMPAT_COMMAND
-        assert "/rfd3na/utils/inference.py" in _RFD3_COMPAT_COMMAND
-        assert _RFD3NA_COMPAT_COMMAND in commands
-        assert _AW3_COMPAT_COMMAND in commands
-        assert image._labels["RFD3ChargeFix"] == "integer-formal-charge-v1"
         assert not any(
-            ("source.write_text" in cmd or "sha256(original" in cmd)
-            for cmd in commands
-            if cmd not in {_RFD3_COMPAT_COMMAND, _RFD3NA_COMPAT_COMMAND}
+            "source.write_text" in cmd or "sha256(original" in cmd for cmd in commands
         )
-    for command in (_FOUNDRY_INFERENCE_CHECK, _RFD3_COMPAT_COMMAND):
-        subprocess.run(["sh", "-n"], input=command, text=True, check=True)
+    subprocess.run(["sh", "-n"], input=_FOUNDRY_INFERENCE_CHECK, text=True, check=True)
 
 
 @pytest.mark.parametrize(
@@ -56,15 +44,19 @@ def test_native_rf3_cli_with_trajectories_and_msa(trajectories, msa):
 
 
 def test_repair_entrypoints_are_removed():
-    source = Path(__file__).resolve().parents[1] / "src/blocks"
+    source = files("blocks")
     for path in [
         "networks/foundry/_rf3_portability.py",
+        "networks/foundry/_rfd3na_compat.py",
+        "networks/foundry/_rfd3_compat.py",
+        "networks/foundry/_aw3_compat.py",
+        "networks/foundry/atomworks3.patch",
         "scripts/rf3_trajectory_compat.py",
     ]:
-        assert not (source / path).exists()
+        assert not source.joinpath(path).is_file()
 
 
-def test_all_foundry_images_pin_the_same_1_0_revision():
+def test_all_foundry_images_pin_the_same_native_1_0_revision():
     from blocks.networks.foundry.container import _FOUNDRY_REVISION
     from blocks.networks.foundry.rfoptimization.container import (
         RFOPTIMIZATION_CONTAINER,
@@ -80,30 +72,6 @@ def test_all_foundry_images_pin_the_same_1_0_revision():
         assert "refs/pull/404/head" in recipe
         commands = "\n".join(cmd for group in image._commands for cmd in group)
         assert 'version("rc-foundry") == "1.0.0"' in commands
-        assert "atomworks3.patch --check" in recipe
-
-
-def test_aw3_backport_checks_all_sources_before_writing(tmp_path, monkeypatch):
-    from hashlib import sha256
-    import pytest
-    from blocks.networks.foundry import _aw3_compat
-
-    source = tmp_path / "first.py"
-    source.write_text("unchanged")
-    (tmp_path / "second.py").write_text("modified upstream")
-    monkeypatch.setattr(
-        _aw3_compat,
-        "_SOURCE_HASHES",
-        {
-            "first.py": sha256(source.read_bytes()).hexdigest(),
-            "second.py": sha256(b"reviewed upstream").hexdigest(),
-        },
-    )
-
-    def forbidden(*args, **kwargs):
-        pytest.fail("Patch application started before all sources were checked")
-
-    monkeypatch.setattr(_aw3_compat.subprocess, "run", forbidden)
-    with pytest.raises(RuntimeError, match="second.py"):
-        _aw3_compat.patch(tmp_path, tmp_path / "unused.patch")
-    assert source.read_text() == "unchanged"
+        assert "/opt/chaperone-compat" not in recipe
+        assert "atomworks3.patch" not in recipe
+        assert "PYTHON_DOTENV_DISABLED" not in image._command_config.get("env", {})
