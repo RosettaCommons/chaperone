@@ -1,6 +1,6 @@
 [project]
 name = "chaperone-pipelines"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Chaperone: a framework for protein design and benchmarking"
 readme = "README.md"
 license = "MIT"

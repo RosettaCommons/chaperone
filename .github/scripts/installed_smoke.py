@@ -8,8 +8,14 @@ import sys
 import chaperone
 from blocks import Blocks
 from chaperone import ExecutionEngine, PipelineDataHandler
+from openbabel import openbabel
+from plip.structure.preparation import PDBComplex
 
 assert metadata.metadata("chaperone-pipelines")["Name"] == "chaperone-pipelines"
+# Check native OpenBabel loading as well as dependency metadata: a successful
+# package install alone does not guarantee PLIP's shared libraries are usable.
+assert openbabel.OBReleaseVersion()
+assert PDBComplex()
 assert Path(chaperone.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 for command in ("--help", "list-blocks", "list-available"):
     subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)

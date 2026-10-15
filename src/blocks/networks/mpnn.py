@@ -234,9 +234,17 @@ LIGANDMPNN_CONTAINER = (
         "/opt/mpnn-env/bin/python -c " + shlex.quote(_MPNN_NUMPY_COMPATIBILITY_PATCH),
         f"mkdir -p {_MPNN_ROOT}/model_params",
         *[
-            f"wget -q https://files.ipd.uw.edu/pub/ligandmpnn/{filename} "
-            f"-O {_MPNN_ROOT}/model_params/{filename} && "
-            f"echo '{checksum}  {_MPNN_ROOT}/model_params/{filename}' | sha256sum -c -"
+            # The IPD host can be unreachable from a new cluster. Bound its
+            # retries and retain the fallback for subsequent files in this build.
+            # The same upstream SHA256 check guards both sources.
+            'if [ "${MPNN_USE_MIRROR:-0}" = 1 ] || ! '
+            f"wget --timeout=30 --tries=2 -q https://files.ipd.uw.edu/pub/ligandmpnn/{filename} "
+            f"-O {_MPNN_ROOT}/model_params/{filename}; then MPNN_USE_MIRROR=1; "
+            "wget --timeout=30 --tries=2 -q "
+            "https://huggingface.co/zcpbx/ligandmpnn-weights/resolve/"
+            f"717f35008c45f6dd384a5e6cb0caab3ce99f28fc/model_params/{filename} "
+            f"-O {_MPNN_ROOT}/model_params/{filename} || exit 1; fi; "
+            f"echo '{checksum}  {_MPNN_ROOT}/model_params/{filename}' | sha256sum -c - || exit 1"
             for filename, checksum in _MPNN_ALL_CHECKPOINTS
         ],
         "/opt/mpnn-env/bin/pip check",

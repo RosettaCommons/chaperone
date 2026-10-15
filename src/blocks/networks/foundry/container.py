@@ -7,6 +7,7 @@ supported on Apple Silicon (MPS MLIR bug).
 """
 
 from pathlib import Path
+import shlex
 
 from chaperone import get_setting_field
 from chaperone.common import is_apple_silicon
@@ -18,12 +19,19 @@ _FOUNDRY_REVISION = "c97ad246877e2c7cb3b50e60aab7d76d02e8d393"
 # This source imports APIs removed in AtomWorks 3. Keep the known compatible
 # scientific stack together instead of following Foundry's open lower bounds.
 _FOUNDRY_DEPENDENCIES = (
-    "'atomworks[ml]==2.2.1' 'biotite==1.4.0' "
-    "'lightning==2.6.1' 'numpy==2.4.3'"
+    "'atomworks[ml]==2.2.1' 'biotite==1.4.0' " "'lightning==2.6.1' 'numpy==2.4.3'"
 )
 _FOUNDRY_IMPORT_CHECK = (
     "/opt/foundry-env/bin/python -c 'import rfd3.engine; import rfd3na.engine; "
     "import rf3.inference_engines.rf3; import mpnn.inference_engines.mpnn'"
+)
+
+# Keep this source-level compatibility repair explicit and pinned. The build
+# exercises real RNA, DNA, and mixed contigs before accepting either image.
+_RFD3NA_COMPAT_COMMAND = (
+    "/opt/foundry-env/bin/python -c "
+    + shlex.quote(Path(__file__).with_name("_rfd3na_compat.py").read_text())
+    + " /opt/foundry/models/rfd3na/src/rfd3na/inference --check"
 )
 
 
@@ -118,9 +126,10 @@ _FOUNDRY_CUDA_CONTAINER = (
     .run(
         ". /opt/foundry-env/bin/activate && pip check",
         "/opt/foundry-env/bin/python -c 'import torch; import apex; "
-        "import fused_layer_norm_cuda; assert torch.version.cuda == \"12.8\"; "
+        'import fused_layer_norm_cuda; assert torch.version.cuda == "12.8"; '
         "print(torch.__version__, torch.version.cuda)'",
         _FOUNDRY_IMPORT_CHECK,
+        _RFD3NA_COMPAT_COMMAND,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -129,7 +138,13 @@ _FOUNDRY_CUDA_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/foundry-env",
     )
-    .label(Version=_FOUNDRY_REVISION, CUDA="12.8", PyTorch="2.11.0", AtomWorks="2.2.1")
+    .label(
+        RFD3NAInputFix="generated-contigs-v1",
+        Version=_FOUNDRY_REVISION,
+        CUDA="12.8",
+        PyTorch="2.11.0",
+        AtomWorks="2.2.1",
+    )
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -176,13 +191,20 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     .run(
         ". /opt/foundry-env/bin/activate && pip check",
         _FOUNDRY_IMPORT_CHECK,
+        _RFD3NA_COMPAT_COMMAND,
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
         PATH="/opt/foundry-env/bin:$PATH",
         VIRTUAL_ENV="/opt/foundry-env",
     )
-    .label(Version=_FOUNDRY_REVISION, Platform="cpu", PyTorch="2.11.0", AtomWorks="2.2.1")
+    .label(
+        RFD3NAInputFix="generated-contigs-v1",
+        Version=_FOUNDRY_REVISION,
+        Platform="cpu",
+        PyTorch="2.11.0",
+        AtomWorks="2.2.1",
+    )
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -200,8 +222,6 @@ _FOUNDRY_PUBLIC_CONTAINER = (
 # On Apple Silicon use the public CPU variant; everywhere else use CUDA.
 
 FOUNDRY_CONTAINER = (
-    _FOUNDRY_CUDA_CONTAINER
-    if not is_apple_silicon()
-    else _FOUNDRY_PUBLIC_CONTAINER
+    _FOUNDRY_CUDA_CONTAINER if not is_apple_silicon() else _FOUNDRY_PUBLIC_CONTAINER
 )
 FOUNDRY_PUBLIC_CONTAINER = _FOUNDRY_PUBLIC_CONTAINER
