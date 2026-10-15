@@ -62,11 +62,3 @@ class CopyBlock(CompiledBlockFunction):
 
     def compile(self, sandbox_dir):
         return PipelineDataHandler.from_dir(sandbox_dir, name=self.name)
-
-
-class Copy2Block(CopyBlock):
-    _name = "copy2"
-    _display_name = "Copy"
-    n_multiply: int = Field(
-        default=2, description="Number of copies to create for each design"
-    )

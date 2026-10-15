@@ -60,14 +60,6 @@ def expand_source_paths(source: str) -> list[Path]:
     return dir_paths
 
 
-def load_to_pipeline_df(value, allow_sequences: bool = False) -> PipelineDataHandler:
-    """Load various data sources into a PipelineDataHandler.
-
-    Delegates to PipelineDataHandler.load(). Kept for backwards compatibility.
-    """
-    return PipelineDataHandler.load(value, allow_sequences=allow_sequences)
-
-
 def compile_dirs(dirs: list[Path], compile_as: str, name: str) -> PipelineDataHandler:
     """Compile directories using a block's compile method.
 

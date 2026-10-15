@@ -40,6 +40,7 @@ class PLIPBlock(InlineMetricBlock):
     (hydrogen bonds, hydrophobic contacts, pi-stacking, pi-cation,
     salt bridges, water bridges, halogen bonds, metal coordination).
 
+    Install with `pip install "chaperone-pipelines[plip]"` (requires OpenBabel).
     CIF inputs are automatically converted to PDB format via biotite.
     PLIP auto-detects ligands from HETATM records.
     """

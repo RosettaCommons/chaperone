@@ -232,7 +232,7 @@ def _oracle_sort_key(item: tuple[str, type]) -> tuple[int, str]:
 
 
 # Blocks to exclude from documentation (test/internal blocks)
-EXCLUDED_BLOCKS = {"copy", "copy2"}
+EXCLUDED_BLOCKS = {"copy"}
 
 # Standard fields shared across many blocks — excluded from per-block tables
 # and summarized once at the bottom of the page
@@ -317,8 +317,12 @@ def _reference_lines(name: str, cls) -> list[str]:
     if code:
         link_parts.append(f"[Upstream code / documentation]({code})")
     source = inspect.getsourcefile(cls)
-    if source:
+    relative = None
+    if source and Path(source).resolve().is_relative_to(_src.parent):
         relative = Path(source).resolve().relative_to(_src.parent)
+    elif cls.__module__.startswith("blocks."):
+        relative = Path("src", *cls.__module__.split(".")).with_suffix(".py")
+    if relative is not None:
         link_parts.append(
             f"[Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/{relative.as_posix()})"
         )

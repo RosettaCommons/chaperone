@@ -1,10 +1,17 @@
 """Exercise PLIP/OpenBabel native analysis with the public biotin fixture."""
 
 from pathlib import Path
+from importlib.util import find_spec
+
+import pytest
 
 from blocks.metrics.plip import _run_plip_isolated
 
 
+@pytest.mark.skipif(
+    find_spec("plip") is None or find_spec("openbabel") is None,
+    reason="requires chaperone-pipelines[plip]",
+)
 def test_installed_native_plip_analyzes_public_ligand(tmp_path, monkeypatch):
     fixture = (
         Path(__file__).resolve().parents[1]

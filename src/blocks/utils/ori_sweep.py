@@ -57,12 +57,6 @@ import json
 import os
 from typing import Sequence
 
-try:
-    import py3Dmol
-except ImportError:
-    py3Dmol = None
-    print("py3Dmol not installed — 3D visualization will be skipped")
-
 import numpy as np
 from scipy.optimize import brentq
 from scipy.spatial.distance import cdist
@@ -190,125 +184,6 @@ def generate_ori_points(
             )
             idx += 1
     return out
-
-
-def show_ori(
-    lig: dict,
-    entries: list[dict],
-    *,
-    n_points: int,
-    cone_half_angle: float,
-    surface_offsets: list[float],
-    width=800,
-    height=650,
-):
-    """Render ori token lattice around ligand in py3Dmol.
-
-    Green = kept directions, Red = cone-excluded, Orange = exposed atoms.
-    Sphere size varies by shell (larger = farther).
-    """
-    if py3Dmol is None:
-        print("py3Dmol not available \u2014 skipping visualization")
-        return None
-
-    coords = load_ligand_coords(lig["input"], lig["ligand_name"])
-    lig_xyz = np.stack(list(coords.values()))
-    centroid = lig_xyz.mean(axis=0)
-    cx, cy, cz = map(float, centroid)
-
-    unit = fibonacci_sphere(n_points)
-    exp_atoms = lig["exposed_atoms"]
-    exp_xyz = np.stack([coords[a] for a in exp_atoms])
-    exp_dir = exp_xyz - centroid
-    exp_dir /= np.linalg.norm(exp_dir, axis=1, keepdims=True)
-    dots = unit @ exp_dir.T
-    cos_thr = np.cos(np.radians(cone_half_angle))
-    keep = ~(dots > cos_thr).any(axis=1)
-
-    med_off = np.median(surface_offsets)
-    excl_xyz = {}
-    for fi in np.where(~keep)[0]:
-        t = _offset_surface_radius(unit[fi], centroid, lig_xyz, med_off)
-        excl_xyz[fi] = centroid + t * unit[fi]
-
-    v = py3Dmol.view(width=width, height=height)
-    v.addModel(open(lig["input"]).read(), "pdb")
-    v.setStyle({"chain": "A"}, {})
-    v.setStyle({"chain": "B"}, {"stick": {"radius": 0.22, "colorscheme": "Jmol"}})
-
-    v.addSphere(
-        {"center": {"x": cx, "y": cy, "z": cz}, "radius": 0.45, "color": "black"}
-    )
-
-    arrow_len = max(e["radial_dist"] for e in entries) + 2.0 if entries else 15.0
-    for a, d in zip(exp_atoms, exp_dir):
-        ax, ay, az = map(float, coords[a])
-        v.addSphere(
-            {
-                "center": {"x": ax, "y": ay, "z": az},
-                "radius": 0.55,
-                "color": "orange",
-                "opacity": 0.9,
-            }
-        )
-        tip = centroid + d * arrow_len
-        v.addArrow(
-            {
-                "start": {"x": cx, "y": cy, "z": cz},
-                "end": {"x": float(tip[0]), "y": float(tip[1]), "z": float(tip[2])},
-                "radius": 0.08,
-                "color": "orange",
-                "opacity": 0.3,
-            }
-        )
-
-    shell_colors = ["#90EE90", "#32CD32", "#006400"]
-    for e in entries:
-        x, y, z = map(float, e["ori_token"])
-        tier = e["tier"]
-        r = 0.55 + tier * 0.15
-        clr = shell_colors[min(tier, len(shell_colors) - 1)]
-        v.addSphere(
-            {
-                "center": {"x": x, "y": y, "z": z},
-                "radius": r,
-                "color": clr,
-                "opacity": 0.85,
-            }
-        )
-        v.addCylinder(
-            {
-                "start": {"x": cx, "y": cy, "z": cz},
-                "end": {"x": x, "y": y, "z": z},
-                "radius": 0.02,
-                "color": "lightgrey",
-                "opacity": 0.2,
-                "dashed": True,
-            }
-        )
-
-    for fi, pos in excl_xyz.items():
-        x, y, z = map(float, pos)
-        v.addSphere(
-            {
-                "center": {"x": x, "y": y, "z": z},
-                "radius": 0.45,
-                "color": "red",
-                "opacity": 0.6,
-            }
-        )
-
-    v.zoomTo({"chain": "B"})
-    v.zoom(0.5)
-    v.setBackgroundColor("white")
-
-    n_kept = len(set(e["fib_idx"] for e in entries))
-    n_excl = int((~keep).sum())
-    print(f"Kept {n_kept}/{n_points} directions, excluded {n_excl}")
-    for off in sorted(set(e["surface_dist"] for e in entries)):
-        tier_entries = [e for e in entries if e["surface_dist"] == off]
-        print(f"  Shell {off:.1f}\u00c5: {len(tier_entries)} ori tokens")
-    return v
 
 
 def write_merged_json(
