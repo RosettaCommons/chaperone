@@ -23,6 +23,7 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [af3_with_target_template](#af3_with_target_template) — AlphaFold3 with the target chain structure as a fixed template
 - [colabfold](#colabfold) — ColabFold (AlphaFold2) structure prediction
 - [bindcraft](#bindcraft) — AlphaFold2-guided de novo protein binder design [[paper](https://www.biorxiv.org/content/10.1101/2024.09.30.615802)]
+- [bindcraft2](#bindcraft2) — JAX binder optimization, ProteinMPNN redesign, and AlphaFold2 validation
 - [boltzgen](#boltzgen) — BoltzGen protein design block [[paper](https://www.biorxiv.org/content/10.1101/2025.11.20.689494v1)]
 - [disco](#disco) — Multimodal protein sequence-structure co-design
 - [e1](#e1) — E1 masked language model for sequence prediction [[paper](https://www.biorxiv.org/content/10.1101/2025.11.12.688125v1)]
@@ -536,6 +537,32 @@ Class: `BindCraftBlock` · Input: `True` · Resources: partition=`gpu`, gpu_clas
 | `advanced_path` | `Optional[str]` | `None` | Optional custom advanced JSON; overrides advanced_preset. |
 | `filter_overrides` | `dict` | `<computed at runtime>` | Shallow overrides applied to the selected filter JSON. |
 | `advanced_overrides` | `dict` | `<computed at runtime>` | Shallow overrides applied to the selected advanced JSON. |
+
+---
+
+### bindcraft2
+
+*Design miniprotein binders to one protein chain and return accepted refolds.*
+
+> BindCraft2 — JAX binder optimization, ProteinMPNN redesign, and AlphaFold2 validation
+> [Upstream code / documentation](https://github.com/PacesaLab/BindCraft2) · [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/block.py)
+
+**Inputs and outputs:** [Installation and binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/input.md). One protein target chain per input; returns accepted, refolded target–binder complexes with side chains and native scores. Finite trajectory budgets fail if too few designs pass. Uses its own JAX/CUDA 12 runtime and upstream hosting-restricted license.
+
+Class: `BindCraft2Block` · Input: `True` · Resources: partition=`gpu`, gpu_class=`large`, mem=`64GB`, time=`24:00:00` · Container: `bindcraft2`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
+| `chain` | `str` | **required** | Single target protein chain in the input structure |
+| `hotspots` | `Optional[str]` | `None` | Target residue numbers/ranges, e.g. 54,56,66-70 |
+| `lengths` | `tuple` | `(60, 180)` | Inclusive binder length bounds |
+| `number_of_final_designs` | `int` | `1` | — |
+| `max_trajectories` | `int` | `10` | Finite per-input optimization budget; failure if insufficient designs pass |
+| `seed` | `int` | `42` | — |
+| `af2_params_dir` | `Optional[str]` | `None` | Directory containing all five multimer-v3 and two PTM AF2 checkpoints; alternatively BINDCRAFT_AF2_PARAMS |
+| `weights_dir` | `str` | `<computed at runtime>` | Writable upstream weight download cache when no AF2 directory is supplied |
+| `overrides` | `dict` | `<computed at runtime>` | Selected upstream scientific settings; changing filters changes the acceptance criterion |
 
 ---
 

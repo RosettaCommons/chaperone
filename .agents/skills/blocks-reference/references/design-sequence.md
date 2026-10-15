@@ -4,6 +4,7 @@ Choose generation blocks by design scope, then use an MPNN block for fixed-backb
 
 | Block | Best Use, Strengths, & Limitations |
 |---|---|
+| `bindcraft2` | JAX/AF2 optimization, bundled ProteinMPNN redesign, and held-out AF2 refolding. Initial interface supports one protein target chain and miniprotein binders. Returns only accepted complexes under the configured filters; a finite trajectory budget can fail with no output. Separate CUDA 12 runtime and hosting-restricted upstream license; use an independent final oracle. |
 | `rfd3` | Default de novo, motif, and ligand-aware generation. Flexible and modern; still requires downstream ligand-mpnn for more reliable sequence generation |
 | `rfd3_partial` | Diversify a promising structure locally. Useful for when one structure is particularly promising and we want to get more samples similar to it while increasing diversity a bit. However outputs are correlated descendants. |
 | `rfd2` | Reproduce RFD2 or use its atomic-design behavior. Prefer RFD3 unless a protocol or matched pilot favors RFD2. |

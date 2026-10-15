@@ -52,6 +52,13 @@ retain their own terms. In particular, the `ligandmpnn` image installs the
 MIT-licensed upstream LigandMPNN source and its published checkpoints. PyRosetta/Rosetta, model
 parameters, and databases may have separate access or use requirements.
 
+The `bindcraft2` recipe installs PacesaLab/BindCraft2 at revision
+`c0ee638d11bc010817c2c97ee58ed5c323e664e2` under the
+[BindCraft2 Source-Available License (Hosting-Restricted)](https://github.com/PacesaLab/BindCraft2/blob/c0ee638d11bc010817c2c97ee58ed5c323e664e2/LICENSE).
+Its source tree and license are retained inside the image. This is separate from
+Chaperone's MIT-licensed wrapper; AlphaFold2 and ProteinMPNN assets retain their
+own upstream terms.
+
 See the [container guide](https://github.com/RosettaCommons/chaperone/blob/main/docs/site/containers.md)
 and each block's upstream links for the selected runtime. Build and GPU test
 results describe installation and execution, not a change to upstream terms.

@@ -31,6 +31,10 @@ from chaperone.orchestration.job_args import JobArgs  # noqa: E402
 # Paper / reference URLs for blocks
 # ---------------------------------------------------------------
 BLOCK_REFERENCES: dict[str, dict[str, str]] = {
+    "bindcraft2": {
+        "code": "https://github.com/PacesaLab/BindCraft2",
+        "title": "BindCraft2 — JAX binder optimization, ProteinMPNN redesign, and AlphaFold2 validation",
+    },
     # Networks
     "rfoptimization": {
         "paper": "https://www.biorxiv.org/content/10.64898/2026.09.04.749184v2",
@@ -343,6 +347,11 @@ def _render_block(name: str, cls) -> list[str]:
 
     # Reference / paper link
     lines.extend(_reference_lines(name, cls))
+    if name == "bindcraft2":
+        lines.extend([
+            "**Inputs and outputs:** [Installation and binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/input.md). One protein target chain per input; returns accepted, refolded target–binder complexes with side chains and native scores. Finite trajectory budgets fail if too few designs pass. Uses its own JAX/CUDA 12 runtime and upstream hosting-restricted license.",
+            "",
+        ])
     if name == "rfoptimization":
         lines.extend([
             "**Inputs and outputs:** [Configuration guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). Refines an existing complex with designed protein chain A. The final MPNN redesign has incomplete side chains at mutations; pack/refold it before evaluating that sequence. Intermediate prediction confidence is retained in the upstream records, not attached as a score for the final redesigned structure.",
