@@ -34,13 +34,13 @@ For each ligand, you technically only need **one params file** unless the ligand
 
 ### Chaperone Integration
 
-Params files used with the `ligand_ddg` block are stored in `src/blocks/utils/params/` and auto-discovered at runtime. To add a new ligand:
+The `ligand_ddg` block accepts user-supplied params. No ligand params files or
+automatic params-generation protocol are bundled.
 
-1. Generate the `.params` file (see steps below)
-2. Place it in `src/blocks/utils/params/<LIGAND_CODE>.params`
-3. It will be automatically available via `ligand_name="<LIGAND_CODE>"`
-
-Override the params directory with `CHAPERONE_LIGAND_PARAMS_DIR` env var.
+1. Generate a `.params` file using your authorized Rosetta installation.
+2. Keep it in your own input directory.
+3. Set `CHAPERONE_LIGAND_PARAMS_DIR` to that directory and select
+   `ligand_name="<LIGAND_CODE>"`, or pass `override_params_file` directly.
 
 ---
 

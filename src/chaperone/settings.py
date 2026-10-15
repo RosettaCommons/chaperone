@@ -380,12 +380,7 @@ class ChaperoneSettings(BaseSettings):
     )
     LIGAND_PARAMS_DIR: Optional[str] = Field(
         default=None,
-        description="Directory for Rosetta ligand .params files. Falls back to bundled params.",
-    )
-    MOLFILE_TO_PARAMS_SCRIPT: Optional[str] = Field(
-        default=None,
-        description="Path to Rosetta's molfile_to_params.py. Required for "
-        "dynamic .params generation (generate_params / ligand_ddg_soft).",
+        description="Directory for user-supplied Rosetta ligand .params files.",
     )
     RPXDOCK_CONTAINER: Optional[str] = Field(
         default=None,

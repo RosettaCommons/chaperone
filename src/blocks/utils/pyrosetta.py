@@ -103,7 +103,7 @@ def atom_array_to_pose(atom_array, params_files: list[str] | None = None):
 
         return pose
 
-    # Low-level path (same as the params branch / ppi_ddg): fills an existing Pose
+    # Low-level path (same as the params branch): fills an existing Pose
     # directly. Avoids pyrosetta.distributed's PackedPose, which pickles the pose and
     # therefore requires a `--serialization` pyrosetta build (not present on many
     # standard installs).
@@ -137,83 +137,3 @@ def init_pyrosetta():
     pyr.init(" ".join(pyr_init_opts))
     _PYROSETTA_INITIALIZED = True
     return True
-
-
-# --------------------------------------------------------------------------- #
-# ddG helpers — ports from ddg_soft_sm.py
-# --------------------------------------------------------------------------- #
-
-
-def move_chain_far_away(pose, chain: str = "A", dist: float = 10000.0):
-    """Return a clone of ``pose`` with ``chain`` translated ``dist`` Å along +x.
-
-    Port of ddg_soft_sm.py:569-579. Used to compute the unbound score in
-    ``calc_ddg_norepack`` without deleting residues.
-    """
-    ros = pyr.rosetta
-    pose = pose.clone()
-    sel = ros.core.select.residue_selector.ChainSelector(chain)
-    subset = sel.apply(pose)
-    x_unit = ros.numeric.xyzVector_double_t(1, 0, 0)
-    far = ros.numeric.xyzVector_double_t(dist, 0, 0)
-    ros.protocols.toolbox.pose_manipulation.rigid_body_move(
-        x_unit, 0, far, pose, subset
-    )
-    return pose
-
-
-def calc_ddg_norepack(pose, scorefxn, move_chain: str = "A") -> float:
-    """score(bound) − score(unbound), no repacking.
-
-    Port of ddg_soft_sm.py:603-610. The ``move_chain`` is translated far
-    away to break all inter-chain contacts; the difference in total score
-    is the binding energy.
-    """
-    pose = pose.clone()
-    close_score = scorefxn(pose)
-    far_pose = move_chain_far_away(pose, chain=move_chain)
-    far_score = scorefxn(far_pose)
-    return close_score - far_score
-
-
-def beta_pack(pose, lock_chain: str = "B", soft: bool = False) -> None:
-    """Repack sidechains in-place with beta_nov16 (or _soft).
-
-    Minimal port of RosettaPacker.beta_pack (ddg_soft_sm.py:484-499).
-    Locks ``lock_chain`` entirely; repacks every other residue within
-    10 Å of it; leaves the rest of the protein alone. Used to relax the
-    binder interface around a fixed ligand before scoring.
-    """
-    ros = pyr.rosetta
-
-    lock_sel = ros.core.select.residue_selector.ChainSelector(lock_chain)
-    # interface = residues within 10 Å of lock_chain, excluding lock_chain itself
-    interface_sel = ros.core.select.residue_selector.NeighborhoodResidueSelector(
-        lock_sel, 10.0, False
-    )
-    # prevent repack on: lock_chain + everything NOT at the interface
-    not_interface = ros.core.select.residue_selector.NotResidueSelector(interface_sel)
-    prevent_sel = ros.core.select.residue_selector.OrResidueSelector(
-        lock_sel, not_interface
-    )
-
-    tf = ros.core.pack.task.TaskFactory()
-    tf.push_back(ros.core.pack.task.operation.RestrictToRepacking())
-    tf.push_back(
-        ros.core.pack.task.operation.OperateOnResidueSubset(
-            ros.core.pack.task.operation.PreventRepackingRLT(), prevent_sel, False
-        )
-    )
-    tf.push_back(ros.core.pack.task.operation.IncludeCurrent())
-
-    if soft:
-        sfxn = ros.core.scoring.ScoreFunctionFactory.create_score_function(
-            "beta_nov16_soft"
-        )
-    else:
-        sfxn = pyr.get_fa_scorefxn()
-
-    packer = ros.protocols.minimization_packing.PackRotamersMover()
-    packer.score_function(sfxn)
-    packer.task_factory(tf)
-    packer.apply(pose)

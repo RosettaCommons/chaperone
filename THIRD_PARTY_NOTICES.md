@@ -5,6 +5,35 @@ That project license does not replace the notices or terms attached to bundled
 third-party code, example outputs, external tools, model weights, or databases.
 The following bundled material has its own notices.
 
+## Contact molecular surface
+
+`src/blocks/metrics/py_contact_ms.py` is adapted from
+[`bcov77/py_contact_ms`](https://github.com/bcov77/py_contact_ms).
+Its upstream [MIT license](https://github.com/bcov77/py_contact_ms/blob/main/LICENSE)
+is reproduced here and included in wheel and source distributions:
+
+```text
+MIT License
+
+Copyright (c) 2026 Brian Coventry
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## AlphaFold 3 runner
 
 `src/blocks/scripts/run_alphafold_AF.py` contains an adapted AlphaFold 3 runner.
@@ -50,15 +79,12 @@ binder-design tutorial. Its adjacent residue mapping preserves source author
 labels and insertion codes. The RCSB PDB entry and associated publication should
 be cited when using this structure scientifically.
 
-Other ported example fixtures retain the inputs of the original
-`baker-laboratory/pipelines` examples at snapshot `95ef0b6`. Workflow guides
-identify their provenance and any changes. These fixtures are example inputs,
-not newly generated validation results or evidence of experimental activity.
+The predecessor's unlicensed custom motif inputs, generated multi-MPNN
+backbone, nanoparticle stumps, ligand params, and icon/overview artwork are
+excluded pending permission. The corresponding workflow templates accept
+user-supplied inputs; their presence is not a license to redistribute those inputs.
 
 ## Documentation images
-
-`docs/site/.assets/icon.png` is unchanged from `baker-laboratory/pipelines`
-commit `95ef0b6fd87eb27e1e73d2cfaa1482a39a0a132f`.
 
 The three illustrations in `src/blocks/networks/foundry/.assets/` are unchanged
 from [`RosettaCommons/foundry`, commit

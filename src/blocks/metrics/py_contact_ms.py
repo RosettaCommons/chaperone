@@ -1,4 +1,5 @@
-# Complementaries to Bcov & his phd thesis: https://github.com/bcov77/py_contact_ms/blob/main/py_contact_ms.py
+# Adapted from https://github.com/bcov77/py_contact_ms/blob/main/py_contact_ms.py
+# Copyright (c) 2026 Brian Coventry; MIT license (see THIRD_PARTY_NOTICES.md).
 #!/usr/bin/env python
 import math
 

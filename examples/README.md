@@ -1,5 +1,9 @@
 # Examples
 
+Nanoparticle, protease, glycosidase and multi-MPNN recipes require authorized
+user-supplied inputs (`--input_dir`); the historical custom assets are not
+bundled. AME-2 is optional and requires `--ame2_inputs`. See each workflow guide.
+
 Reference pipeline scripts that show how blocks fit together. Most examples provide a
 `pipeline.py` (the PPI benchmark has two named variants) that configures blocks and runs them with `ExecutionEngine`.
 Model inference is not run in routine CI; CPU tests check selected configurations

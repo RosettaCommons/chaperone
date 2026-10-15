@@ -6,8 +6,12 @@ unit into an icosahedral cage, and refolds the selected **trimer**.
 
 ## Inputs and dependencies
 
-- `files/input_pdbs/dn5_stump.pdb`: fixed motif, residues 1–7 of chains A/B/C.
-- `files/input_pdbs/dn5b_stalk.pdb`: antigen stalk in the same reference frame.
+The historical motif/stalk structures are not bundled pending redistribution
+permission. Supply your authorized copies in `--input_dir`; the code remains
+available. For different stubs, update the contigs and motif residue selections.
+
+- `dn5_stump.pdb` in your input directory: fixed motif, residues 1–7 of chains A/B/C.
+- `dn5b_stalk.pdb` in the same directory: antigen stalk in the same reference frame.
 - RFdiffusion v1 weights: configure `RFDIFFUSION_WEIGHTS_DIR`.
 - Separately obtained AF3 weights: configure `ALPHAFOLD3_WEIGHTS_DIR`.
 - Apptainer or Docker and a supported GPU for RFdiffusion/AF3; RPXdock runs on CPU.
@@ -19,7 +23,7 @@ chaperone install rfdiffusion1
 chaperone install rpxdock
 chaperone install ligandmpnn
 chaperone install alphafold3
-python examples/nanoparticle-design/pipeline.py --test --rundir=/absolute/path/nanoparticle-smoke
+python examples/nanoparticle-design/pipeline.py --input_dir=/path/to/authorized/inputs --test --rundir=/absolute/path/nanoparticle-smoke
 ```
 
 Use `chaperone list-available` to inspect available image names. Add `--local`
@@ -93,7 +97,7 @@ and logs for this run.
 AF3 evaluates the trimer, not assembly of the 60-subunit cage. The source recipe's
 N-terminus check, Rosetta symmetry wiggle, and full-cage antigen/contact checks
 are not implemented here. These require additional validation before selecting
-experimental nanoparticles; a higher RPX score is not a substitute. The bundled
+experimental nanoparticles; a higher RPX score is not a substitute. The user-supplied
 small scoring tables and historical threshold are example settings, not a
 calibrated assembly-quality predictor.
 

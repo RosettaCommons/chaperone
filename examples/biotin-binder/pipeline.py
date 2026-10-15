@@ -3,7 +3,7 @@
 
 One linear pass, no cycling:
   rfd3 -> contact_ms -> rasa -> rfd3_filter
-    -> mpnn -> ligand_ddg_soft -> ddg_filter           (sequence design + triage)
+    -> mpnn                                         (sequence design)
       -> af3_final -> remap -> {hbond, rasa, contact_ms, rmsd} -> af3_final_filter
         -> af3_apo -> apo_holo_rmsd -> apo_filter       (single-chain stability)
 
@@ -65,9 +65,8 @@ EXPOSED_ATOMS = ["C14", "C15", "C16"]
 BINDER_CHAINS = ["A"]
 TARGET_CHAINS = ["B"]
 
-# MPNN + DDG triage.
+# MPNN sequence design.
 NUM_SEQ_PER_PDB = 2
-DDG_TOP_FRACTION = 0.1  # keep top 10% sequences per parent backbone
 POLAR_BIAS = (
     "D:1.39,E:1.39,H:1.39,K:1.39,N:1.39,Q:1.39,R:1.39,S:1.39,T:1.39,W:1.39,Y:1.39"
 )
@@ -93,7 +92,7 @@ SMILES_KW = {"specified_smiles": {LIGAND_NAME: LIGAND_SMILES}, "input_mode": "js
 
 # ── Block factories ──────────────────────────────────────────────────────────
 
-RFD3, MPNN, AF3, RMSD, Filter, ContactMS, RASA, HBond, DDG, RemapLigand = Blocks.getall(
+RFD3, MPNN, AF3, RMSD, Filter, ContactMS, RASA, HBond, RemapLigand = Blocks.getall(
     "rfd3",
     "mpnn",
     "af3",
@@ -102,7 +101,6 @@ RFD3, MPNN, AF3, RMSD, Filter, ContactMS, RASA, HBond, DDG, RemapLigand = Blocks
     "contact_ms",
     "rasa",
     "hbond_metrics",
-    "ligand_ddg_soft",
     "remap_ligand",
 )
 
@@ -188,10 +186,7 @@ def main():
         h.unpack().to_csv(engine.rundir / "results.csv", index=False)
         return
 
-    # ── Stage 3: MPNN + DDG triage — sequence design (bundled CPU) ───────────
-    # MPNN locks the RFD3 motif, biases polar AAs, and fixes hbond/aromatic
-    # contacts; ligand_ddg_soft scores binding; ddg_filter keeps the top
-    # fraction per parent backbone.
+    # Stage 3: packed sequence design; the withdrawn DDG protocol is omitted.
     h = engine.run(
         [
             MPNN(
@@ -202,24 +197,13 @@ def main():
                 aromatic_fix=True,
                 args={"bias_AA": POLAR_BIAS, "number_of_packs_per_design": 1},
             ),
-            DDG(ref_smiles=LIGAND_SMILES, interesting_atoms=BURIED_ATOMS),
-            Filter(
-                name="ddg_filter",
-                filters={
-                    "ligand_ddg_soft.ddg_soft": MetricFilter(
-                        quantile=DDG_TOP_FRACTION,
-                        quantile_direction="lower",
-                        parent_based=True,
-                    ),
-                },
-            ),
         ],
         data=h,
     )
-    print(f"MPNN + DDG triage: {len(h)} sequences")
+    print(f"MPNN: {len(h)} sequences")
 
     if len(h) == 0:
-        print("  0 sequences survived DDG triage — done")
+        print("  MPNN returned 0 sequences — done")
         h.unpack().to_csv(engine.rundir / "results.csv", index=False)
         return
 

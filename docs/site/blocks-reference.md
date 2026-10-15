@@ -58,7 +58,6 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [ipsae](#ipsae) — Interface predicted Score from Aligned Errors
 - [ligand_clash](#ligand_clash) — Measure the closest protein-ligand heavy-atom contact
 - [ligand_ddg](#ligand_ddg) — Compute Rosetta DDG binding energy
-- [ligand_ddg_soft](#ligand_ddg_soft) — Soft-repulsive ddG (pack hard, score soft, trimmed mean)
 - [ligand_pocket](#ligand_pocket) — Distributed ligand contact, enclosure, and shell metrics
 - [metal3d](#metal3d) — Predict transition-metal binding sites with the Metal3D 3D-CNN
 - [motif_confidence](#motif_confidence) — Motif/scaffold pLDDT and PAE split, via diffused_index_map
@@ -67,7 +66,6 @@ Choose a predictor whose supported molecules, inputs, and validation evidence fi
 - [peppr](#peppr) — Compute structural evaluation metrics using peppr
 - [plip](#plip) — Profile protein-ligand interactions using PLIP
 - [pocket_coulomb](#pocket_coulomb) — Electrostatic complementarity between charged ligand atoms and charged pocket residues
-- [ppi_ddg](#ppi_ddg) — Protein-protein binding energy with FastRelax + ddG
 - [rasa](#rasa) — Compute solvent accessible surface area for ligand atoms
 - [reference_motif_rmsd](#reference_motif_rmsd) — Motif RMSD against the input reference, via diffused_index_map
 - [rmsd](#rmsd) — Compute alignment RMSD metrics between two designs
@@ -1315,30 +1313,6 @@ Class: `LigandDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB
 
 ---
 
-### ligand_ddg_soft
-
-*Soft-repulsive ddG (pack hard, score soft, trimmed mean over replicates).*
-
-> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ligand_ddg_soft.py)
-
-**Outputs and interpretation:** `ddg_soft` is the mean bound-minus-separated Rosetta score after packing with the hard beta_nov16 function and scoring with beta_nov16_soft. With at least three replicates the best and worst are dropped; `ddg_soft_std` reports the retained replicate spread. Values are Rosetta energy units, not measured binding free energies; do not compare numerically with the hard-score `ligand_ddg` protocol.
-
-Class: `LigandDDGSoftBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `replicates` | `int` | `5` | Pack+score cycles. ≥3 → trimmed mean (drop best+worst). |
-| `binder_chain` | `str` | `'A'` | Chain ID of the binder. |
-| `ligand_chain` | `str` | `'B'` | Chain ID of the ligand. |
-| `interesting_atoms` | `Optional[list[str]]` | `None` | Ligand heavy-atom names to keep (plus their bonded H). Params is generated from the subset. |
-| `ph` | `float` | `7.4` | Target pH for Dimorphite-DL protonation of H-less ligands. |
-| `override_params_file` | `Optional[str]` | `None` | Pre-made .params file. Bypasses protonation and params generation — ligand H must already match. |
-| `ref_smiles` | `Optional[str]` | `None` | Reference SMILES for rebuilding the ligand bond graph when atom names don't follow CCD convention (common in diffusio... |
-| `cleanup_params_cache` | `bool` | `True` | Delete the shared params cache when the last chunk exits. |
-
----
-
 ### ligand_pocket
 
 *Quantify ligand CMS, enclosure, shell depth, and contact distribution.*
@@ -1496,28 +1470,6 @@ Class: `PocketCoulombBlock` · Input: `True` · Resources: Not specified
 | `power` | `float` | `2.0` | Distance exponent for coulomb-like decay (2.0 = implicit solvent screening) |
 | `ref_smiles` | `Optional[str]` | `None` | Reference SMILES for rebuilding ligand bond graph when atom names don't follow CCD convention (diffusion model outputs) |
 | `per_residue` | `bool` | `False` | Include per-residue score breakdown in output metrics |
-
----
-
-### ppi_ddg
-
-*Protein-protein binding energy via FastRelax + ddG.*
-
-> [Chaperone implementation](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/metrics/ppi_ddg.py)
-
-**Outputs and interpretation:** Protein–protein binding score computed with FastRelax and a bound-versus-separated ddG calculation. These are Rosetta energy units, not experimental affinities. Partner selections, relaxation, and score-function settings must match for comparisons; consult the implementation for the returned energy terms.
-
-Class: `PPIDDGBlock` · Input: `True` · Resources: partition=`cpu`, mem=`8GB`, time=`5:00:00`
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `store_cleanup` | `bool` | `False` | When ``store='catcif'``, delete sandbox output files after they have been consolidated into the archive. Ignored othe... |
-| `binder_chain` | `str` | `'A'` | Chain ID of the binder (translated far away for unbound score). |
-| `target_chain` | `str` | `'B'` | Chain ID of the target (stays in place). |
-| `relax_rounds` | `int` | `1` | FastRelax standard_repeats. 1 is fast (~1–3 min/structure on CPU); 3–5 gives lower, more converged energies. |
-| `replicates` | `int` | `1` | Independent relax + ddG cycles. Mean and std are reported. Each additional replicate adds one full relax run. |
-| `constrain_to_start_coords` | `bool` | `True` | Harmonic coordinate constraints during FastRelax — keeps the backbone close to the AF3-predicted geometry. |
-| `constraint_weight` | `float` | `1.0` | Coordinate constraint weight. Higher = stays closer to input coords; lower = more relaxation freedom. |
 
 ---
 

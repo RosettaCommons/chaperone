@@ -47,7 +47,7 @@ def test_three_packed_branches_keep_lineage_and_distinct_structures_after_repack
 ):
     example = runpy.run_path(str(ROOT / "examples/benchmarks/multi-mpnn/pipeline.py"))
     blocks = example["sequence_blocks"]()
-    path = next(example["FILES"].glob("*.cif"))
+    path = ROOT / "examples/antibody-design/files/8s6z_fv_cd28.pdb"
     source = PipelineDataHandler(
         [
             make_row(

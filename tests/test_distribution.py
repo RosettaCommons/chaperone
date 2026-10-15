@@ -29,7 +29,7 @@ def test_block_runtime_assets_are_declared_as_package_data():
     project = tomllib.loads((root / "pyproject.toml").read_text())
     patterns = project["tool"]["setuptools"]["package-data"]["blocks"]
     assets = ["scripts/ddg_protocol.xml", "scripts/flags_rescore_genpot",
-              "scripts/install_usalign.sh", "utils/params/FAD.params"]
+              "scripts/install_usalign.sh", "networks/foundry/.assets/LICENSE.md"]
     for relative in assets:
         assert (root / "src/blocks" / relative).is_file()
         assert any(fnmatch(relative, pattern) for pattern in patterns), relative

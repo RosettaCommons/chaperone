@@ -11,14 +11,28 @@ from chaperone import ExecutionEngine, PipelineDataHandler
 from chaperone.io import parse_to_atom_array
 import numpy as np
 
-assert metadata.metadata("chaperone-pipelines")["Name"] == "chaperone-pipelines"
+distribution = metadata.distribution("chaperone-pipelines")
+assert distribution.metadata["Name"] == "chaperone-pipelines"
+assert distribution.metadata["License-Expression"] == "MIT AND BSD-3-Clause AND CC-BY-NC-SA-4.0"
+license_files = [
+    path for path in distribution.files
+    if ".dist-info/licenses/" in str(path)
+]
+assert license_files
+for path in license_files:
+    assert distribution.locate_file(path).is_file(), path
+notices = next(path for path in license_files if path.name == "THIRD_PARTY_NOTICES.md")
+assert "Copyright (c) 2026 Brian Coventry" in distribution.locate_file(notices).read_text()
 assert metadata.version("atomworks").split(".")[0] == "3"
 assert Path(chaperone.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 assert not resources.files("chaperone").joinpath("site_profiles/digs.env").is_file()
 assert not (Path(chaperone.__file__).resolve().parent.parent / "chaperone-evals").exists()
+assert "ligand_ddg_soft" not in Blocks
+assert "ppi_ddg" not in Blocks
+assert not resources.files("blocks").joinpath("utils/params/FAD.params").is_file()
 for command in ("--help", "list-blocks", "list-available"):
     subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)
-for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "utils/params/FAD.params")]:
+for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "networks/foundry/.assets/LICENSE.md")]:
     assert resources.files(package).joinpath(filename).is_file(), filename
 
 with tempfile.TemporaryDirectory() as directory:

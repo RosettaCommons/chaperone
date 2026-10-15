@@ -3,8 +3,10 @@ name = "chaperone-pipelines"
 version = "1.0.0"
 description = "Chaperone: a framework for protein design and benchmarking"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+# Archive metadata includes the bundled AF3 runner and Foundry illustrations.
+# Chaperone-authored code remains MIT licensed; see the component notices.
+license = "MIT AND BSD-3-Clause AND CC-BY-NC-SA-4.0"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/blocks/networks/foundry/.assets/LICENSE.md"]
 requires-python = ">=3.12"
 dependencies = [
     # Core scientific packages
@@ -64,11 +66,6 @@ dev = [
     "ipdb",
     "wandb",
 ]
-ligand = [
-    # pH-aware ligand protonation — only needed when soft_ddg/generate_params
-    # is called on a ligand lacking hydrogens AND no params_file is given.
-    "dimorphite-dl",
-]
 plip = [
     # Protein-ligand interaction profiling (PLIPBlock).
     # Also requires OpenBabel (system/conda install: `conda install -c conda-forge openbabel`).
@@ -114,7 +111,7 @@ where = ["src"]
 include = ["blocks", "blocks.*", "chaperone", "chaperone.*", "chaperone_cli", "chaperone_cli.*"]
 
 [tool.setuptools.package-data]
-blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
+blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "networks/**/*.md", "networks/foundry/.assets/*.png", "networks/foundry/.assets/LICENSE.md"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
