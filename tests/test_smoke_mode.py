@@ -105,32 +105,27 @@ def test_smoke_parameters_are_registered_fields():
         assert set(fields) <= set(Blocks[name].model_fields), name
 
 
-EXAMPLES = [
-    "benchmarks/ppi/pipeline_foundry.py",
-    "benchmarks/ppi/pipeline_mpnn.py",
-    "benchmarks/disco/pipeline.py",
-    "benchmarks/ame/pipeline.py",
-    "benchmarks/ame/pipeline_full.py",
-    "fgfr2-binder/pipeline.py",
-    "tests/catcif-storage/pipeline.py",
-    "nanoparticle-design/pipeline.py",
-    "antibody-design/pipeline.py",
-    "enzyme-protease/pipeline.py",
-    "enzyme-glycosidase/pipeline.py",
-    "biotin-binder/pipeline.py",
-    "ribozyme-hammerhead/pipeline.py",
-    "peptide-binder/pipeline.py",
-    "benchmarks/multi-mpnn/pipeline.py",
-]
+EXAMPLES = sorted(
+    path.relative_to(ROOT / "examples").as_posix()
+    for path in (ROOT / "examples").rglob("pipeline*.py")
+    if not any(part.startswith("rundir") or part in {"runs", "__pycache__"}
+               for part in path.relative_to(ROOT / "examples").parts)
+)
 
 
 @pytest.mark.parametrize("example", EXAMPLES)
-def test_example_smoke_configuration_and_exports(tmp_path, example):
-    # Use actual script bodies and block resolution, but do not run GPU models.
+@pytest.mark.parametrize("test_mode", [True, False], ids=["smoke", "production"])
+def test_example_smoke_configuration_and_exports(tmp_path, example, test_mode):
+    # Exercise every entrypoint in both modes: test-only subsets can hide missing
+    # production inputs. Resolve actual blocks and stage inputs, without GPU models.
     # A private copy also catches paths accidentally anchored outside --rundir.
     source = ROOT / "examples" / example
     copied = tmp_path / "example"
     shutil.copytree(source.parent, copied, ignore=shutil.ignore_patterns("rundir*", "runs", "__pycache__"))
+    input_files = {
+        path.relative_to(copied): path.read_bytes()
+        for path in (copied / "files").rglob("*") if path.is_file()
+    }
     result = tmp_path / "resolved.json"
     run_python('''
 import json, runpy, sys
@@ -157,25 +152,54 @@ def run(self, blocks, data=None, **kwargs):
     for raw in blocks if isinstance(blocks, list) else [blocks]:
         block = _resolve_block(raw, {}, None)[0]
         record = {"type": block._name, "name": block.name, "config": block.model_dump()}
+        staging = self.rundir / "staging" / str(len(seen))
         if hasattr(block, "_load_inputs_to_dict"):
-            record["input_keys"] = list(block._load_inputs_to_dict())
+            specs = block._load_inputs_to_dict()
+            record["input_keys"] = list(specs)
+            # Run the actual staging code, including JSON-relative structure paths.
+            # Loading only the JSON does not prove its input files are present.
+            block.create_command(block.init_handler(), staging, 0)
+        elif block._name in {"disco", "rfd1"}:
+            if block._name == "disco":
+                block.cache_dir = str(staging / "cache")
+            block.create_command(block.init_handler(), staging, 0)
+            if block._name == "disco":
+                jobs = json.loads((staging / "input_config.json").read_text())
+                for job in jobs:
+                    for entry in job["sequences"]:
+                        ligand = entry.get("ligand", {}).get("ligand", "")
+                        if ligand.startswith("FILE_"):
+                            assert Path(ligand[5:]).is_file(), ligand
+        for field in ("reference", "input_pdb", "motif_pdb", "clash_ref_pdb", "json_template"):
+            path = getattr(block, field, None)
+            if path:
+                assert Path(path).is_file(), (block.name, field, path)
         seen.append(record)
     return Handler()
 chaperone.ExecutionEngine.run = run
-script, output = sys.argv[1:]
-sys.argv = [script, "--test", "--rundir=" + str(Path(output).parent / "custom-run")]
+script, output, mode = sys.argv[1:]
+sys.argv = [script, *(["--test"] if mode == "smoke" else []), "--rundir=" + str(Path(output).parent / "custom-run")]
 runpy.run_path(script, run_name="__main__")
 Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default=str))
-''', tmp_path, copied / source.name, result)
+''', tmp_path, copied / source.name, result, "smoke" if test_mode else "production")
+    assert {
+        path.relative_to(copied): path.read_bytes()
+        for path in (copied / "files").rglob("*") if path.is_file()
+    } == input_files, "Pipeline modified its bundled inputs instead of --rundir"
     report = json.loads(result.read_text())
     blocks = report["blocks"]
+    assert blocks, "Example did not construct any pipeline blocks"
     for block in blocks:
+        if not test_mode:
+            continue
         values = block["config"]
-        if block["type"] == "rfd3":
+        if block["type"] in {"rfd3", "rfd3na"}:
             assert values["batch_size"] == values["n_batches"] == 1
             assert len(block["input_keys"]) == (2 if "enzyme-" in example else 1)
         if block["type"] in {"mpnn", "foundry_mpnn"}:
             assert values["num_seq_per_pdb"] == 1
+            if block["type"] == "mpnn" and values["output_mode"] == "structures":
+                assert values["args"]["number_of_packs_per_design"] == 1
         if block["type"] in {"af3", "af3_with_target_template", "rf3"}:
             assert values["diffusion_batch_size"] == 1
             assert len(values["model_seeds"]) == 1

@@ -3,7 +3,7 @@
         "input": "1djs_target.pdb",
         "contig": "40-50,/0,B287-296,B307-328,B339-350",
         "length": "84-94",
-        "select_hotspots": "B170,B249,B251,B283,B284",
+        "select_hotspots": "B289,B291,B311,B344,B352",
         "infer_ori_strategy": "hotspots"
     }
 }

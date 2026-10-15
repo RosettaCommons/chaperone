@@ -108,3 +108,23 @@ def test_multi_mpnn_refolding_uses_separate_input_directories_per_model():
             f"{af3.name}.ranking_score",
             f"{rmsd.name}.bkbn_align.bkbn_rmsd",
         }
+
+
+def test_fgfr2_hotspot_origin_has_atoms_in_the_retained_target():
+    """A cropped target with no retained hotspot cannot define the origin."""
+    import re
+
+    files = ROOT / "examples/fgfr2-binder/files"
+    for config in ("rfd3_config.json", "rfd3_config_override.json"):
+        spec = json.loads((files / config).read_text())["fgfr2_binder"]
+        atoms = parse_to_atom_array(files / spec["input"])
+        retained = set()
+        for component in spec["contig"].split(","):
+            match = re.fullmatch(r"([A-Za-z])(\d+)(?:-(\d+))?", component)
+            if match:
+                chain, first, last = match.groups()
+                retained.update(f"{chain}{i}" for i in range(int(first), int(last or first) + 1))
+        hotspots = set(spec["select_hotspots"].split(","))
+        present = {f"{chain}{residue}" for chain, residue in zip(atoms.chain_id, atoms.res_id)}
+        assert hotspots <= present
+        assert hotspots & retained, "Hotspot origin requires a hotspot in the retained contig"

@@ -43,7 +43,7 @@ HBOND_ACCEPTOR: dict[str, str] | None = None
 IS_NON_LOOPY: bool = True
 
 
-def _resolve_rfd3_config() -> str:
+def _resolve_rfd3_config(output_dir: Path) -> str:
     """Return the rfd3_config.json path, with HOTSPOTS / HBOND_* / IS_NON_LOOPY patched in."""
     base_path = FILES_DIR / "rfd3_config.json"
     cfg = json.loads(base_path.read_text())
@@ -69,7 +69,12 @@ def _resolve_rfd3_config() -> str:
         changed = True
     if not changed:
         return str(base_path)
-    out_path = FILES_DIR / "rfd3_config_override.json"
+    # The override lives with this run; bundled example assets may be read-only.
+    # Preserve the input reference when relocating the JSON away from files/.
+    if cfg[key].get("input"):
+        cfg[key]["input"] = str((FILES_DIR / cfg[key]["input"]).resolve())
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / "rfd3_config_override.json"
     out_path.write_text(json.dumps(cfg, indent=4))
     return str(out_path)
 
@@ -101,9 +106,11 @@ JOB_ARGS = {"gpu_class": "large", "mem_gb": 16}
 # runs only on those 4 selected sequences (one per backbone).
 N_MPNN_SEQS = 8
 
+engine = ExecutionEngine(rundir=SCRIPT_DIR / "rundir", reinit=True)
+
 blocks = [
     RFD3(
-        inputs=_resolve_rfd3_config(),
+        inputs=_resolve_rfd3_config(engine.rundir / "inputs"),
         n_batches=4,
         batch_size=1,
         jitter_ori_sigma=1.0,
@@ -162,7 +169,6 @@ blocks = [
 ]
 
 # ── Execute ─────────────────────────────────────────────────────────────────────────────
-engine = ExecutionEngine(rundir=SCRIPT_DIR / "rundir", reinit=True)
 handler = engine.run(blocks, job_args=JOB_ARGS)
 
 df = handler.unpack(all=False, to_pandas=False)

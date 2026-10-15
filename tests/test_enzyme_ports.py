@@ -125,3 +125,33 @@ def test_ptm_catalytic_metric_counts_modified_glutamate_and_detects_missing_atom
     target.atom_array = modified[~(glu & (modified.atom_name == "OE2"))]
     missing = block._compute(reference, source, target, set(residues))
     assert missing["n_atoms"] == 37
+
+
+def test_ame_phosphotriesterase_origin_is_valid_pdb_and_conditioning_atoms_exist():
+    """The virtual origin must not spill its name into PDB element/charge columns."""
+    import numpy as np
+    from biotite.structure.io.pdb import PDBFile
+
+    files = EXAMPLES / "benchmarks/ame/files"
+    spec = json.loads((files / "ame-2.json").read_text())["phosphotriesterase"]
+    # AtomWorks also builds bonds using PDB serials. The virtual serial 999
+    # must follow the real atoms (1..101), not interrupt them before ligand 63.
+    serials = [int(line[6:11]) for line in (files / spec["input"]).read_text().splitlines()
+               if line.startswith(("ATOM  ", "HETATM"))]
+    assert serials == sorted(set(serials))
+    # Foundry requests charges while reading inputs. Without this extra field,
+    # the malformed historical ORI marker could escape a lightweight PDB check.
+    atoms = PDBFile.read(files / spec["input"]).get_structure(
+        model=1, extra_fields=["charge", "occupancy", "b_factor"], include_bonds=True
+    )
+    assert np.isfinite(atoms.coord).all()
+    origin = atoms[atoms.res_name == "ORI"]
+    assert len(origin) == 1 and origin.element.tolist() == ["X"]
+    np.testing.assert_allclose(origin.coord[0], spec["ori_token"], atol=1e-6)
+    ligand = atoms[atoms.res_name == spec["ligand"]]
+    assert set(ligand.atom_name[ligand.element == "ZN"]) == {"ZN1", "ZN2"}
+    for residue, names in spec["select_fixed_atoms"].items():
+        selected = atoms[(atoms.chain_id == residue[0]) & (atoms.res_id == int(residue[1:]))]
+        assert set(names.split(",")) <= set(selected.atom_name)
+    for field in ("select_buried", "select_partially_buried", "select_exposed"):
+        assert set(spec[field][spec["ligand"]].split(",")) <= set(ligand.atom_name)
