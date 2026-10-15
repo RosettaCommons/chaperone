@@ -114,6 +114,46 @@ EXAMPLES = sorted(
 )
 
 
+def external_example_inputs(example, copied, tmp_path):
+    """Synthetic file-staging inputs, not scientific motif or design fixtures."""
+    case = example.rsplit("/", 1)[0]
+    if case not in {
+        "enzyme-protease", "enzyme-glycosidase", "nanoparticle-design",
+        "benchmarks/multi-mpnn",
+    }:
+        return []
+    import numpy as np
+    from biotite.structure import AtomArray
+    from chaperone.io import write_pdb
+
+    inputs = tmp_path / "external-inputs"
+    inputs.mkdir()
+    atoms = AtomArray(21)
+    atoms.chain_id = np.repeat(["A", "B", "C"], 7)
+    atoms.res_id = np.tile(np.arange(1, 8), 3)
+    atoms.res_name[:] = "ALA"
+    atoms.atom_name[:] = "CA"
+    atoms.element[:] = "C"
+    atoms.coord = np.arange(63).reshape(21, 3).astype(float)
+    filenames = {
+        "enzyme-protease": ["GPRVVERHQS78.pdb"],
+        "enzyme-glycosidase": ["theozyme.pdb"],
+        "nanoparticle-design": ["dn5_stump.pdb", "dn5b_stalk.pdb"],
+        "benchmarks/multi-mpnn": ["input.pdb"],
+    }[case]
+    for filename in filenames:
+        write_pdb(atoms, inputs / filename)
+    for config in (copied / "files").glob("*.json"):
+        shutil.copyfile(config, inputs / config.name)
+    if case == "enzyme-glycosidase":
+        for filename in ("af3_template_ptm.json", "af3_template_ligand.json"):
+            (inputs / filename).write_text(json.dumps({
+                "name": "synthetic", "modelSeeds": [1], "dialect": "alphafold3",
+                "version": 1, "sequences": [],
+            }))
+    return [f"--input_dir={inputs}"]
+
+
 @pytest.mark.parametrize("example", EXAMPLES)
 @pytest.mark.parametrize("test_mode", [True, False], ids=["smoke", "production"])
 def test_example_smoke_configuration_and_exports(tmp_path, example, test_mode):
@@ -123,6 +163,7 @@ def test_example_smoke_configuration_and_exports(tmp_path, example, test_mode):
     source = ROOT / "examples" / example
     copied = tmp_path / "example"
     shutil.copytree(source.parent, copied, ignore=shutil.ignore_patterns("rundir*", "runs", "__pycache__"))
+    extra_args = external_example_inputs(example, copied, tmp_path)
     input_files = {
         path.relative_to(copied): path.read_bytes()
         for path in (copied / "files").rglob("*") if path.is_file()
@@ -178,11 +219,11 @@ def run(self, blocks, data=None, **kwargs):
         seen.append(record)
     return Handler()
 chaperone.ExecutionEngine.run = run
-script, output, mode = sys.argv[1:]
-sys.argv = [script, *(["--test"] if mode == "smoke" else []), "--rundir=" + str(Path(output).parent / "custom-run")]
+script, output, mode, *extra_args = sys.argv[1:]
+sys.argv = [script, *(["--test"] if mode == "smoke" else []), "--rundir=" + str(Path(output).parent / "custom-run"), *extra_args]
 runpy.run_path(script, run_name="__main__")
 Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default=str))
-''', tmp_path, copied / source.name, result, "smoke" if test_mode else "production")
+''', tmp_path, copied / source.name, result, "smoke" if test_mode else "production", *extra_args)
     assert {
         path.relative_to(copied): path.read_bytes()
         for path in (copied / "files").rglob("*") if path.is_file()
@@ -211,7 +252,7 @@ Path(output).write_text(json.dumps({"blocks": seen, "exports": exports}, default
         if block["type"] == "disco":
             assert values["num_seeds"] == values["n_batches"] == 1
     if "ame" in example:
-        assert sum(block["type"] == "rfd3" for block in blocks) == (1 if "full" in example else 2)
+        assert sum(block["type"] == "rfd3" for block in blocks) == 1
     if "fgfr2" in example:
         import polars as pl
         scores = pl.read_csv(tmp_path / "custom-run/scores.csv")

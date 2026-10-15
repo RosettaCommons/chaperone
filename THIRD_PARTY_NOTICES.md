@@ -79,7 +79,7 @@ binder-design tutorial. Its adjacent residue mapping preserves source author
 labels and insertion codes. The RCSB PDB entry and associated publication should
 be cited when using this structure scientifically.
 
-The predecessor's unlicensed custom motif inputs, generated multi-MPNN
+The flagged predecessor custom motif inputs, generated multi-MPNN
 backbone, nanoparticle stumps, ligand params, and icon/overview artwork are
 excluded pending permission. The corresponding workflow templates accept
 user-supplied inputs; their presence is not a license to redistribute those inputs.
