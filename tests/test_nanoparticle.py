@@ -100,6 +100,8 @@ def test_preparation_preserves_lineage_and_filters_clashes(tmp_path):
     item = next(result.get_data(which="last", load=True))
     assert item.metadata["motif"] == ["A1", "A2", "A3"]
     assert result.unpack()["parent_design_id"][0] == "parent"
+    result.write_parquet(tmp_path / "prepared.parquet")
+    assert len(PipelineDataHandler(tmp_path / "prepared.parquet")) == 1
     block.max_clashes = 0
     assert len(block(handler, tmp_path / "filtered")) == 0
 
@@ -160,6 +162,8 @@ def test_docked_outputs_have_unique_identity_and_all_chain_motifs(tmp_path):
     ]
     assert result.unpack()["rpxdock.rpx_score"].to_list() == [90, 90]
     assert result.unpack()["rpxdock.model_index"].to_list() == [7, 7]
+    result.write_parquet(tmp_path / "docked.parquet")
+    assert len(PipelineDataHandler(tmp_path / "docked.parquet")) == 2
 
 
 @pytest.mark.parametrize("kind", ["monomer", "score", "numbering"])
