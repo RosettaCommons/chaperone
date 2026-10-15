@@ -1,7 +1,7 @@
 # <img src="docs/site/.assets/icon.png" alt="Chaperone icon" width="48" align="absmiddle"> Chaperone: A Reliable and Efficient Protein Design Toolset Harness
 
 <p align="center">
-  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design pipelines, model benchmarks, model development" width="100%">
+  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design workflows, model benchmarks, model development" width="100%">
   <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
 </p>
 
