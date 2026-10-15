@@ -89,10 +89,7 @@ ALLOWED: list[tuple[str, str, str]] = [
         "IPD example paths and the .env.ipd trigger",
     ),
     (
-        _files(
-            ".agents/skills/order-designs/SKILL.md",
-            ".agents/skills/rosetta-params/SKILL.md",
-        ),
+        _files(".agents/skills/rosetta-params/SKILL.md"),
         r"/(?:net|software)/",
         "skill states at the top that it is IPD-specific",
     ),
