@@ -34,7 +34,7 @@ dependencies = [
 
     # Biochem packages
     "biotite",
-    "atomworks[ml,catcif]>=3.0.1",  # [ml]: torch, numba, einops, beartype; [catcif]: parse() reads archive.catcif:id tags
+    "atomworks[ml,catcif]>=3.0.1,<4",  # [ml]: torch, numba, einops, beartype; [catcif]: parse() reads archive.catcif:id tags
     "peppr",
     "catcif-tools",  # concatenated CIF archive format used by handler.store()
 
@@ -117,7 +117,7 @@ include = ["blocks", "blocks.*", "chaperone", "chaperone.*", "chaperone_cli", "c
 
 [tool.setuptools.package-data]
 chaperone = ["py.typed", "site_profiles/*.env"]
-blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/foundry/.assets/*.png"]
+blocks = ["scripts/*.xml", "scripts/flags_*", "scripts/*.sh", "utils/params/*.params", "networks/**/*.md", "networks/**/*.patch", "networks/foundry/.assets/*.png"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]

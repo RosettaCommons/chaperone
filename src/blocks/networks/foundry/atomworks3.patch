@@ -1,0 +1,465 @@
+--- a/models/rf3/src/rf3/inference_engines/rf3.py
++++ b/models/rf3/src/rf3/inference_engines/rf3.py
+@@ -33,8 +33,10 @@
+ )
+ from rf3.utils.io import (
+     build_stack_from_atom_array_and_batched_coords,
+-    dump_structures,
+     get_sharded_output_path,
++)
++from rf3.utils.io import (
++    dump_trajectories as dump_diffusion_trajectories,
+ )
+ from rf3.utils.predicted_error import (
+     annotate_atom_array_b_factor_with_plddt,
+@@ -317,6 +319,8 @@
+ 
+         super().__init__(
+             transform_overrides={
++                # Training caches are site-specific and must not affect inference.
++                "residue_cache_dir": None,
+                 "diffusion_batch_size": diffusion_batch_size,
+                 "n_recycles": n_recycles,
+                 "raise_if_missing_msa_for_protein_of_length_n": raise_if_missing_msa_for_protein_of_length_n,
+@@ -745,16 +749,27 @@
+                         )
+ 
+                 if dump_trajectories:
+-                    dump_structures(
+-                        atom_arrays=network_output["X_denoised_L_traj"],
++                    # The sampler records denoiser/noisy intermediates before
++                    # its final coordinate update. Append the actual prediction
++                    # so the last frame matches the scored per-sample structure.
++                    dump_diffusion_trajectories(
++                        trajectory_list=[
++                            *network_output["X_denoised_L_traj"],
++                            network_output["X_L"],
++                        ],
++                        atom_array=pipeline_output["atom_array"],
+                         base_path=example_out_dir / "denoised",
+-                        one_model_per_file=True,
++                        final_frame_first=False,
+                         file_type=file_type,
+                     )
+-                    dump_structures(
+-                        atom_arrays=network_output["X_noisy_L_traj"],
++                    dump_diffusion_trajectories(
++                        trajectory_list=[
++                            *network_output["X_noisy_L_traj"],
++                            network_output["X_L"],
++                        ],
++                        atom_array=pipeline_output["atom_array"],
+                         base_path=example_out_dir / "noisy",
+-                        one_model_per_file=True,
++                        final_frame_first=False,
+                         file_type=file_type,
+                     )
+ 
+--- a/models/rf3/src/rf3/utils/io.py
++++ b/models/rf3/src/rf3/utils/io.py
+@@ -6,8 +6,9 @@
+ from atomworks.io.utils.io_utils import to_cif_file
+ from atomworks.ml.utils.io import apply_sharding_pattern
+ from atomworks.ml.utils.misc import hash_sequence
+-from beartype.typing import Literal, cast
++from beartype.typing import Literal
+ from biotite.structure import AtomArray, AtomArrayStack, stack
++
+ from rf3._core.utils.alignment import weighted_rigid_align
+ from rf3._core.utils.ddp import RankedLogger
+ 
+@@ -129,7 +130,9 @@
+     else:
+         # Include all models in a single CIF file
+         to_cif_file(
+-            atom_arrays,
++            list(atom_arrays)
++            if isinstance(atom_arrays, AtomArrayStack)
++            else atom_arrays,
+             base_path,
+             file_type=file_type,
+             include_entity_poly=False,
+@@ -143,6 +146,7 @@
+     base_path: Path,
+     align_structures: bool = True,
+     file_type: Literal["cif", "bcif", "cif.gz"] = "cif.gz",
++    final_frame_first: bool = True,
+ ) -> None:
+     """Write denoising trajectories to CIF files.
+ 
+@@ -153,36 +157,48 @@
+         base_path (Path): Base path where the output files will be saved.
+         align_structures (bool): Flag to determine if the structures should be aligned on the final prediction.
+             If False, each step may have a different alignment.
++        final_frame_first (bool): Write the final frame first for PyMOL bond inference
++            (default). False retains chronological diffusion order, final frame last.
+         file_type (str): File type for output (e.g., "cif", "cif.gz", "pdb"). Defaults to ``"cif.gz"``.
+     """
+-    n_steps = len(trajectory_list)
++    if not trajectory_list:
++        raise ValueError("Cannot write an empty diffusion trajectory")
++    # Work on a separate list: alignment must not replace the caller's frames.
++    frames = [torch.as_tensor(frame).detach() for frame in trajectory_list]
++    if any(frame.ndim != 3 or frame.shape[-1] != 3 for frame in frames):
++        raise ValueError("Trajectory frames must have shape [samples, atoms, 3]")
++    if frames[0].shape[1] != len(atom_array) or any(
++        frame.shape != frames[0].shape for frame in frames
++    ):
++        raise ValueError(
++            "Trajectory frame shapes must match each other and the atom array"
++        )
++    n_steps = len(frames)
+ 
+     if align_structures:
+         # ... align the trajectories on the last prediction
+-        w_L = torch.ones(*trajectory_list[0].shape[:2]).to(trajectory_list[0].device)
+-        X_exists_L = torch.ones(trajectory_list[0].shape[1], dtype=torch.bool).to(
+-            trajectory_list[0].device
++        w_L = torch.ones(*frames[0].shape[:2]).to(frames[0].device)
++        X_exists_L = torch.ones(frames[0].shape[1], dtype=torch.bool).to(
++            frames[0].device
+         )
+         for step in range(n_steps - 1):
+-            # `trajectory_list` is typed `Tensor | np.ndarray`, but every path here
+-            # (alignment + the `torch.stack` below) is tensor-only, so the diffusion
+-            # trajectories are always tensors when alignment runs.
+-            trajectory_list[step] = weighted_rigid_align(
+-                X_L=cast(torch.Tensor, trajectory_list[-1]),
+-                X_gt_L=cast(torch.Tensor, trajectory_list[step]),
++            frames[step] = weighted_rigid_align(
++                X_L=frames[-1],
++                X_gt_L=frames[step],
+                 X_exists_L=X_exists_L,
+                 w_L=w_L,
+             )
+ 
+     # ... invert the list, to make the trajectory compatible with PyMol (which builds the bond graph from the first frame)
+-    trajectory_list = trajectory_list[::-1]
++    if final_frame_first:
++        frames = frames[::-1]
+ 
+     # ... iterate over the range of D (diffusion batch size; e.g., 5 during validation)
+-    # (We want to convert `aligned_trajectory_list` to a list of length D where each item is a tensor of shape [n_steps, L, 3])
++    # (We want to convert `aligned_frames` to a list of length D where each item is a tensor of shape [n_steps, L, 3])
+     trajectories_split_by_model = []
+-    for d in range(trajectory_list[0].shape[0]):
++    for d in range(frames[0].shape[0]):
+         trajectory_for_single_model = torch.stack(
+-            [trajectory_list[step][d] for step in range(n_steps)], dim=0
++            [frames[step][d] for step in range(n_steps)], dim=0
+         )
+         trajectories_split_by_model.append(trajectory_for_single_model)
+ 
+@@ -199,5 +215,9 @@
+ 
+         path = Path(f"{base_path}_model_{i}")
+         to_cif_file(
+-            atom_array_stack, path, file_type=file_type, include_entity_poly=False
+-        )
++            # AtomWorks 3 accepts a list of models, not an AtomArrayStack.
++            list(atom_array_stack),
++            path,
++            file_type=file_type,
++            include_entity_poly=False,
++        )
+--- a/models/rfo/src/rfo/backprop/inference_pipeline/af3_inference_pipeline.py
++++ b/models/rfo/src/rfo/backprop/inference_pipeline/af3_inference_pipeline.py
+@@ -131,7 +131,10 @@
+         # Get config references
+         self.distogram_config = self.cfg.model.net.distogram_head
+ 
+-        # Construct pipeline (follows BaseInferenceEngine._construct_pipeline pattern)
++        self._initialize_pipeline()
++
++    def _initialize_pipeline(self):
++        """Build inference features without inheriting training-only assumptions."""
+         first_val_dataset_key, first_val_dataset = next(
+             iter(self.cfg.datasets.val.items())
+         )
+@@ -144,6 +147,12 @@
+             "n_recycles": self.n_recycles,
+             "is_inference": True,
+             "run_confidence_head": True,
++            # Sequence-built atoms have random placeholder coordinates. They
++            # cannot establish physical terminal bonds in a linear protein.
++            "add_cyclic_bonds": False,
++            # Public checkpoints may embed a training site's private cache.
++            # Override it explicitly, including values serialized in train_cfg.
++            "residue_cache_dir": None,
+         }
+         transform_cfg = OmegaConf.merge(
+             first_val_dataset.dataset.transform,
+--- a/models/rfo/src/rfo/backprop/tools/af3.py
++++ b/models/rfo/src/rfo/backprop/tools/af3.py
+@@ -9,7 +9,7 @@
+ import torch
+ import tree
+ from atomworks.constants import DICT_THREE_TO_ONE
+-from atomworks.io.parser import parse
++from atomworks.io.parser import ParseConfig, parse
+ from atomworks.io.tools.inference import (
+     build_msa_paths_by_chain_id_from_component_list,
+     components_to_atom_array,
+@@ -292,12 +292,18 @@
+                         ]
+                     ),
+                     "chain_id": chain_id.split("_")[0],
++                    "chain_type": "polypeptide(L)",
+                     "msa_path": None,
+                 }
+             )
+     else:
+         inputs = [
+-            {"seq": seq, "chain_id": add_info["chain_id"], "msa_path": None},
++            {
++                "seq": seq,
++                "chain_id": add_info["chain_id"],
++                "chain_type": "polypeptide(L)",
++                "msa_path": None,
++            },
+         ]
+ 
+     if add_info["msa_paths"] is not None:
+@@ -466,11 +472,14 @@
+     if not isinstance(cif, PathLike):
+         cif = Path(cif)
+     # ... parse into an AtomArray (`parse` handles all valid formats)
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+     # ... get the atom array and set NaN coordinates to random
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     atom_array.coord[np.isnan(atom_array.coord)] = np.random.rand(
+         *atom_array.coord[np.isnan(atom_array.coord)].shape
+     )
+@@ -696,7 +705,13 @@
+         mask = np.isin(atom_array.chain_id, chain_ids)
+ 
+     else:
+-        selector = AtomSelectionStack.from_query(self_template_selection_syntax)
++        # Compact contigs and path queries are distinct AtomWorks grammars.
++        # Passing A1103-1120 to from_query treats it as a literal chain ID.
++        syntax = self_template_selection_syntax.replace(" ", "")
++        if re.fullmatch(r"[A-Za-z]+[0-9]+-[0-9]+(?:,[A-Za-z]+[0-9]+-[0-9]+)*", syntax):
++            selector = AtomSelectionStack.from_contig(syntax)
++        else:
++            selector = AtomSelectionStack.from_query(self_template_selection_syntax)
+         mask = selector.get_mask(atom_array)
+ 
+     if np.any(mask):
+@@ -721,11 +736,14 @@
+     handle_chain_breaks: bool = True,
+ ):
+     cif = Path(cif) if not isinstance(cif, PathLike) else cif
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+ 
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     nan_mask = np.isnan(atom_array.coord)
+     atom_array.coord[nan_mask] = np.random.rand(*atom_array.coord[nan_mask].shape)
+     # ... apply chain break renumbering to handle discontinuous sequences (default: enabled)
+@@ -821,7 +839,9 @@
+ ):
+     templates_by_chain = defaultdict(list)
+     for chain_id, template_file in template_dict.items():
+-        template_out = parse(template_file, hydrogen_policy="remove")
++        template_out = parse(
++            template_file, config=ParseConfig(hydrogen_policy="remove")
++        )
+ 
+         template_aa = (
+             template_out["assemblies"]["1"][0]
+--- a/models/rfo/src/rfo/backprop/tools/af3_auto_detect_breaking.py
++++ b/models/rfo/src/rfo/backprop/tools/af3_auto_detect_breaking.py
+@@ -9,7 +9,7 @@
+ import torch
+ import tree
+ from atomworks.constants import DICT_THREE_TO_ONE
+-from atomworks.io.parser import parse
++from atomworks.io.parser import ParseConfig, parse
+ from atomworks.io.tools.inference import (
+     build_msa_paths_by_chain_id_from_component_list,
+     components_to_atom_array,
+@@ -106,12 +106,18 @@
+                         ]
+                     ),
+                     "chain_id": chain_id.split("_")[0],
++                    "chain_type": "polypeptide(L)",
+                     "msa_path": None,
+                 }
+             )
+     else:
+         inputs = [
+-            {"seq": seq, "chain_id": add_info["chain_id"], "msa_path": None},
++            {
++                "seq": seq,
++                "chain_id": add_info["chain_id"],
++                "chain_type": "polypeptide(L)",
++                "msa_path": None,
++            },
+         ]
+ 
+     if add_info["msa_paths"] is not None:
+@@ -252,11 +258,14 @@
+     if not isinstance(cif, PathLike):
+         cif = Path(cif)
+     # ... parse into an AtomArray (`parse` handles all valid formats)
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+     # ... get the atom array and set NaN coordinates to random
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     atom_array.coord[np.isnan(atom_array.coord)] = np.random.rand(
+         *atom_array.coord[np.isnan(atom_array.coord)].shape
+     )
+@@ -480,7 +489,13 @@
+         mask = np.isin(atom_array.chain_id, chain_ids)
+ 
+     else:
+-        selector = AtomSelectionStack.from_query(self_template_selection_syntax)
++        # Compact contigs and path queries are distinct AtomWorks grammars.
++        # Passing A1103-1120 to from_query treats it as a literal chain ID.
++        syntax = self_template_selection_syntax.replace(" ", "")
++        if re.fullmatch(r"[A-Za-z]+[0-9]+-[0-9]+(?:,[A-Za-z]+[0-9]+-[0-9]+)*", syntax):
++            selector = AtomSelectionStack.from_contig(syntax)
++        else:
++            selector = AtomSelectionStack.from_query(self_template_selection_syntax)
+         mask = selector.get_mask(atom_array)
+ 
+     if np.any(mask):
+@@ -505,11 +520,14 @@
+     handle_chain_breaks: bool = True,
+ ):
+     cif = Path(cif) if not isinstance(cif, PathLike) else cif
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+ 
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     nan_mask = np.isnan(atom_array.coord)
+     atom_array.coord[nan_mask] = np.random.rand(*atom_array.coord[nan_mask].shape)
+     # ... apply chain break renumbering to handle discontinuous sequences (default: enabled)
+@@ -603,7 +621,9 @@
+ ):
+     templates_by_chain = defaultdict(list)
+     for chain_id, template_file in template_dict.items():
+-        template_out = parse(template_file, hydrogen_policy="remove")
++        template_out = parse(
++            template_file, config=ParseConfig(hydrogen_policy="remove")
++        )
+ 
+         template_aa = (
+             template_out["assemblies"]["1"][0]
+--- a/models/rfo/src/rfo/backprop/tools/af3_no_breaking_point.py
++++ b/models/rfo/src/rfo/backprop/tools/af3_no_breaking_point.py
+@@ -9,13 +9,13 @@
+ import torch
+ import tree
+ from atomworks.constants import DICT_THREE_TO_ONE
+-from atomworks.io.parser import parse
++from atomworks.io.parser import ParseConfig, parse
+ from atomworks.io.tools.inference import (
+     build_msa_paths_by_chain_id_from_component_list,
+     components_to_atom_array,
+ )
+ from atomworks.io.utils.io_utils import to_cif_file
+-from atomworks.io.utils.selection import AtomSelectionStack
++from atomworks.io.utils.query import AtomSelectionStack
+ from atomworks.ml.encoding_definitions import AF3SequenceEncoding
+ from atomworks.ml.transforms.template import add_input_file_template
+ from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+@@ -106,12 +106,18 @@
+                         ]
+                     ),
+                     "chain_id": chain_id.split("_")[0],
++                    "chain_type": "polypeptide(L)",
+                     "msa_path": None,
+                 }
+             )
+     else:
+         inputs = [
+-            {"seq": seq, "chain_id": add_info["chain_id"], "msa_path": None},
++            {
++                "seq": seq,
++                "chain_id": add_info["chain_id"],
++                "chain_type": "polypeptide(L)",
++                "msa_path": None,
++            },
+         ]
+ 
+     if add_info["msa_paths"] is not None:
+@@ -167,11 +173,14 @@
+     if not isinstance(cif, PathLike):
+         cif = Path(cif)
+     # ... parse into an AtomArray (`parse` handles all valid formats)
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+     # ... get the atom array and set NaN coordinates to random
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     atom_array.coord[np.isnan(atom_array.coord)] = np.random.rand(
+         *atom_array.coord[np.isnan(atom_array.coord)].shape
+     )
+@@ -392,7 +401,13 @@
+         mask = np.isin(atom_array.chain_id, chain_ids)
+ 
+     else:
+-        selector = AtomSelectionStack.from_query(self_template_selection_syntax)
++        # Compact contigs and path queries are distinct AtomWorks grammars.
++        # Passing A1103-1120 to from_query treats it as a literal chain ID.
++        syntax = self_template_selection_syntax.replace(" ", "")
++        if re.fullmatch(r"[A-Za-z]+[0-9]+-[0-9]+(?:,[A-Za-z]+[0-9]+-[0-9]+)*", syntax):
++            selector = AtomSelectionStack.from_contig(syntax)
++        else:
++            selector = AtomSelectionStack.from_query(self_template_selection_syntax)
+         mask = selector.get_mask(atom_array)
+ 
+     if np.any(mask):
+@@ -416,11 +431,14 @@
+     msa_paths_by_chain_id: dict[str, str] | None = None,
+ ):
+     cif = Path(cif) if not isinstance(cif, PathLike) else cif
+-    out = parse(cif, hydrogen_policy="remove")
++    out = parse(cif, config=ParseConfig(hydrogen_policy="remove"))
+ 
+     atom_array = (
+         out["assemblies"]["1"][0] if "assemblies" in out else out["asym_unit"][0]
+     )
++    # AW3 preserves file order; sequence reconstruction sorts chain IDs.
++    # Keep initial and reconstructed token order aligned (binder A first).
++    atom_array = atom_array[np.argsort(atom_array.chain_id, kind="stable")]
+     nan_mask = np.isnan(atom_array.coord)
+     atom_array.coord[nan_mask] = np.random.rand(*atom_array.coord[nan_mask].shape)
+ 
+@@ -511,7 +529,9 @@
+ ):
+     templates_by_chain = defaultdict(list)
+     for chain_id, template_file in template_dict.items():
+-        template_out = parse(template_file, hydrogen_policy="remove")
++        template_out = parse(
++            template_file, config=ParseConfig(hydrogen_policy="remove")
++        )
+ 
+         template_aa = (
+             template_out["assemblies"]["1"][0]

@@ -118,6 +118,8 @@ blocks = [
     ),
     MPNN(
         num_seq_per_pdb=N_MPNN_SEQS,
+        output_mode="structures",
+        args={"number_of_packs_per_design": 1},
         model_type="ligand_mpnn",
         hbond_fix=True,  # preserve identity of residues in H-bonds
         aromatic_fix=True,  # preserve aromatic packers near interface
@@ -156,7 +158,14 @@ blocks = [
     ),
     IpSAE(name="af3_ipsae", binder_chain="A", target_chains=["B"]),
     ContactMS(name="cms", binder_chains=["A"], target_chains=["B"]),
-    Peppr(name="peppr"),
+    # Compare the designed sequence's packed reference with its AF3 prediction.
+    # RFD3's placeholder sequence cannot be matched by PEPPR's sequence matcher.
+    Peppr(
+        name="peppr",
+        which=[-2, -1],
+        metrics=["fnat", "irmsd", "dockq"],
+        tolerate_exceptions=False,
+    ),
     Filter(
         name="round_1_filter",
         filters={

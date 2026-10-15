@@ -230,6 +230,10 @@ apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' agent.sif s
 apptainer build --fakeroot --mksquashfs-args '-processors 2 -mem 1G' baseline.sif src/chaperone-evals/harbor-controller/containers/baseline.def
 ```
 
+The agent definition links to `containers/chaperone.def`, so the standalone
+Chaperone and agent runtimes share the same AtomWorks 3.0.1 / Biotite 1.6.0 pins.
+Build `chaperone.sif` from that definition when using it outside evaluations.
+
 These recipes copy only framework packages into the scientific image and no
 repository files into the baseline. Set both `agent_image` and `worker_image` to
 the resulting scientific SIF and `baseline_image` to the clean SIF. The scientific recipe includes non-setuid Apptainer for nested block containers,

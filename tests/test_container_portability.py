@@ -127,6 +127,8 @@ def test_foundry_checkpoint_resolution_and_mounts_follow_user_config(monkeypatch
     # Settings may be supplied after the module is imported.
     command = FOUNDRY_CONTAINER.build_command("true")
     assert f"{tmp_path.resolve()}:{tmp_path.resolve()}" in command
+    assert f"FOUNDRY_CHECKPOINT_DIRS={tmp_path}" in command
+    assert "PYTHON_DOTENV_DISABLED=1" in command
 
 
 def test_all_reinstallable_recipes_render_and_have_local_copy_sources():
@@ -237,6 +239,37 @@ def test_fresh_gpu_recipes_have_consistent_blackwell_toolchain():
         assert "cuda-toolkit-12-8" in definition
         assert "/whl/cu128" in definition
         assert "pip check" in definition
+
+
+def test_foundry_charge_repair_rejects_unreviewed_source(tmp_path):
+    from blocks.networks.foundry._rfd3_compat import patch
+
+    path = tmp_path / "inference.py"
+    source = 'array.set_annotation("charge", np.zeros(array.shape[0], dtype=float))\n'
+    path.write_text(source)
+    with pytest.raises(RuntimeError, match="source changed"):
+        patch(path)
+    assert path.read_text() == source
+
+
+def test_disco_cuda_build_uses_bound_writable_cache(tmp_path):
+    from blocks.networks.design.disco.disco import DISCOBlock
+
+    inputs = tmp_path / "input.json"
+    inputs.write_text('[{"name":"smoke","sequences":[]}]')
+    cache = tmp_path / "compile"
+    block = DISCOBlock(
+        inputs=str(inputs),
+        cache_dir=str(tmp_path / "hf"),
+        compile_cache_dir=str(cache),
+    )
+    assert not cache.exists()
+    assert f"{cache}:{cache}" in block.command_template
+    assert f"TMPDIR={cache / 'tmp'}" in block.command_template
+    assert f"TORCH_EXTENSIONS_DIR={cache / 'extensions'}" in block.command_template
+    block.create_command(None, tmp_path / "sandbox", 0)
+    assert (cache / "tmp").is_dir()
+    assert (cache / "extensions").is_dir()
 
 
 def test_default_engine_mounts_resolve_late_and_keep_aliases(monkeypatch, tmp_path):
@@ -598,7 +631,7 @@ def test_foundry_build_pins_compatible_atomworks_and_imports_real_engines():
     from blocks.networks.foundry.container import _FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER
     for image in (_FOUNDRY_CUDA_CONTAINER, _FOUNDRY_PUBLIC_CONTAINER):
         definition = image.to_dockerfile()
-        assert "git -C /opt/foundry checkout --detach 1178aba6ee8ab34ed97ee5dddc32872cfb91cf81" in definition
+        assert "git -C /opt/foundry checkout --detach 436f58482b94233948af9327f948cd673545efd0" in definition
         assert "atomworks[ml]==3.0.1" in definition
         assert "biotite==1.6.0" in definition
         for module in ("rfd3.engine", "rfd3na.engine", "rf3.inference_engines.rf3", "mpnn.inference_engines.mpnn"):
@@ -817,3 +850,24 @@ def test_protenix_recipe_keeps_declared_dependency_stack_and_checked_arch_patch(
     target.write_text('_wanted = []\n')
     failed = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert failed.returncode != 0 and "patch no longer matches" in failed.stderr
+
+
+def test_host_and_agent_definitions_share_validated_atomworks3_runtime():
+    root = Path(__file__).resolve().parents[1]
+    host = root / "containers/chaperone.def"
+    agent = root / "src/chaperone-evals/harbor-controller/containers/agent.def"
+    assert agent.resolve() == host.resolve()
+    recipe = host.read_text()
+    assert "atomworks[ml,catcif]==3.0.1" in recipe
+    assert "biotite==1.6.0" in recipe
+    assert 'version("atomworks") == "3.0.1"' in recipe
+    assert 'version("biotite") == "1.6.0"' in recipe
+    assert "pip check" in recipe
+    for line in recipe.split("%files\n", 1)[1].split("%post", 1)[0].splitlines():
+        if line.strip() and not line.strip().startswith("#"):
+            source, _ = shlex.split(line)
+            assert (root / source).exists()
+            assert "chaperone-evals" not in source
+    for section in ("post", "test"):
+        code = recipe.split(f"%{section}\n", 1)[1].split("\n%", 1)[0]
+        subprocess.run(["sh", "-n"], input=code, text=True, check=True)

@@ -38,7 +38,7 @@ for ligand in ("FAD", "IAI", "OQO", "SAM"):
     assert Path(resolve_param_file(ligand)).is_file()
 for command in ("--help", "list-blocks", "list-available"):
     subprocess.run([sys.executable, "-I", "-m", "chaperone_cli.main", command], check=True)
-for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "networks/foundry/.assets/input_selection.png")]:
+for package, filename in [("blocks", "scripts/ddg_protocol.xml"), ("blocks", "networks/foundry/atomworks3.patch"), ("blocks", "networks/foundry/.assets/input_selection.png")]:
     assert resources.files(package).joinpath(filename).is_file(), filename
 
 with tempfile.TemporaryDirectory() as directory:

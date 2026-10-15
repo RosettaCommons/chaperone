@@ -128,3 +128,12 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Foundry inference compatibility backports
+
+`src/blocks/networks/foundry/atomworks3.patch` adapts RF3 and RFOptimization
+inference fixes from RosettaCommons/foundry commit
+`1178aba6ee8ab34ed97ee5dddc32872cfb91cf81` to the model-owned modules in Foundry
+1.0. Copyright (c) 2025, Institute for Protein Design, University of Washington.
+The BSD 3-Clause terms are reproduced above in this central notice, included in
+source and wheel distributions.

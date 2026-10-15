@@ -380,7 +380,9 @@ def test_duplicate_keeps_account_qos_and_extra(site, tmp_path, monkeypatch):
 
 # What every in-tree block requested before the mapping existed. These are the
 # IPD values; with .env.ipd loaded the resolved resources must still be these.
-LARGE_GPU_BLOCKS = {"bindcraft2", "bindcraft", "simplefold", "proteina_complexa", "rfoptimization"}
+LARGE_GPU_BLOCKS = {
+    "bindcraft", "bindcraft2", "simplefold", "proteina_complexa", "rfoptimization",
+}  # fmt: skip
 GPU_BLOCKS = {
     "af3", "af3_with_target_template", "bindcraft", "bindcraft2", "boltz2", "boltz2_steered",
     "boltzgen", "chai1", "colabfold", "disco", "e1", "esm2", "esmfold2",

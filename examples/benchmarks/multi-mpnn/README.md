@@ -18,6 +18,10 @@ per model. MPNN runs on CPU by default. To also compare AF3 refolding, install
 omit it to submit through Slurm. AF3 uses one sample; the illustrative filter is
 ranking score ≥0.5 and backbone RMSD ≤3 Å.
 
+The fixture's `BTN` residue is biotin pentylamide (21 heavy atoms), rather than
+CCD `BTN` (unmodified biotin, 16 heavy atoms). Refolding supplies its explicit
+SMILES so AF3 retains the intended chemistry. AF3 assigns new ligand atom names.
+
 Outputs are ordinary engine artifacts plus `results.csv` in the run directory.
 All three model branches retain the same input structure and distinct
 model names. Each model uses a distinct MPNN filename suffix, which also
