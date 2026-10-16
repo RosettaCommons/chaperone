@@ -63,6 +63,30 @@ def test_chain_selection_really_removes_substrate_and_keeps_lineage(tmp_path):
         SelectChainsBlock(chains=["Z"])(h, tmp_path / "absent")
 
 
+@pytest.mark.parametrize("atom_contigs", [None, {"B2": ["CA"]}])
+def test_chain_selection_without_remaining_atom_contigs_roundtrips(tmp_path, atom_contigs):
+    path = tmp_path / "complex.pdb"
+    write_pdb(protein(("A", "B")), path)
+    metadata = {"motif": ["A2", "B2"]}
+    if atom_contigs is not None:
+        metadata["motif_atom_contigs"] = atom_contigs
+    parent = PipelineDataHandler([
+        make_row("rf3", path, design_id="parent", metadata=metadata)
+    ])
+    selected = SelectChainsBlock(chains=["A"])(parent, tmp_path / "apo")
+    output = tmp_path / "selected.parquet"
+    selected.write_parquet(output)
+    restored = PipelineDataHandler(output)
+    loaded = next(restored.get_data(load=True))
+    assert set(loaded.atom_array.chain_id) == {"A"}
+    assert loaded.metadata["motif"] == ["A2"]
+    # Polars may retain parent struct fields with null values in the child.
+    assert not any((loaded.metadata.get("motif_atom_contigs") or {}).values())
+    original = next(restored.get_data(which="first"))
+    assert original.metadata.get("motif_atom_contigs") == atom_contigs
+    assert restored.unpack()["parent_design_id"][0] == "parent"
+
+
 def test_dna_conditioning_matches_real_duplex_and_rejects_sequence_edits_without_new_coordinates(
     tmp_path,
 ):

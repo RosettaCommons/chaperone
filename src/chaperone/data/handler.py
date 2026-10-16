@@ -461,6 +461,23 @@ def _read_df(path: str | Path) -> pl.DataFrame:
     raise ValueError(f"Unsupported file format: {path.suffix}. Use .parquet or .csv")
 
 
+def _null_empty_structs(expr: pl.Expr, dtype) -> pl.Expr | None:
+    """Replace zero-field structs with nulls for Parquet, including in lists."""
+    if isinstance(dtype, pl.Struct):
+        if not dtype.fields:
+            return pl.lit(None)
+        fields = []
+        for field in dtype.fields:
+            child = _null_empty_structs(expr.struct.field(field.name), field.dtype)
+            if child is not None:
+                fields.append(child.alias(field.name))
+        return expr.struct.with_fields(fields) if fields else None
+    if isinstance(dtype, pl.List):
+        child = _null_empty_structs(pl.element(), dtype.inner)
+        return expr.list.eval(child) if child is not None else None
+    return None
+
+
 def _to_polars(data) -> pl.DataFrame:
     """Canonicalize input data to polars DataFrame."""
     if isinstance(data, pl.DataFrame):
@@ -854,6 +871,9 @@ class PipelineDataHandler:
     def write_parquet(self, path, *, debug_csv: bool | None = None, **kwargs):
         """Write the handler DataFrame to parquet.
 
+        Empty struct annotations serialize as null: Parquet cannot represent
+        a struct with no fields. Populated annotations are preserved.
+
         Args:
             debug_csv: Whether to also emit the side-car ``.csv`` debug dump
                 (an O(rows×metrics) Python-level ``unpack()``). The side-car is
@@ -866,7 +886,13 @@ class PipelineDataHandler:
                 setting still gates very large DataFrames.
         """
         kwargs.pop("index", None)
-        self._df.write_parquet(path, **kwargs)
+        expressions = []
+        for name, dtype in self._df.schema.items():
+            expr = _null_empty_structs(pl.col(name), dtype)
+            if expr is not None:
+                expressions.append(expr.alias(name))
+        df = self._df.with_columns(expressions) if expressions else self._df
+        df.write_parquet(path, **kwargs)
 
         if not debug_csv:
             return
