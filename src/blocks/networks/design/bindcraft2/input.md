@@ -7,7 +7,7 @@ and validation with AlphaFold2 models separate from optimization. Returned struc
 **target–binder complexes with side chains**, accompanied by their native scores.
 
 This initial interface supports the upstream `binder` modality against **one
-protein chain per input**. It does not expose scaffolded antibodies, peptides,
+protein chain per input**. It does not expose scaffold-constrained designs, peptides,
 multistate/multichain targets, ligand targets, or upstream parameter sweeps.
 Classic `bindcraft` remains a separate block with a different runtime.
 

@@ -34,7 +34,7 @@ Each pipeline follows a composable block pattern:
 
 1. **Backbone generation** (`rfd3`, `rfd1`, `disco`) — generate diverse backbones
 2. **Filtering** (`filter`) — prune low-quality backbones early
-3. **Sequence design** (`mpnn`, `foundry_mpnn`, `abmpnn_poe`) — inverse fold sequences
+3. **Sequence design** (`mpnn`, `foundry_mpnn`) — inverse fold sequences
 4. **Structure prediction** (`af3`, `rf3`, `boltz2`) — validate with a prediction oracle
 5. **Metrics + filtering** (`rmsd`, `rasa`, `hbond`, `filter`) — assess quality and select top designs
 

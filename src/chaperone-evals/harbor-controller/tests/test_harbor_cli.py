@@ -28,10 +28,10 @@ class ReadableTrialNameTests(unittest.TestCase):
 
     def test_first_attempt_has_no_random_suffix(self) -> None:
         config = TrialConfig(
-            task=TaskConfig(path=Path("/tmp/biotin_binder_design_test"))
+            task=TaskConfig(path=Path("/tmp/ppi_pdl1_test"))
         )
         self.assertEqual(
-            MODULE._readable_trial_name(config), "biotin_binder_design_test"
+            MODULE._readable_trial_name(config), "ppi_pdl1_test"
         )
 
     def test_harbor_model_validator_uses_patched_name_generator(self) -> None:
@@ -39,21 +39,21 @@ class ReadableTrialNameTests(unittest.TestCase):
         TrialConfig.generate_trial_name = MODULE._readable_trial_name
         try:
             config = TrialConfig(
-                task=TaskConfig(path=Path("/tmp/biotin_binder_design_test"))
+                task=TaskConfig(path=Path("/tmp/ppi_pdl1_test"))
             )
         finally:
             TrialConfig.generate_trial_name = original
-        self.assertEqual(config.trial_name, "biotin_binder_design_test")
+        self.assertEqual(config.trial_name, "ppi_pdl1_test")
 
     def test_later_attempts_get_numeric_suffixes(self) -> None:
         config = TrialConfig(
-            task=TaskConfig(path=Path("/tmp/biotin_binder_design_test"))
+            task=TaskConfig(path=Path("/tmp/ppi_pdl1_test"))
         )
         self.assertEqual(
-            MODULE._readable_trial_name(config), "biotin_binder_design_test"
+            MODULE._readable_trial_name(config), "ppi_pdl1_test"
         )
         self.assertEqual(
-            MODULE._readable_trial_name(config), "biotin_binder_design_test__2"
+            MODULE._readable_trial_name(config), "ppi_pdl1_test__2"
         )
 
     def test_codex_config_uses_direct_monitor_and_default_compaction(self) -> None:

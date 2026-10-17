@@ -57,7 +57,7 @@ def _gpu_selection(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run biotin_binder_design_test with Harbor and Apptainer"
+        description="Run a design evaluation with Harbor and Apptainer"
     )
     parser.add_argument("mode", choices=("local", "job"))
     parser.add_argument("--agent", choices=("codex",), default="codex")

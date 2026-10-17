@@ -1,9 +1,9 @@
 """Public example inputs and packed structure branch contracts."""
 
 import json
-from pathlib import Path
 import runpy
 import shutil
+from pathlib import Path
 
 from chaperone import PipelineDataHandler
 from chaperone.data.schema import make_row
@@ -100,18 +100,27 @@ def test_three_packed_branches_keep_lineage_and_distinct_structures_after_repack
 
 def test_multi_mpnn_refolding_uses_separate_input_directories_per_model():
     from collections import Counter
+
     from rdkit import Chem
 
+    from blocks.networks.prediction.helpers import build_remap_reference
+
     example = runpy.run_path(str(ROOT / "examples/benchmarks/multi-mpnn/pipeline.py"))
+    path = next(example["FILES"].glob("*.cif"))
+    reference = build_remap_reference(str(path), target_name="HCY")
+    assert reference["n_ref_atoms"] == 26
+    assert Chem.MolToInchiKey(
+        Chem.Mol(reference["ref_mol_bytes"])
+    ) == "JYGXADMDTFJGBT-VWUMJDOOSA-N"
     branches = [example["refolding_blocks"](model) for model in example["MODELS"]]
     assert len({branch[0].name for branch in branches}) == 3
     assert len({branch[1].name for branch in branches}) == 3
     for af3, rmsd, gate in branches:
         assert af3.input_mode == "json"
-        ligand = Chem.MolFromSmiles(af3.specified_smiles["BTN"])
-        atoms = parse_to_atom_array(next(example["FILES"].glob("*.cif")))
+        ligand = Chem.MolFromSmiles(af3.specified_smiles["HCY"])
+        atoms = parse_to_atom_array(path)
         fixture_elements = atoms.element[
-            (atoms.res_name == "BTN") & (atoms.element != "H")
+            (atoms.res_name == "HCY") & (atoms.element != "H")
         ]
         assert Counter(atom.GetSymbol() for atom in ligand.GetAtoms()) == Counter(
             fixture_elements

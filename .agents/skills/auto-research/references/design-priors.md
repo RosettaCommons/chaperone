@@ -87,7 +87,7 @@ domain's final functional gate. Structural mimicry alone is not function.
   oligomerization, soluble amyloid/off-pathway states, and cellular trafficking.
 - Epitope scaffolds: require accessibility and native-like presentation, then
   domain-relevant competition, immunogenicity, or neutralization; cognate
-  antibody binding alone is insufficient.
+  binder recognition alone is insufficient.
 
 ## Evidence anchors
 

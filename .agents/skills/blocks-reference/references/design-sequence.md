@@ -26,5 +26,3 @@ Choose generation blocks by design scope, then use an MPNN block for fixed-backb
 - End-to-end AF2-guided protein binder generation: `bindcraft` on a trimmed target PDB, followed by an independent oracle.
 - Sequence representation only: `e1` or `esm2`.
 - Use Boltz-based design only after a bounded matched calibration.
-
-`abMPNN-PoE` is mentioned in project guidance but is not separately registered. Confirm its wrapper before promising it.

@@ -81,7 +81,7 @@ def test_pairwise_identity_allows_boundary_and_rejects_close_siblings(
 def test_fixed_framework_similarity_uses_only_designed_regions(tmp_path: Path) -> None:
     fixed = FixedRegionSpec(
         reference={"H": "MMMMMAAAAQQQQQ"},
-        regions=(VariableRegion("CDR-H", "H", 6, 9),),
+        regions=(VariableRegion("loop-H", "H", 6, 9),),
     )
     spec = SequenceSubmissionSpec(
         required_n=2,
@@ -92,14 +92,14 @@ def test_fixed_framework_similarity_uses_only_designed_regions(tmp_path: Path) -
     # The full sequences are >70% identical because their fixed framework is
     # identical, but their designed regions share no identity and must pass.
     submission = _write(
-        tmp_path / "diverse_cdrs.csv",
+        tmp_path / "diverse_loops.csv",
         ["MMMMMCCCCQQQQQ", "MMMMMDDDDQQQQQ"],
         column="sequence_H",
     )
     assert len(load_sequence_submission(submission, spec)) == 2
 
     submission = _write(
-        tmp_path / "similar_cdrs.csv",
+        tmp_path / "similar_loops.csv",
         ["MMMMMCCCCQQQQQ", "MMMMMCCCDQQQQQ"],
         column="sequence_H",
     )

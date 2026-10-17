@@ -1,4 +1,4 @@
-"""Regression checks for public ligand and DNA recipe configuration."""
+"""Regression checks for public DNA and sequence-design recipe configuration."""
 
 import importlib.util
 from pathlib import Path
@@ -26,15 +26,6 @@ def test_dna_uses_public_checkpoint_by_default(tmp_path):
     assert first[3].diffusion_batch_size == second[1].diffusion_batch_size == 1
 
 
-def test_biotin_json_mode_and_linker_or_gate():
-    module = load_example("biotin-binder")
-    assert module.SMILES_KW["input_mode"] == "json"
-    groups = module.linker_exposed_groups("rasa")
-    assert set(groups) == {"C14_exposed", "C15_exposed", "C16_exposed"}
-    assert all(len(group) == 1 for group in groups.values())
-    assert module.LIGAND_NAME in module.SMILES_KW["specified_smiles"]
-
-
 def test_examples_request_exactly_one_packed_structure_per_sequence(tmp_path):
     (tmp_path / "input.json").write_text('{"smoke": {"length": 32}}')
     dna = load_example("dna-binder")
@@ -49,7 +40,9 @@ def test_examples_request_exactly_one_packed_structure_per_sequence(tmp_path):
 
 def test_whole_duplex_hotspots_use_finite_com_origin(tmp_path):
     import json
+
     import numpy as np
+
     from chaperone.io import parse_to_atom_array
 
     example = load_example("dna-binder")

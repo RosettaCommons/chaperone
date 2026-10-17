@@ -21,7 +21,7 @@ pyproject.toml           controller dependencies; bootstrap selects the Chaperon
 The folder is self-contained: the repository's own `pyproject.toml` does not know
 about it, and nothing here is part of the wheel.
 
-Ten tasks are included: `antibody_cdr`, `biotin_binder_design`, `dna_binder`,
+Eight tasks are included: `dna_binder`,
 `enzyme_glycosidase`, `enzyme_protease`, `nanoparticle_c3`, `peptide_binder`,
 `ppi_pdl1`, `ribozyme_design` and `rna_binder`.
 
@@ -153,16 +153,16 @@ for the full configuration, image recipes, and external-cluster prerequisites.
 cd src/chaperone-evals/harbor-controller
 
 # harness arm: the agent gets this checkout
-./run_eval.py biotin_binder_design \
+./run_eval.py ppi_pdl1 \
   --arm harness --site-config /absolute/path/to/site.json \
   --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
-  --run-name biotin-harness-smoke
+  --run-name pdl1-harness-smoke
 
 # baseline arm: no Chaperone
-./run_eval.py biotin_binder_design --arm baseline --site-config /absolute/path/to/site.json --required-n 10 \
-  --run-name biotin-baseline-smoke
+./run_eval.py ppi_pdl1 --arm baseline --site-config /absolute/path/to/site.json --required-n 10 \
+  --run-name pdl1-baseline-smoke
 ```
 
 `./run_eval.py --help` lists every option, `--dry-run` checks the configuration

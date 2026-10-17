@@ -95,8 +95,7 @@ class VariableRegion:
 class FixedRegionSpec:
     """A contract where only declared spans may differ from a reference sequence.
 
-    Antibody CDR design, nanobody CDR grafting and TCR loop design all share the
-    same shape: the scaffold (framework) is *supplied*, and only a handful of
+    Fixed-scaffold loop design and motif grafting share the same shape: the scaffold (framework) is *supplied*, and only a handful of
     loops are designed. Mutating the scaffold is not a bad design — it is a
     different molecule, and the submission is invalid. Checking that belongs to
     the contract, before any oracle is run, which is why it lives here and not
@@ -287,7 +286,7 @@ class SequenceSubmissionSpec:
     mis-scaffolded motif fails the contract instead of quietly scoring badly.
 
     ``fixed_regions`` turns on the scaffold contract used by grafting tasks
-    (antibody CDR design above all): the framework is supplied, only the
+    (such as loop redesign): the framework is supplied, only the
     declared regions are designed, and a submission that mutated the framework
     is rejected before any oracle is run. See :class:`FixedRegionSpec`.
 

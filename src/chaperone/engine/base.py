@@ -238,6 +238,7 @@ class ExecutionEngine:
         child._lock = threading.Lock()
         child.run_args_default = self.run_args_default
         child.job_args_default = self.job_args_default
+        child._container_bind_settings = dict(self._container_bind_settings)
         child.auto_store_format = getattr(self, "auto_store_format", None)
         child.auto_store_cleanup = getattr(self, "auto_store_cleanup", False)
         child.cleanup_logs = getattr(self, "cleanup_logs", False)

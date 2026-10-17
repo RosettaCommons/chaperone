@@ -93,12 +93,21 @@ def safe_call(block, **kwargs):
 
 
 def _should_use_exec_finisher(
-    *, block, is_last: bool, handler, recompile: bool
+    *,
+    block,
+    is_last: bool,
+    handler,
+    recompile: bool,
+    dedicated_submitit_worker: bool = False,
 ) -> bool:
     """Decide whether to take the low-memory ``os.execvp`` finisher path.
 
     Returns True only when ALL of these hold:
 
+    * The dispatcher explicitly identified a dedicated submitit worker.
+      A local driver or GPU pool may inherit both submitit environment
+      variables from its enclosing allocation; replacing either process
+      loses the rest of the pipeline or the pool's result channel.
     * ``is_last`` — execvp replaces the process, so any subsequent step in
       the chunk's chain would never run. Only safe on the last step.
     * not ``recompile`` — recompile skips Phase 2, so there is no long
@@ -108,12 +117,8 @@ def _should_use_exec_finisher(
     * Both ``SUBMITIT_FOLDER`` AND ``SUBMITIT_EXECUTOR`` are set —
       ``SUBMITIT_EXECUTOR`` is what ``submitit.core.job_environment.JobEnvironment.activated()``
       itself checks (set by both the LocalExecutor controller and the
-      SLURM plugin). Requiring both is the safest signal that we are
-      *inside a submitit-launched worker process* and execvp is safe.
-      Just ``SUBMITIT_FOLDER`` alone can be leaked by a parent shell into
-      a ``GPULocalTaskRunner`` ``ProcessPoolExecutor`` worker, where
-      execvp would silently kill the pool worker without the parent ever
-      seeing a return value.
+      SLURM plugin). These variables are necessary for the result handoff,
+      but are insufficient to identify the process that owns that result.
     * ``isinstance(block, CompiledBlockFunction)`` — the finisher path
       only knows how to run that class's lifecycle.
     There is intentionally no opt-in flag: every situation where execvp
@@ -122,7 +127,7 @@ def _should_use_exec_finisher(
     """
     import os
 
-    if getattr(block, "cloud", False):
+    if not dedicated_submitit_worker or getattr(block, "cloud", False):
         return False
     if not is_last:
         return False
@@ -291,6 +296,7 @@ def execute_chunk_job(
     recompile: bool = False,
     force_exec: bool = False,
     skip_chunk_cache: bool = False,
+    dedicated_submitit_worker: bool = False,
 ) -> Optional[Path]:
     """Execute all steps in a chunk sequentially via safe_call.
 
@@ -371,6 +377,7 @@ def execute_chunk_job(
                 is_last=(i == len(ctx.steps) - 1),
                 handler=handler,
                 recompile=recompile,
+                dedicated_submitit_worker=dedicated_submitit_worker,
             ):
                 step_dir = step.chunk_dir.parent
                 block.stage_then_exec_finisher(
@@ -633,6 +640,7 @@ def execute_chunks(
             recompile=run_args.recompile,
             force_exec=run_args.force_exec,
             skip_chunk_cache=run_args.skip_chunk_cache,
+            dedicated_submitit_worker=(run_args.mode == "slurm"),
         )
         # Recover only ordinary Slurm runs. Forced execution/recompilation may
         # still have an old parquet if the worker never started.

@@ -12,9 +12,8 @@ execution on every supported cluster.
 | [Nanoparticle scaffold](workflows/nanoparticle-design.md) | C3 RFdiffusion, public I3 RPXdock, tied sequence design, and AF3 trimer refolding; full-cage checks remain required. |
 | [Peptide binder](workflows/peptide-binder.md) | Sequence-conditioned flexible peptide design and two rounds of AF3 selection. |
 | [Multi-MPNN comparison](workflows/multi-mpnn.md) | Three model families on a shared backbone, with optional AF3 refolding. |
-| [Biotin binder](workflows/biotin-binder.md) | Ligand-conditioned generation, polar sequence design, AF3 refolding and Rosetta interface analysis. |
+| [Cortisol binder](workflows/cortisol-binder.md) | Cortisol-conditioned generation, aromatic-fixed sequence design, gated AF3 cycling and final AF3 filtering. |
 | [DNA binder](workflows/dna-binder.md) | Explicit DNA coordinates and donor/acceptor conditioning with public RFD3. |
-| [Antibody design](workflows/antibody-design.md) | Antibody framework conditioning and sequence/refold validation; see the guide for required inputs. |
 | [Glycosidase](workflows/enzyme-glycosidase.md) | Catalytic motif scaffolding and apo, covalent-intermediate, and ligand-bound refolding branches. |
 | [Protease](workflows/enzyme-protease.md) | Substrate-conditioned design, sequence/refinement cycles, and separate enzyme-only/complex predictions. |
 | [Hammerhead ribozyme](workflows/ribozyme-hammerhead.md) | RNA motif rescaffolding and crystal-reference catalytic geometry after AF3 refolding. |

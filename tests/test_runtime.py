@@ -382,7 +382,7 @@ def test_aromatic_neighbors_can_be_restricted_to_ligand_core():
         [[0.0, 0.0, 0.0], [20.0, 0.0, 0.0], [20.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
     )
     atoms.atom_name = np.array(["CORE", "TAIL", "CB", "CB"])
-    atoms.res_name = np.array(["BTN", "BTN", "PHE", "TRP"])
+    atoms.res_name = np.array(["HCY", "HCY", "PHE", "TRP"])
     atoms.chain_id = np.array(["B", "B", "A", "A"])
     atoms.res_id = np.array([1, 1, 10, 11])
     atoms.set_annotation("is_ligand", np.array([True, True, False, False]))

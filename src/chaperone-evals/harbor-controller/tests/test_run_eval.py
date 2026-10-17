@@ -501,7 +501,7 @@ class RunEvalTest(unittest.TestCase):
                 ),
             )
 
-    def test_biotin_lineage_requires_distinct_de_novo_backbones(self) -> None:
+    def test_lineage_requires_distinct_de_novo_backbones(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             submission = Path(temporary)
             designs = submission / "designs.csv"
@@ -562,64 +562,6 @@ class RunEvalTest(unittest.TestCase):
             self.assertIn(
                 "duplicate backbone",
                 run_eval._independent_lineage_error(designs),
-            )
-
-    def test_public_gate_count_must_match_pinned_scorer_output(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            submission = Path(temporary)
-            designs = submission / "designs.csv"
-            designs.write_text("sequence\nAAAA\n")
-            (submission / "public_metrics.csv").write_text(
-                "sequence,min_interaction_pae,linker_max_rsasa,"
-                "protein_ligand_hbonds,core_contact_ms,core_aromatic_neighbors\n"
-                "AAAA,1.0,0.2,3,120,1\n"
-            )
-            contract = (
-                run_eval.EVALS_ROOT
-                / "evals_task"
-                / "biotin_binder_design"
-                / "inputs"
-                / "acceptance_contract.json"
-            )
-            scorer = contract.parent / "public_score.py"
-            if not scorer.is_file():
-                self.skipTest(
-                    "legacy public-score fixture is not part of this checkout"
-                )
-            run_eval.subprocess.run(
-                [
-                    run_eval.sys.executable,
-                    str(scorer),
-                    str(submission / "public_metrics.csv"),
-                    "--output",
-                    str(submission / "public_score.json"),
-                ],
-                check=True,
-            )
-
-            self.assertIsNone(run_eval._public_score_error(designs, 1, 1, contract))
-            forged = json.loads((submission / "public_score.json").read_text())
-            forged["per_design"][0]["metrics"] = {"fake_gate": "not-a-number"}
-            forged["per_design"][0]["gates"] = {"fake_gate": True}
-            forged["gate_counts"] = {"fake_gate": {"passed": 1, "total": 1}}
-            (submission / "public_score.json").write_text(json.dumps(forged))
-            self.assertIn(
-                "controller recomputation",
-                run_eval._public_score_error(designs, 1, 1, contract),
-            )
-            run_eval.subprocess.run(
-                [
-                    run_eval.sys.executable,
-                    str(scorer),
-                    str(submission / "public_metrics.csv"),
-                    "--output",
-                    str(submission / "public_score.json"),
-                ],
-                check=True,
-            )
-            self.assertIn(
-                "does not match",
-                run_eval._public_score_error(designs, 1, 0, contract),
             )
 
     def test_incomplete_submission_is_structured_but_not_scorable(self) -> None:
@@ -837,21 +779,6 @@ class RunEvalTest(unittest.TestCase):
         with patch.object(run_eval, "get_site", return_value={"environment": {}}):
             with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY"):
                 run_eval._scoring_site_environment(Path("/unused"), {})
-
-    def test_biotin_preflight_does_not_require_unrelated_dna_or_rosetta_tools(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            hbplus = root / "hbplus"
-            hbplus.touch(mode=0o700)
-            tools = {"HBPLUS_COPY": str(hbplus)}
-            with patch.object(run_eval, "get_site", return_value={"environment": tools}):
-                self.assertEqual(
-                    run_eval._scoring_site_environment(root, {}, task_name="biotin_binder_design"),
-                    tools,
-                )
-                hbplus.chmod(0o600)
-                with self.assertRaisesRegex(SystemExit, "HBPLUS_COPY must be an executable"):
-                    run_eval._scoring_site_environment(root, {}, task_name="biotin_binder_design")
 
     def test_outer_job_does_not_requeue_nonresumable_agent(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1346,7 +1273,7 @@ class RunEvalTest(unittest.TestCase):
                 ) as popen,
             ):
                 launched, receipt = run_eval._launch_external_scorer(
-                    ["python", "score_after_eval.py"], "biotin-high", "12345"
+                    ["python", "score_after_eval.py"], "pdl1-high", "12345"
                 )
 
             self.assertIs(launched, process)
@@ -1363,17 +1290,17 @@ class RunEvalTest(unittest.TestCase):
     def test_public_contract_is_pinned_by_harbor_job_id(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             jobs = Path(temporary) / "jobs"
-            inputs = jobs / "task-definitions" / "biotin-run" / "inputs"
+            inputs = jobs / "task-definitions" / "pdl1-run" / "inputs"
             inputs.mkdir(parents=True)
             (inputs / "acceptance_contract.json").write_text('{"version": 1}\n')
             (inputs / "public_score.py").write_text("print('score')\n")
             with patch.object(run_eval, "JOBS_ROOT", jobs):
-                pinned = run_eval._pin_public_contract("biotin-run", "12345")
+                pinned = run_eval._pin_public_contract("pdl1-run", "12345")
                 assert pinned is not None
                 self.assertEqual(pinned.read_text(), '{"version": 1}\n')
                 (inputs / "acceptance_contract.json").write_text('{"version": 2}\n')
                 with self.assertRaisesRegex(SystemExit, "different content"):
-                    run_eval._pin_public_contract("biotin-run", "12345")
+                    run_eval._pin_public_contract("pdl1-run", "12345")
 
     def test_submission_exports_the_shared_jobs_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

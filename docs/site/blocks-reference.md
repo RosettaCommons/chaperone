@@ -579,7 +579,7 @@ Class: `BoltzGenBlock` · Input: `False` · Resources: partition=`gpu`, gpu_clas
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`config`</span> | `str` | **required** | Path to BoltzGen design specification YAML file |
-| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`protocol`</span> | `str` | `'protein-anything'` | Design protocol (protein-anything, peptide-anything, protein-small_molecule, nanobody-anything, antibody-anything, pr... |
+| <span style="color: var(--claude-accent, #da7756); font-weight: 600">`protocol`</span> | `str` | `'protein-anything'` | Design protocol supported by the upstream BoltzGen runtime |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`num_designs`</span> | `int` | `100` | Total number of designs to generate |
 | <span style="color: var(--claude-accent, #da7756); font-weight: 600">`budget`</span> | `int` | `30` | Number of final designs after filtering |
 | <em style="color: var(--claude-text-secondary, #6b6560)">Additional parameters</em> | | | |

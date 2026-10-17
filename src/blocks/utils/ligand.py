@@ -169,7 +169,7 @@ def _rebuild_mol_from_geometry(
     #     (< default 1.30Å min); recovers ~9 of 14 est remap failures.
     #   • C–S: thiolane C–S elongated to 1.89Å (> default 1.88Å max);
     #     no prior override → whole ring dropped. Adding the pair
-    #     recovers the btn thiolane class of failures.
+    #     recovers sulfur-ring bond-perception failures.
     #   • C–O: amide C=O occasionally overshoots similarly; phosphoester
     #     C–O (ribose-C5' → bridging O of a pyrophosphate, e.g. NAD/FAD/
     #     ATP) sits at ~1.61–1.62Å, past the default 1.50Å max → dropped,

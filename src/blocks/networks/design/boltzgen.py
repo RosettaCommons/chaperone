@@ -97,7 +97,7 @@ class BoltzGenBlock(CompiledBlockFunction):
     protocol: str = Field(
         "protein-anything",
         json_schema_extra={"tier": TIER_PRIMARY},
-        description="Design protocol (protein-anything, peptide-anything, protein-small_molecule, nanobody-anything, antibody-anything, protein-redesign)",
+        description="Design protocol supported by the upstream BoltzGen runtime",
     )
     num_designs: int = Field(
         100,

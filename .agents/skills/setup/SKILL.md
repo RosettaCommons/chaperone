@@ -274,10 +274,9 @@ prerequisite table and runtime-image instructions in `docs/site/evaluations.md`:
 - Keep private eval data and registry/download credentials on the trusted
   controller. Use the harness's explicit authentication handoff for the agent's
   model provider; never bind the host home or credential directories wholesale.
-- Install the task's scoring dependencies. Biotin needs AF3 weights/container and
-  HBPLUS; the controller stages pinned PLIP/OpenBabel/lxml. Other task preflights
-  also require CCD, PyRosetta and X3DNA paths. Optional scientific containers do
-  not supply those external assets.
+- Install the task's scoring dependencies: AF3 weights/container, HBPLUS, CCD,
+  PyRosetta and X3DNA paths. The controller stages pinned PLIP/OpenBabel/lxml.
+  Optional scientific containers do not supply those external assets.
 - Run controller `--dry-run`, then one real single-design trial and scoring. A
   container listing or successful import does not prove end-to-end readiness.
 

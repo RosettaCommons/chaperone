@@ -32,7 +32,7 @@ class HarborResultTest(unittest.TestCase):
         return path
 
     def _write_trial(self, root: Path) -> None:
-        trial = root / "biotin_binder_design_test__test"
+        trial = root / "ppi_pdl1_test__test"
         submission = trial / "workspace" / "submission"
         submission.mkdir(parents=True)
         (trial / "result.json").write_text(

@@ -34,15 +34,15 @@ class ScoreSubmissionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             tasks = root / "tasks"
-            self._task(tasks, "antibody_cdr")
+            self._task(tasks, "ppi_pdl1")
             job = root / "job"
             trial = job / "trial"
             trial.mkdir(parents=True)
             (trial / "config.json").write_text(
-                json.dumps({"task_name": "local/antibody_cdr"})
+                json.dumps({"task_name": "local/ppi_pdl1"})
             )
             with patch.dict(os.environ, {PRIVATE_TASKS_ENV: str(tasks)}):
-                self.assertEqual(score_submission._task_from_job(job), "antibody_cdr")
+                self.assertEqual(score_submission._task_from_job(job), "ppi_pdl1")
 
     def test_task_resolution_rejects_path_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -87,7 +87,7 @@ class ScoreSubmissionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             tasks = root / "tasks"
-            task = self._task(tasks, "biotin_binder_design")
+            task = self._task(tasks, "ppi_pdl1")
             (task / "inputs").mkdir()
             (task / "inputs" / "acceptance_contract.json").write_text(
                 json.dumps(
@@ -102,7 +102,7 @@ class ScoreSubmissionTest(unittest.TestCase):
             submission = trial / "artifacts" / "workspace" / "submission"
             submission.mkdir(parents=True)
             (trial / "config.json").write_text(
-                json.dumps({"task_name": "local/biotin_binder_design"})
+                json.dumps({"task_name": "local/ppi_pdl1"})
             )
             (trial / "result.json").write_text(
                 json.dumps({"exception_info": None, "agent_execution": {"ok": True}})
@@ -122,7 +122,7 @@ class ScoreSubmissionTest(unittest.TestCase):
                 "--job",
                 str(job),
                 "--task",
-                "biotin_binder_design",
+                "ppi_pdl1",
                 "--chaperone-repo",
                 str(repo),
                 "--worker-image",

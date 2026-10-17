@@ -63,7 +63,7 @@ if [[ ! "$JOB_NAME" =~ ^[A-Za-z0-9_.-]{1,128}$ ]]; then
   echo "JOB_NAME must contain only letters, digits, dot, underscore, and hyphen (maximum 128 characters)" >&2
   exit 2
 fi
-TASK=${HARBOR_TASK_DIR:-$ROOT/jobs/task-definitions/biotin_binder_design_test}
+TASK=${HARBOR_TASK_DIR:-$ROOT/jobs/task-definitions/ppi_pdl1_test}
 if [[ -z "$PROMPT_FILE" && -f "$TASK/prompt.md" ]]; then
   PROMPT_FILE="$TASK/prompt.md"
 fi

@@ -5,14 +5,16 @@ Reference pipeline scripts that show how blocks fit together. Most examples prov
 Model inference is not run in routine CI; CPU tests check selected configurations
 and helper contracts. Most examples need a GPU, while multi-MPNN can run on CPU.
 
+See [Design task descriptions](TASK_DESCRIPTIONS.md) for narrative summaries of
+each design case, including its objective, workflow, and evaluation criteria.
+
 | Example | Shows |
 |---|---|
 | [nanoparticle-design/](nanoparticle-design/) | C3 antigen-scaffold generation, I3 docking, tied MPNN, and AF3 trimer refolding |
 | [peptide-binder/](peptide-binder/) | Two-round design around a fixed peptide sequence with flexible coordinates |
 | [benchmarks/multi-mpnn/](benchmarks/multi-mpnn/) | ProteinMPNN, LigandMPNN, and SolubleMPNN on identical backbones |
-| [biotin-binder/](biotin-binder/) | Small-molecule conditioning, polar sequence design and binding proxies |
+| [cortisol-binder/](cortisol-binder/) | Cortisol conditioning, aromatic-fixed MPNN, gated AF3 cycling and final filtering |
 | [dna-binder/](dna-binder/) | Structure-conditioned DNA binding with public RFD3 |
-| [antibody-design/](antibody-design/) | Antibody framework conditioning and refolding |
 | [enzyme-glycosidase/](enzyme-glycosidase/) | Apo, covalent-intermediate and ligand-bound enzyme branches |
 | [enzyme-protease/](enzyme-protease/) | Substrate-conditioned enzyme design and monomer/complex checks |
 | [ribozyme-hammerhead/](ribozyme-hammerhead/) | RNA motif rescaffolding and catalytic geometry |
@@ -98,9 +100,8 @@ for each run so a smoke test cannot reuse a production output directory.
 | `nanoparticle-design/pipeline.py --test` | One RFD1 C3 backbone, one I3 pose, one tied sequence, one AF3 trimer sample | `rfdiffusion1`, `rpxdock`, `ligandmpnn`, AF3 and weights |
 | `peptide-binder/pipeline.py --test` | One RFD3 backbone, one sequence and AF3 sample per round; round two only after passing | Foundry, `ligandmpnn`, AF3 and weights |
 | `benchmarks/multi-mpnn/pipeline.py --test` | One sequence from each of three models; optional `--refold` | `ligandmpnn`; AF3 and weights only for refolding |
-| `biotin-binder/pipeline.py --test` | One backbone and one sequence/refold per stage that passes its predecessor | Foundry, `ligandmpnn`, AF3; PyRosetta for final interface analysis |
+| `cortisol-binder/pipeline.py --test` | One backbone, two gated MPNN/AF3 cycles, then final AF3 for survivors | Foundry, `ligandmpnn`, AF3 and HBPLUS |
 | `dna-binder/pipeline.py --test` | One DNA-conditioned backbone and one sequence/refold per passing round | Foundry RFD3, `ligandmpnn`, AF3 |
-| `antibody-design/pipeline.py --test` | See the antibody guide for required scaffold/configuration inputs | Foundry RFD3 and the explicitly selected sequence/refolding backends |
 | `enzyme-glycosidase/pipeline.py --test` | One backbone per two motif tasks; one sequence and apo/PTM/ligand refolds for passing rows | Foundry, `ligandmpnn`, AF3 with custom CCD input support |
 | `enzyme-protease/pipeline.py --test` | One backbone per two motif tasks; one sequence, refinement and monomer/complex refold | Foundry RFD3/RF3, `ligandmpnn`, AF3 |
 | `ribozyme-hammerhead/pipeline.py --test` | One 60-nt RNA and one AF3 refold if its motif filter passes | Foundry RFD3NA checkpoint, AF3 |

@@ -13,7 +13,16 @@ TASKS = sorted(path.name for path in PUBLIC_TASKS_ROOT.iterdir() if path.is_dir(
 
 
 def test_every_task_is_covered():
-    assert len(TASKS) == 10
+    assert set(TASKS) == {
+        "dna_binder",
+        "enzyme_glycosidase",
+        "enzyme_protease",
+        "nanoparticle_c3",
+        "peptide_binder",
+        "ppi_pdl1",
+        "ribozyme_design",
+        "rna_binder",
+    }
 
 
 @pytest.mark.parametrize("task", TASKS)

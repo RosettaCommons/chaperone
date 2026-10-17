@@ -1,10 +1,9 @@
 """Meaningful data and configuration contracts for the remaining public examples."""
 
 import json
-from pathlib import Path
 import runpy
+from pathlib import Path
 
-import numpy as np
 import pytest
 from biotite.structure import Atom, array
 
@@ -103,30 +102,3 @@ def test_dna_conditioning_matches_real_duplex_and_rejects_sequence_edits_without
     first, second = m["rounds"](path, "/test/dna-specific.ckpt")
     assert first[0].ckpt_path == "/test/dna-specific.ckpt"
     assert len(second) == 4
-
-
-def test_regular_rfd3_antibody_scaffold_and_loop_contract():
-    from chaperone.io import parse_to_atom_array
-    from biotite.structure import filter_amino_acids
-
-    m = runpy.run_path(str(ROOT / "examples/antibody-design/pipeline.py"))
-    blocks = m["pipeline"]()
-    spec = json.loads(Path(blocks[0].inputs).read_text())["cdr_h3"]
-    assert spec["contig"] == "A1-98,8,A107-117,/0,B1-113,/0,C1-118"
-    atoms = parse_to_atom_array(m["FILES_DIR"] / spec["input"])
-    assert filter_amino_acids(atoms).all()
-    assert set(atoms.chain_id) == {"A", "B", "C"}
-    for chain, length in [("A", 117), ("B", 113), ("C", 118)]:
-        ca = atoms[(atoms.chain_id == chain) & (atoms.atom_name == "CA")]
-        np.testing.assert_array_equal(ca.res_id, np.arange(1, length + 1))
-    mapping = json.loads((m["FILES_DIR"] / "residue_mapping.json").read_text())
-    loop = [
-        x["example_residue"]
-        for x in mapping
-        if x["chain"] == "A" and 95 <= x["source_residue"] <= 102
-    ]
-    assert loop == list(range(99, 107))
-    assert blocks[1].output_mode == "structures"
-    assert blocks[1].args.number_of_packs_per_design == 1
-    assert blocks[1].keep_motif_sequences_fixed
-    assert blocks[1].args.chains_to_design == "A"

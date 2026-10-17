@@ -1,0 +1,20 @@
+{
+  "cortisol": {
+    "input": "cortisol.cif",
+    "length": "120-155",
+    "ligand": "HCY",
+    "infer_ori_strategy": "com",
+    "select_fixed_atoms": {
+      "HCY": "C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C12,C11,C13,C14,C15,C16,C17,C18,C19,C20,C21,O1,O2,O3,O4,O5"
+    },
+    "select_hbond_donor": {
+      "HCY": "O2,O3,O5"
+    },
+    "select_hbond_acceptor": {
+      "HCY": "O1,O2,O3,O4,O5"
+    },
+    "select_buried": {
+      "HCY": "C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C12,C11,C13,C14,C15,C16,C17,C18,C19,C20,C21"
+    }
+  }
+}

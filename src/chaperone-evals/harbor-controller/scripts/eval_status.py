@@ -5,7 +5,7 @@ Reads only committed run artifacts under jobs/results/, so it is safe to call
 while runs are still in flight — incomplete runs simply report what exists.
 
     ./scripts/eval_status.py                 # every run
-    ./scripts/eval_status.py biotin-baseline # only matching run names
+    ./scripts/eval_status.py pdl1-baseline # only matching run names
 """
 
 from __future__ import annotations

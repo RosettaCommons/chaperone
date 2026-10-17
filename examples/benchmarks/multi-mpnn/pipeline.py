@@ -10,8 +10,9 @@ from chaperone.data.schema import SELECTIONS
 
 FILES = Path(__file__).resolve().parent / "files"
 MODELS = ("protein_mpnn", "ligand_mpnn", "soluble_mpnn")
-# The fixture labels its biotin pentylamide BTN; CCD BTN is unmodified biotin.
-LIGAND_SMILES = "N1C(=O)N[C@@H]2[C@@H](SC[C@H]12)CCCCC(=O)NCCCCC"
+LIGAND_SMILES = (
+    Path(__file__).resolve().parents[2] / "cortisol-binder/files/cortisol.smi"
+).read_text().strip()
 
 
 def sequence_blocks():
@@ -35,7 +36,7 @@ def refolding_blocks(model_name: str = ""):
             name=af3_name,
             diffusion_batch_size=1,
             input_mode="json",
-            specified_smiles={"BTN": LIGAND_SMILES},
+            specified_smiles={"HCY": LIGAND_SMILES},
         ),
         Blocks["rmsd"](
             name=rmsd_name,

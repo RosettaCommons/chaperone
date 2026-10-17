@@ -850,9 +850,9 @@ def _submission_row_count(
 
     Most tasks submit one designed chain using ``sequence`` (or the legacy
     ``sequence_A`` spelling). Multi-chain design tasks instead name every
-    designed chain explicitly; antibody CDR design, for example, submits
-    ``sequence_H`` and ``sequence_L``. The held-out task scorer performs the
-    full schema and sequence validation, while this controller guard only
+    designed chain explicitly, such as ``sequence_A`` and ``sequence_B``.
+    The held-out task scorer performs full schema and sequence validation,
+    while this controller guard only
     verifies that the terminal report counts rows from the correct columns.
     """
     if sequence_columns is None:
@@ -866,13 +866,6 @@ def _submission_row_count(
         if missing:
             raise ValueError(f"missing task sequence columns: {sorted(missing)}")
         return sum(1 for _ in reader)
-
-
-def _submission_sequence_columns_for_task(task_name: str) -> tuple[str, ...] | None:
-    """Return explicit designed-chain columns for multi-chain eval tasks."""
-    if task_name == "antibody_cdr":
-        return ("sequence_H", "sequence_L")
-    return None
 
 
 def _submission_sequences(designs: Path) -> list[str]:
@@ -891,7 +884,7 @@ def _submission_sequences(designs: Path) -> list[str]:
 
 
 def _independent_lineage_error(designs: Path) -> str | None:
-    """Validate the biotin task's one-sequence/one-de-novo-backbone sidecar."""
+    """Validate a task's one-sequence/one-de-novo-backbone sidecar."""
     lineage_path = designs.with_name("lineage.jsonl")
     if not lineage_path.is_file():
         return f"required lineage sidecar is missing: {lineage_path}"
@@ -1375,9 +1368,7 @@ def _scoring_site_environment(
     source_environment = os.environ if environment is None else environment
     configured = get_site()["environment"]
 
-    # Biotin uses AF3 and geometric/PLIP metrics, not PyRosetta or DNA tools.
-    # Other tasks retain the existing conservative requirements.
-    required = ("HBPLUS_COPY",) if task_name == "biotin_binder_design" else _SCORING_SITE_ENV_NAMES
+    required = _SCORING_SITE_ENV_NAMES
     resolved: dict[str, str] = {}
     missing: list[str] = []
     for name in _SCORING_SITE_ENV_NAMES:

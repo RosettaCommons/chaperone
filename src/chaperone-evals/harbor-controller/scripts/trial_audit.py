@@ -13,14 +13,6 @@ from pathlib import Path
 from typing import Callable
 
 
-_SINGLE_CHAIN_TASKS = {
-    "biotin_binder_design",
-    "dna_binder",
-    "nanoparticle_c3",
-    "peptide_binder",
-    "ppi_pdl1",
-    "rna_binder",
-}
 _ENZYME_TASKS = {"enzyme_glycosidase", "enzyme_protease"}
 _TERMINAL_EXECUTION_STATUSES = {"succeeded", "failed"}
 
@@ -67,24 +59,17 @@ def _submission_contract(
     if len(column_set) != len(columns):
         errors.append("submission CSV contains duplicate column names")
 
-    if task_name == "antibody_cdr":
-        required = {"sequence_H", "sequence_L"}
-        allowed = required | {"design_id"}
-        missing = sorted(required - column_set)
-        if missing:
-            errors.append(f"missing required columns: {missing}")
-    else:
-        sequence_columns = {"sequence", "sequence_A"}
-        present = sequence_columns & column_set
-        allowed = sequence_columns | {"design_id"}
-        if task_name in _ENZYME_TASKS:
-            allowed.add("motif_index_map")
-            if "motif_index_map" not in column_set:
-                errors.append("missing required column: motif_index_map")
-        if not present:
-            errors.append("missing required sequence column: sequence")
-        elif len(present) > 1:
-            errors.append("supply either sequence or sequence_A, not both")
+    sequence_columns = {"sequence", "sequence_A"}
+    present = sequence_columns & column_set
+    allowed = sequence_columns | {"design_id"}
+    if task_name in _ENZYME_TASKS:
+        allowed.add("motif_index_map")
+        if "motif_index_map" not in column_set:
+            errors.append("missing required column: motif_index_map")
+    if not present:
+        errors.append("missing required sequence column: sequence")
+    elif len(present) > 1:
+        errors.append("supply either sequence or sequence_A, not both")
 
     unexpected = sorted(column_set - allowed)
     if unexpected:

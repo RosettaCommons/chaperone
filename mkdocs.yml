@@ -58,9 +58,8 @@ nav:
       - Overview: core-examples.md
       - Nanoparticle scaffolds: workflows/nanoparticle-design.md
       - Peptide binders: workflows/peptide-binder.md
-      - Biotin binders: workflows/biotin-binder.md
+      - Cortisol binders: workflows/cortisol-binder.md
       - DNA binders: workflows/dna-binder.md
-      - Antibody design: workflows/antibody-design.md
       - Glycosidase design: workflows/enzyme-glycosidase.md
       - Protease design: workflows/enzyme-protease.md
       - Hammerhead ribozymes: workflows/ribozyme-hammerhead.md

@@ -135,7 +135,7 @@ chaperone artifact src/blocks/networks/rfd3.py --start-line 412 --max-lines 60
 
 **Design**: RFD3NA, RFD3, RFD3 Partial, RFD2, RFD1, BindCraft, BoltzGen, Disco, ProteinHunter
 
-**Sequence**: ProteinMPNN, LigandMPNN, FoundryMPNN, abMPNN-PoE
+**Sequence**: ProteinMPNN, LigandMPNN, FoundryMPNN
 
 **Prediction**: ESMFold2, OpenFold3, Boltz2, RF3/RF3 Dev, Protenix v2, Chai1, AF3, ColabFold
 

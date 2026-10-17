@@ -6,7 +6,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TASK = ROOT.parent / "evals_task" / "biotin_binder_design" / "prompt.md"
+TASK = ROOT.parent / "evals_task" / "ppi_pdl1" / "prompt.md"
 
 
 def _tokens(path: Path) -> int:

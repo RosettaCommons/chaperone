@@ -14,8 +14,6 @@ what Chaperone adds.
 
 | Task | Design problem |
 |------|----------------|
-| `antibody_cdr` | Design the six CDR loops of an antibody on a fixed framework, against hen egg-white lysozyme |
-| `biotin_binder_design` | De novo mini-protein binders for a modified biotin ligand |
 | `dna_binder` | De novo mini-proteins that read a specific DNA sequence through the major groove |
 | `enzyme_glycosidase` | De novo retaining glycosidase around a six-residue catalytic theozyme |
 | `enzyme_protease` | De novo zinc metalloprotease around a HEXXH motif |
@@ -94,7 +92,7 @@ binary, or an evaluation account have been installed.
 | Scientific runtimes | Core preset above, NVIDIA driver compatible with the image CUDA versions (ESMFold2 currently CUDA 13) | A real GPU inference for each tool needed by the selected task |
 | Model data | AF3 authorized weights; Foundry checkpoints; predictor weight caches and any required download access | Stage before the trial and verify paths inside the isolated runtime |
 | Held-out data | Private GitHub checkout or restored private Harbor dataset and checksum verification | Input sync and bundle leak checks in controller preflight |
-| Scoring | Biotin: AF3 and HBPLUS. Other current task preflights: also CCD mirror, PyRosetta setup, X3DNA/DSSR/SNAP | Scorer preflight; pinned PLIP/OpenBabel/lxml are staged by the controller |
+| Scoring | AF3, HBPLUS, CCD mirror, PyRosetta setup, X3DNA/DSSR/SNAP | Scorer preflight; pinned PLIP/OpenBabel/lxml are staged by the controller |
 | Site policy | CPU/GPU partition, GPU type/constraint, account/QoS, concurrency caps, asset allowlist | One single-design trial through GPU execution and scoring |
 
 Build on a CPU build node with sufficient memory/disk and network access, before
@@ -209,8 +207,7 @@ selected arm's image and `--worker-image` overrides the scoring/scientific worke
 
 Scoring reads `HBPLUS_COPY`, `CCD_MIRROR_PATH`, `PYROSETTA_PATH`, `X3DNA_BIN_DIR`, and
 `X3DNA_DIR` from the selected profile, with shell overrides, and verifies the paths
-before starting. Biotin requires only `HBPLUS_COPY` from that list; other configured
-paths are checked when supplied. Other tasks retain the full preflight requirements.
+before starting. All included tasks use the full preflight requirements.
 No checkout `.env.ipd` is required. Scientific tasks still need
 licensed tools, model weights, and their block containers; the controller cannot
 make those external assets available by itself.
@@ -262,22 +259,22 @@ Start with a small smoke run:
 ```bash
 cd src/chaperone-evals/harbor-controller
 
-./run_eval.py biotin_binder_design \
+./run_eval.py ppi_pdl1 \
   --arm harness --site-config /absolute/path/to/site.json \
   --chaperone-path /absolute/path/to/chaperone \
   --reasoning-effort low \
   --required-n 10 \
-  --run-name biotin-harness-smoke
+  --run-name pdl1-harness-smoke
 ```
 
 For the baseline arm, leave out `--chaperone-path`:
 
 ```bash
-./run_eval.py biotin_binder_design \
+./run_eval.py ppi_pdl1 \
   --arm baseline --site-config /absolute/path/to/site.json \
   --reasoning-effort low \
   --required-n 10 \
-  --run-name biotin-baseline-smoke
+  --run-name pdl1-baseline-smoke
 ```
 
 Use a CPU partition suitable for an uninterrupted agent session. The outer job
