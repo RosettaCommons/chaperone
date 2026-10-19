@@ -23,10 +23,10 @@ def test_compile_cache_bound_for_rfd3_only(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "CHAPERONE_CONTAINER_BACKEND", "apptainer")
     monkeypatch.setattr(settings, "RFD3_COMPILE_CACHE_DIR", str(tmp_path))
     command = RFD3Block(cloud=False).command_template
-    assert f"{tmp_path}:{tmp_path}" in command
-    assert f"TORCHINDUCTOR_CACHE_DIR={tmp_path}/inductor" in command
-    assert f"TRITON_CACHE_DIR={tmp_path}/triton" in command
-    assert f"TMPDIR={tmp_path}" in command
+    assert f"{tmp_path}:/tmp/chaperone-rfd3" in command
+    assert "TORCHINDUCTOR_CACHE_DIR=/tmp/chaperone-rfd3/inductor" in command
+    assert "TRITON_CACHE_DIR=/tmp/chaperone-rfd3/triton" in command
+    assert "TMPDIR=/tmp/chaperone-rfd3" in command
     assert not any(
         "TORCHINDUCTOR" in x for x in RFD3NABlock(cloud=False).command_template
     )

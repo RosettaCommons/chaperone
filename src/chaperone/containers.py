@@ -128,7 +128,9 @@ def _checked_runtime_path(value: str | Path, *, label: str) -> Path:
     return path
 
 
-_RUNTIME_BIND_SETTINGS: ContextVar[dict | None] = ContextVar("container_runtime_bind_settings", default=None)
+_RUNTIME_BIND_SETTINGS: ContextVar[dict | None] = ContextVar(
+    "container_runtime_bind_settings", default=None
+)
 _RUNTIME_GPU: ContextVar[bool] = ContextVar("container_runtime_gpu", default=False)
 
 
@@ -159,16 +161,29 @@ def refresh_container_gpu_options(command: list[str], enabled: bool) -> list[str
         return result
     start = index
     options = []
-    pairs = {"-v", "-e", "--gpus", "--bind", "--env", "--no-mount"}
+    pairs = {
+        "-v",
+        "-e",
+        "--gpus",
+        "--bind",
+        "--env",
+        "--no-mount",
+        "--pwd",
+        "--cwd",
+        "--home",
+        "-w",
+        "--workdir",
+    }
     while index < len(result) and result[index].startswith("-"):
         option = result[index]
         width = 2 if option in pairs else 1
         value = result[index + 1] if width == 2 else ""
         if option not in {"--gpus", "--nv"} and not (
             option in {"-e", "--env"}
-            and value.split("=", 1)[0] in {"CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES"}
+            and value.split("=", 1)[0]
+            in {"CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES"}
         ):
-            options.extend(result[index:index + width])
+            options.extend(result[index : index + width])
         index += width
     mask = os.environ.get("CUDA_VISIBLE_DEVICES")
     if mask is not None:
@@ -181,7 +196,12 @@ def refresh_container_gpu_options(command: list[str], enabled: bool) -> list[str
                 inner = ",".join(str(i) for i in range(len(mask.split(","))))
                 options += ["-e", f"CUDA_VISIBLE_DEVICES={inner}"]
         else:
-            options += ["-e", "NVIDIA_VISIBLE_DEVICES=void", "-e", "CUDA_VISIBLE_DEVICES="]
+            options += [
+                "-e",
+                "NVIDIA_VISIBLE_DEVICES=void",
+                "-e",
+                "CUDA_VISIBLE_DEVICES=",
+            ]
     else:
         if enabled:
             options += ["--nv"]
@@ -237,7 +257,10 @@ def _runtime_rundir_bind(settings: object) -> tuple[str, str] | None:
 
 def _runtime_workspace_bind(settings: object) -> tuple[str, str] | None:
     """Use the trusted eval workspace, or an ordinary user's exact work folder."""
-    if _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
+    if (
+        _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False)
+        is not True
+    ):
         return None
     configured = (
         os.environ.get("HARBOR_HOST_WORKSPACE")
@@ -263,13 +286,20 @@ def _runtime_bind_aliases(bind: tuple[str, str]) -> list[tuple[str, str]]:
     return list(dict.fromkeys([bind, (resolved, resolved)]))
 
 
-def _runtime_script_binds(settings: object, args: tuple[str, ...]) -> list[tuple[str, str]]:
+def _runtime_script_binds(
+    settings: object, args: tuple[str, ...]
+) -> list[tuple[str, str]]:
     """Expose installed wrapper code without mounting its enclosing environment."""
-    if _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False) is not True:
+    if (
+        _runtime_setting(settings, "CHAPERONE_CONTAINER_BIND_WORKSPACE", False)
+        is not True
+    ):
         return []
     # Restricted workers receive only their assigned workspace and
     # read-only assets. Never infer additional source mounts in that mode.
-    if os.environ.get("HARBOR_HOST_WORKSPACE") or _runtime_setting(settings, "_HARBOR_HOST_WORKSPACE"):
+    if os.environ.get("HARBOR_HOST_WORKSPACE") or _runtime_setting(
+        settings, "_HARBOR_HOST_WORKSPACE"
+    ):
         return []
     covered = [
         Path(destination)
@@ -280,9 +310,15 @@ def _runtime_script_binds(settings: object, args: tuple[str, ...]) -> list[tuple
     mounts = []
     for argument in args:
         script = Path(argument)
-        if script.is_absolute() and script.suffix in {".py", ".sh"} and script.is_file():
+        if (
+            script.is_absolute()
+            and script.suffix in {".py", ".sh"}
+            and script.is_file()
+        ):
             directory = _checked_runtime_path(script.parent, label="script directory")
-            if any(directory.resolve().is_relative_to(root.resolve()) for root in covered):
+            if any(
+                directory.resolve().is_relative_to(root.resolve()) for root in covered
+            ):
                 if not any(directory.is_relative_to(root) for root in covered):
                     # The workspace may have been captured from a resolved cwd
                     # (/mnt/net) while the wrapper retains /net. Expose that
@@ -290,7 +326,9 @@ def _runtime_script_binds(settings: object, args: tuple[str, ...]) -> list[tuple
                     mounts.append((str(directory), str(directory)))
                 # Never add a read-only resolved alias over a writable workspace.
                 continue
-            for source, destination in _runtime_bind_aliases((str(directory), str(directory))):
+            for source, destination in _runtime_bind_aliases(
+                (str(directory), str(directory))
+            ):
                 mounts.append((source, destination + ":ro"))
     return list(dict.fromkeys(mounts))
 
@@ -429,8 +467,12 @@ class Image:
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as exc:
-                requirement = self._labels.get("BuildAccess", "Check repository access and network connectivity.")
-                raise RuntimeError(f"Cannot fetch container source {url}. {requirement}") from exc
+                requirement = self._labels.get(
+                    "BuildAccess", "Check repository access and network connectivity."
+                )
+                raise RuntimeError(
+                    f"Cannot fetch container source {url}. {requirement}"
+                ) from exc
             resolved.append((str(host_path), dest))
 
         new._copies = resolved + new._copies
@@ -446,7 +488,9 @@ class Image:
     def template_command(
         self,
         exec_mode: str = "run",
-        binds: list[tuple[str, str]] | Callable[[], list[tuple[str, str]]] | None = None,
+        binds: list[tuple[str, str]]
+        | Callable[[], list[tuple[str, str]]]
+        | None = None,
         env: dict[str, str | Callable[[], str]] | None = None,
     ) -> Image:
         """Configure default container command parameters for this container.
@@ -490,7 +534,9 @@ class Image:
         if callable(default_binds):
             default_binds = default_binds()
         if not self.is_existing:
-            default_binds = [(src, dst) for src, dst in default_binds if Path(src).exists()]
+            default_binds = [
+                (src, dst) for src, dst in default_binds if Path(src).exists()
+            ]
         all_binds = default_binds + (binds or [])
         all_env = {**config.get("env", {}), **(env or {})}
         resolved = {}
@@ -516,7 +562,10 @@ class Image:
             image_ref = f"${{CONTAINER:{self.name}}}"
 
         settings = get_settings()
-        for runtime_bind in (_runtime_rundir_bind(settings), _runtime_workspace_bind(settings)):
+        for runtime_bind in (
+            _runtime_rundir_bind(settings),
+            _runtime_workspace_bind(settings),
+        ):
             if runtime_bind is not None:
                 for alias in _runtime_bind_aliases(runtime_bind):
                     if alias not in all_binds:
@@ -669,7 +718,10 @@ class Image:
                 # A quoted Python/shell program may contain literal newlines.
                 # Docker still treats those as instruction boundaries in the
                 # shell form; JSON form preserves them inside a single RUN.
-                stage += raw(docker="RUN " + json.dumps(["/bin/sh", "-c", " && ".join(cmd_group)]))
+                stage += raw(
+                    docker="RUN "
+                    + json.dumps(["/bin/sh", "-c", " && ".join(cmd_group)])
+                )
             else:
                 stage += shell(commands=cmd_group)
 

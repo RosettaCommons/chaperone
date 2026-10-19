@@ -1,0 +1,99 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        python3-pip \
+        software-properties-common \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/protein_hunter/repos/0/Protein-Hunter /opt/protein_hunter
+
+%post
+    cd /
+    add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.10 python3.10-dev python3.10-venv
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    python3.10 -m venv /opt/protein-hunter-env
+    . /opt/protein-hunter-env/bin/activate && pip install --no-cache-dir --upgrade pip setuptools wheel
+
+%post
+    cd /
+    . /opt/protein-hunter-env/bin/activate && pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+
+%post
+    cd /
+    git -C /opt/protein_hunter checkout a3e048e96c93953f022d15a4d35cd744b7e39e41 && test "$(git -C /opt/protein_hunter rev-parse HEAD)" = "a3e048e96c93953f022d15a4d35cd744b7e39e41"
+    . /opt/protein-hunter-env/bin/activate && cd /opt/protein_hunter/boltz_ph && pip install --no-cache-dir -e .
+
+%post
+    cd /
+    . /opt/protein-hunter-env/bin/activate && pip install --no-cache-dir matplotlib seaborn prody tqdm PyYAML requests pypdb py3Dmol
+
+%post
+    cd /
+    cd /opt/protein_hunter/LigandMPNN && bash get_model_params.sh ./model_params
+
+%post
+    cd /
+    . /opt/protein-hunter-env/bin/activate && pip install --no-cache-dir --upgrade "numpy==1.26.4" "numba==0.61.0" "llvmlite==0.44.0" "ml-collections==1.0.0"
+
+%post
+    cd /
+    chmod 0755 /opt/protein_hunter/utils/DAlphaBall.gcc
+    test -s /opt/protein_hunter/LigandMPNN/model_params/proteinmpnn_v_48_020.pt
+    test -s /opt/protein_hunter/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
+    . /opt/protein-hunter-env/bin/activate && cd /opt/protein_hunter/boltz_ph && python -c "import ml_collections, numba, torch; assert torch.__version__.startswith('2.11.0'); assert torch.version.cuda == '12.8'; from pipeline import ProteinHunter_Boltz; from LigandMPNN.wrapper import LigandMPNNWrapper"
+    . /opt/protein-hunter-env/bin/activate && cd /opt/protein_hunter/boltz_ph && python design.py --help >/dev/null
+    . /opt/protein-hunter-env/bin/activate && pip check
+    mkdir -p /opt/protein_hunter/manifest
+    . /opt/protein-hunter-env/bin/activate && pip freeze > /opt/protein_hunter/manifest/pip-freeze.txt
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/protein-hunter-env/bin:/usr/local/cuda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+    export TMPDIR=/tmp
+    export VIRTUAL_ENV=/opt/protein-hunter-env
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/protein-hunter-env/bin:/usr/local/cuda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+    export TMPDIR=/tmp
+    export VIRTUAL_ENV=/opt/protein-hunter-env
+
+%labels
+    CUDA 12.8
+    License MIT
+    Revision a3e048e96c93953f022d15a4d35cd744b7e39e41
+    Source https://github.com/yehlincho/Protein-Hunter
+    Version main-a3e048e96c93
+
+%runscript
+    exec "$@"

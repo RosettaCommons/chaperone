@@ -197,7 +197,22 @@ Present the results as a table showing what's set and what's missing. Then use `
 - Default location is `~/.cache/huggingface/hub/`. If the user has a custom cache location, write it to `.env.local`. Otherwise the HuggingFace default works fine — no action needed.
 
 **For `FOUNDRY_CHECKPOINT_DIRS`** (RFD3, RF3, FoundryMPNN weights):
-- These are downloaded automatically when blocks are first run. If the user has pre-downloaded weights, ask for the path and write to `.env.local`.
+- Install checkpoints explicitly before inference or RFD3 warmup. The pinned
+  Foundry 1.0 runtime resolves registry names to installed checkpoints; it does
+  not fetch missing weights on the first block call. Reuse verified existing
+  checkpoints and set their directory in `.env.local`.
+- In a Foundry environment, run `foundry install rfd3 --checkpoint-dir /absolute/shared/path/foundry_weights`
+  for RFD3, or `foundry install base-models --checkpoint-dir /absolute/shared/path/foundry_weights`
+  for the latest RFD3, RF3 and MPNN checkpoints. The
+  [container installation guide](../../../docs/site/containers.md#rfd3-and-af3-runtime-setup)
+  shows how to run this CLI inside `foundry.sif` without installing Foundry on
+  the controller. If that image is not built yet, perform checkpoint staging
+  immediately after step 7 and before any inference or step 7b. Follow upstream
+  model access requirements.
+- Set `FOUNDRY_CHECKPOINT_DIRS` to the host checkpoint directory, verify the
+  installed files are visible on compute nodes, then run one real small RFD3
+  workload. A successful container build, import or `--help` does not verify
+  model loading or inference.
 
 **For `BOLTZ_CACHE_DIR`** (Boltz2 weights):
 - Defaults to `~/.boltz`. Only set if the user has a custom location.
@@ -281,6 +296,9 @@ prerequisite table and runtime-image instructions in `docs/site/evaluations.md`:
   container listing or successful import does not prove end-to-end readiness.
 
 ### 7b. Warm RFD3's compilation cache on the target GPU
+
+Stage and verify the RFD3 checkpoint as described in step 5b before warmup;
+building the Foundry image does not install model weights.
 
 For a full install including GPU warmup, combine the phases:
 

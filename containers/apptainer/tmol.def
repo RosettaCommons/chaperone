@@ -1,0 +1,56 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        python3-pip \
+        python3.12 \
+        python3.12-venv
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    python3.12 -m venv /opt/tmol-env
+    . /opt/tmol-env/bin/activate && pip install --upgrade pip setuptools wheel
+
+%post
+    cd /
+    apt-get update && apt-get install -y --no-install-recommends libx11-6 libxext6 libxrender1 && rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    . /opt/tmol-env/bin/activate && pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cu128 && pip install 'tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.35/tmol-0.1.35+cu128torch2.10-cp312-cp312-linux_x86_64.whl' && python -c 'import torch, tmol; from tmol.io import pose_stack_from_biotite; assert torch.__version__.startswith("2.10.0")'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/tmol-env/bin:/usr/local/cuda/bin:$PATH
+    export PYTORCH_ALLOC_CONF=expandable_segments:True
+    export VIRTUAL_ENV=/opt/tmol-env
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/tmol-env/bin:/usr/local/cuda/bin:$PATH
+    export PYTORCH_ALLOC_CONF=expandable_segments:True
+    export VIRTUAL_ENV=/opt/tmol-env
+
+%labels
+    CUDA 12.8
+    Source https://github.com/uw-ipd/tmol
+    Torch 2.10.0
+    Version 0.1.35
+
+%runscript
+    exec "$@"

@@ -1,0 +1,53 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        git \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    git clone https://github.com/PacesaLab/BindCraft2.git /opt/bindcraft2
+    git -C /opt/bindcraft2 checkout --detach c0ee638d11bc010817c2c97ee58ed5c323e664e2
+    python3.12 -m venv /opt/bindcraft2-env
+    /opt/bindcraft2-env/bin/pip install --upgrade pip setuptools wheel
+    /opt/bindcraft2-env/bin/pip install -e '/opt/bindcraft2[cuda12]' 'jax[cuda12]==0.11.0' biotite==1.6.0 numpy==2.4.3
+    /opt/bindcraft2-env/bin/python -c "import nvidia, pathlib; print('\n'.join(sorted(str(p) for root in nvidia.__path__ for p in pathlib.Path(root).glob('*/lib'))))" > /etc/ld.so.conf.d/bindcraft2-cuda.conf
+    ldconfig
+    /opt/bindcraft2-env/bin/pip check
+    /opt/bindcraft2-env/bin/bindcraft --help >/dev/null
+    /opt/bindcraft2-env/bin/python -m bindcraft.selfcheck cuda12 --shipped-only
+    apt-get clean && rm -rf /var/lib/apt/lists/* /root/.cache/pip
+
+%environment
+    export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    export NVIDIA_VISIBLE_DEVICES=all
+    export PATH=/opt/bindcraft2-env/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export VIRTUAL_ENV=/opt/bindcraft2-env
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+%post
+    export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    export NVIDIA_VISIBLE_DEVICES=all
+    export PATH=/opt/bindcraft2-env/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export VIRTUAL_ENV=/opt/bindcraft2-env
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+
+%labels
+    CUDA 12
+    JAX 0.11.0
+    Revision c0ee638d11bc010817c2c97ee58ed5c323e664e2
+    Source https://github.com/PacesaLab/BindCraft2
+
+%runscript
+    exec "$@"

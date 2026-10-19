@@ -1,0 +1,67 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/openfold3/repos/0/openfold-3 /opt/openfold3
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    python3.12 -m venv /opt/openfold3-env
+    . /opt/openfold3-env/bin/activate && pip install --upgrade pip setuptools wheel
+
+%post
+    cd /
+    . /opt/openfold3-env/bin/activate && pip install torch --index-url https://download.pytorch.org/whl/cu126
+
+%post
+    cd /
+    git -C /opt/openfold3 checkout --detach 0d25195edec495f3e0e94fd68be86d4458c246e7
+    . /opt/openfold3-env/bin/activate && cd /opt/openfold3 && pip install . 'biotite==1.7.1' && pip check
+    /opt/openfold3-env/bin/python -c 'import torch; from biotite.structure import AtomArray; from lightning_fabric.utilities.apply_func import move_data_to_device; atoms = AtomArray(65); result = move_data_to_device({"atoms": atoms, "tensor": torch.ones(1)}, "cpu"); assert result["atoms"] is atoms; assert result["tensor"].device.type == "cpu"'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/openfold3-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/openfold3-env
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/openfold3-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/openfold3-env
+
+%labels
+    Biotite 1.7.1
+    CUDA 12.6
+    Version 0d25195edec495f3e0e94fd68be86d4458c246e7
+
+%runscript
+    exec "$@"

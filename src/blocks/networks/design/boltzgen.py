@@ -162,9 +162,19 @@ class BoltzGenBlock(CompiledBlockFunction):
         cache = get_setting_field("HF_HUB_CACHE", None)
         cache = str(Path(cache).expanduser().resolve()) if cache else None
         binds = [(cache, cache)] if cache else []
+        env = {}
+        if cache:
+            temporary = Path(cache) / "tmp"
+            # Multiprocessing creates AF_UNIX sockets below TMPDIR. A deep
+            # campaign path can exceed Linux's 108-byte sockaddr_un limit, so
+            # keep the persistent disk storage behind a short container alias.
+            container_temporary = "/tmp/chaperone-boltzgen"
+            binds.append((str(temporary), container_temporary))
+            env = {"HF_HUB_CACHE": cache, "TMPDIR": container_temporary}
         return self._script_spec.image.build_command(
-            *self._script_spec.command, binds=binds,
-            env={"HF_HUB_CACHE": cache} if cache else {},
+            *self._script_spec.command,
+            binds=binds,
+            env=env,
         )
 
     @field_validator("config")
@@ -184,7 +194,9 @@ class BoltzGenBlock(CompiledBlockFunction):
         os.makedirs(sandbox_dir, exist_ok=True)
         cache = get_setting_field("HF_HUB_CACHE", None)
         if cache:
-            Path(cache).expanduser().resolve().mkdir(parents=True, exist_ok=True)
+            (Path(cache).expanduser().resolve() / "tmp").mkdir(
+                parents=True, exist_ok=True
+            )
 
         # Copy config into sandbox for reproducibility
         config_dest = os.path.join(sandbox_dir, "design_spec.yaml")

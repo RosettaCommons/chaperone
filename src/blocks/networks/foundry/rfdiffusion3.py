@@ -7,7 +7,12 @@ import re
 from pathlib import Path
 from pydantic import Field, field_validator
 from typing import Optional
-from chaperone import CompiledBlockFunction, PipelineDataHandler, JobArgs, get_setting_field
+from chaperone import (
+    CompiledBlockFunction,
+    PipelineDataHandler,
+    JobArgs,
+    get_setting_field,
+)
 from chaperone.block_config import TIER_PRIMARY, ScriptSpec
 from chaperone.data import make_row
 
@@ -46,28 +51,38 @@ class RFD3Block(CompiledBlockFunction):
     _chunked = True
 
     compile_model: Optional[bool] = Field(
-        None, description="Compile hot diffusion modules; None inherits the Foundry runtime default."
+        None,
+        description="Compile hot diffusion modules; None inherits the Foundry runtime default.",
     )
 
     def get_command_template(self) -> list[str]:
         # NA and cloud runtimes retain their own compilation/cache behavior.
         cache = get_setting_field("RFD3_COMPILE_CACHE_DIR", None)
         from chaperone.orchestration.modal_backend import current_command_context
-        cloud = self.cloud or current_command_context() is not None or get_setting_field(
-            "CHAPERONE_COMPUTE_BACKEND", "auto"
-        ) in ("modal", "cloud")
+
+        cloud = (
+            self.cloud
+            or current_command_context() is not None
+            or get_setting_field("CHAPERONE_COMPUTE_BACKEND", "auto")
+            in ("modal", "cloud")
+        )
         if not cache or cloud or self._script_spec.command != ["rfd3", "design"]:
             return super().get_command_template()
         cache = str(Path(cache).expanduser().resolve())
         if not Path(cache).is_dir():
             raise ValueError("Create RFD3_COMPILE_CACHE_DIR before running RFD3")
+        container_cache = "/tmp/chaperone-rfd3"
         return self._script_spec.image.build_command(
             *self._script_spec.command,
-            binds=[(cache, cache)],
+            binds=[(cache, container_cache)],
             # Apptainer's private /tmp may be noexec on cluster nodes. Inductor
-            # executes short compiler probes there unless TMPDIR is explicit.
-            env={"TMPDIR": cache, "TORCHINDUCTOR_CACHE_DIR": f"{cache}/inductor",
-                 "TRITON_CACHE_DIR": f"{cache}/triton"},
+            # executes compiler probes in this disk-backed bind. The short alias
+            # also keeps multiprocessing UNIX socket paths below their limit.
+            env={
+                "TMPDIR": container_cache,
+                "TORCHINDUCTOR_CACHE_DIR": f"{container_cache}/inductor",
+                "TRITON_CACHE_DIR": f"{container_cache}/triton",
+            },
         )
 
     # Model and input configuration
@@ -206,9 +221,9 @@ See the RFdiffusion3 skill for more information
         return os.path.basename(self.inputs).replace(".json", "").replace(".yaml", "")
 
     def init_handler(self):
-        assert self.inputs is not None, (
-            "No input provided (use field inputs={'design': {}} to create inputs inline)."
-        )
+        assert (
+            self.inputs is not None
+        ), "No input provided (use field inputs={'design': {}} to create inputs inline)."
         from chaperone.data.schema import Column
 
         rows = []
@@ -277,7 +292,11 @@ See the RFdiffusion3 skill for more information
         sampler_args = [
             f"inference_sampler.{k}={v}" for k, v in self.inference_sampler.items()
         ]
-        seed_arg = f"seed={self.seed_offset + chunk_id}" if self.seed_offset is not None else None
+        seed_arg = (
+            f"seed={self.seed_offset + chunk_id}"
+            if self.seed_offset is not None
+            else None
+        )
         ckpt = self.ckpt_path
         ckpt_arg = f"ckpt_path={ckpt}" if ckpt else None
         cmd = self.command_template + [
@@ -414,11 +433,7 @@ def extract_rfd3_design_metadata(data: dict) -> dict:
         "original_input": specification.get("input"),
         "diffused_index_map": json.dumps(diffused_index_map),
         # Also parse to motif pdb idx and ligands (exclude ligand entries)
-        "motif": [
-            v
-            for k, v in diffused_index_map.items()
-            if re.match(r"[A-Z]\d+", k)
-        ]
+        "motif": [v for k, v in diffused_index_map.items() if re.match(r"[A-Z]\d+", k)]
         or None,
         "ligand": [x.strip() for x in ligand.split(",") if x.strip()] or None,
     }
@@ -444,8 +459,7 @@ def compile_rfd3(sandbox_dir, name="rfd3"):
             f"This may indicate:\n"
             f"  - Invalid input specifications\n"
             f"  - Execution errors (check sandbox directory for logs)\n"
-            f"  - Filtering removed all outputs\n"
-            + tail_block_log(sandbox_dir)
+            f"  - Filtering removed all outputs\n" + tail_block_log(sandbox_dir)
         )
 
     # Single path per row with separated design_metadata and step_metadata

@@ -1,0 +1,67 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        ninja-build \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    python3.12 -m venv /opt/e1-env
+    . /opt/e1-env/bin/activate && pip install --upgrade pip setuptools wheel
+
+%post
+    cd /
+    cd /opt && git clone https://github.com/Profluent-AI/E1.git
+    git -C /opt/E1 checkout --detach 219c7c7a3a803b8552ae6a44ce6dd24f133fefbd
+    . /opt/e1-env/bin/activate && pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+    . /opt/e1-env/bin/activate && cd /opt/E1 && pip install . 'torch==2.8.0' 'transformers==4.56.2' 'numpy==2.4.1' 'accelerate==1.12.0' packaging wheel
+
+%post
+    cd /
+    . /opt/e1-env/bin/activate && CUDA_HOME=/usr/local/cuda MAX_JOBS=4 TMPDIR=/tmp pip install flash-attn==2.8.3 --no-build-isolation --no-cache-dir
+    . /opt/e1-env/bin/activate && pip check
+    /opt/e1-env/bin/python -c 'import torch; import flash_attn; from E1.modeling import E1ForMaskedLM; from E1.predictor import E1Predictor; assert torch.version.cuda == "12.8"'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/e1-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/e1-env
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/e1-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/e1-env
+
+%labels
+    CUDA 12.8
+    PyTorch 2.8.0
+    SourceRevision 219c7c7a3a803b8552ae6a44ce6dd24f133fefbd
+
+%runscript
+    exec "$@"

@@ -1,0 +1,61 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        ninja-build \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    python3.12 -m venv /opt/foundry-env
+    . /opt/foundry-env/bin/activate && pip install --upgrade pip setuptools wheel
+    . /opt/foundry-env/bin/activate && pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+
+%post
+    cd /
+    cd /opt && git clone -b production https://github.com/RosettaCommons/foundry.git
+    git -C /opt/foundry fetch origin refs/pull/404/head
+    git -C /opt/foundry checkout --detach 54d188b3c0c27654a01c875b173148a508fcd858
+    . /opt/foundry-env/bin/activate && cd /opt/foundry && pip install -e '.[all]' 'atomworks[ml]==3.0.1' 'biotite==1.6.0' 'lightning==2.6.1' 'numpy==2.4.3'
+    . /opt/foundry-env/bin/activate && rfd3na --help >/dev/null
+
+%post
+    cd /
+    . /opt/foundry-env/bin/activate && pip check
+    /opt/foundry-env/bin/python -c 'from importlib.metadata import version; assert version("rc-foundry") == "1.0.0"; assert version("atomworks") == "3.0.1"; assert version("biotite") == "1.6.0"; import rfd3.engine; import rfd3na.engine; import rf3.inference_engines.rf3; import mpnn.inference_engines.mpnn'
+    /opt/foundry-env/bin/python -c 'from rfd3na.inference.input_parsing import DesignInputSpecification; from biotite.structure import get_residue_starts; from rf3.inference_engines.rf3 import RF3InferenceEngine; atoms = DesignInputSpecification(contig="2,/0,3R,/0,4D", length="9").build(); assert len(get_residue_starts(atoms)) == 9; assert RF3InferenceEngine(ckpt_path="unused.ckpt").transform_overrides["residue_cache_dir"] is None'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export PATH=/opt/foundry-env/bin:$PATH
+    export VIRTUAL_ENV=/opt/foundry-env
+%post
+    export PATH=/opt/foundry-env/bin:$PATH
+    export VIRTUAL_ENV=/opt/foundry-env
+
+%labels
+    AtomWorks 3.0.1
+    Foundry 1.0.0
+    Platform cpu
+    PyTorch 2.11.0
+    RF3ResidueCache disabled-for-inference
+    Version 54d188b3c0c27654a01c875b173148a508fcd858
+
+%runscript
+    exec "$@"

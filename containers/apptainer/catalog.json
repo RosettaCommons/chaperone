@@ -1,0 +1,396 @@
+{
+  "existing_images": [],
+  "generated_files": [
+    "alphafold3.def",
+    "alphafold3.prepare.sh",
+    "bindcraft.def",
+    "bindcraft.prepare.sh",
+    "bindcraft2.def",
+    "boltz2.def",
+    "boltzgen.def",
+    "catalog.json",
+    "chai1.def",
+    "colabfold_portable.def",
+    "disco.def",
+    "disco.prepare.sh",
+    "e1.def",
+    "esm2.def",
+    "esmfold2.def",
+    "foundry.def",
+    "foundry_public.def",
+    "ligandmpnn.def",
+    "ligandmpnn.prepare.sh",
+    "metal3d.def",
+    "metal3d.prepare.sh",
+    "openfold3.def",
+    "openfold3.prepare.sh",
+    "protein_hunter.def",
+    "protein_hunter.prepare.sh",
+    "proteina_complexa.def",
+    "protenix.def",
+    "rfdiffusion1.def",
+    "rfdiffusion1.prepare.sh",
+    "rfdiffusion2_portable.def",
+    "rfdiffusion2_portable.prepare.sh",
+    "rfoptimization.def",
+    "rpxdock.def",
+    "simplefold.def",
+    "simplefold.prepare.sh",
+    "sources/alphafold3/files/0/run_alphafold_AF.py",
+    "sources/bindcraft/files/0/run_bindcraft.py",
+    "sources/esmfold2/files/0/run_esmfold2_runner.py",
+    "sources/rpxdock/files/0/rpxdock_run.py",
+    "sources/simplefold/files/0/run_simplefold.py",
+    "tmol.def"
+  ],
+  "recipes": [
+    {
+      "blocks": [
+        "af3",
+        "af3_with_target_template"
+      ],
+      "build_access": null,
+      "definition": "alphafold3.def",
+      "name": "alphafold3",
+      "prepare_script": "alphafold3.prepare.sh",
+      "sources": [
+        {
+          "branch": "main",
+          "kind": "git",
+          "path": "sources/alphafold3/repos/0/alphafold3",
+          "url": "https://github.com/google-deepmind/alphafold3"
+        },
+        {
+          "kind": "bundled",
+          "path": "sources/alphafold3/files/0/run_alphafold_AF.py"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "bindcraft"
+      ],
+      "build_access": null,
+      "definition": "bindcraft.def",
+      "name": "bindcraft",
+      "prepare_script": "bindcraft.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/bindcraft/repos/0/BindCraft",
+          "url": "https://github.com/martinpacesa/BindCraft.git"
+        },
+        {
+          "kind": "bundled",
+          "path": "sources/bindcraft/files/0/run_bindcraft.py"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "bindcraft2"
+      ],
+      "build_access": null,
+      "definition": "bindcraft2.def",
+      "name": "bindcraft2",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "boltz2"
+      ],
+      "build_access": null,
+      "definition": "boltz2.def",
+      "name": "boltz2",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "boltzgen"
+      ],
+      "build_access": null,
+      "definition": "boltzgen.def",
+      "name": "boltzgen",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "chai1"
+      ],
+      "build_access": null,
+      "definition": "chai1.def",
+      "name": "chai1",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "colabfold"
+      ],
+      "build_access": null,
+      "definition": "colabfold_portable.def",
+      "name": "colabfold_portable",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "disco"
+      ],
+      "build_access": null,
+      "definition": "disco.def",
+      "name": "disco",
+      "prepare_script": "disco.prepare.sh",
+      "sources": [
+        {
+          "branch": "main",
+          "kind": "git",
+          "path": "sources/disco/repos/0/DISCO",
+          "url": "https://github.com/DISCO-design/DISCO.git"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "e1"
+      ],
+      "build_access": null,
+      "definition": "e1.def",
+      "name": "e1",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "esm2"
+      ],
+      "build_access": null,
+      "definition": "esm2.def",
+      "name": "esm2",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "esmfold2"
+      ],
+      "build_access": null,
+      "definition": "esmfold2.def",
+      "name": "esmfold2",
+      "prepare_script": null,
+      "sources": [
+        {
+          "kind": "bundled",
+          "path": "sources/esmfold2/files/0/run_esmfold2_runner.py"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "foundry_mpnn",
+        "rf3",
+        "rfd3",
+        "rfd3_partial",
+        "rfd3na"
+      ],
+      "build_access": null,
+      "definition": "foundry.def",
+      "name": "foundry",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [],
+      "build_access": null,
+      "definition": "foundry_public.def",
+      "name": "foundry_public",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "mpnn"
+      ],
+      "build_access": null,
+      "definition": "ligandmpnn.def",
+      "name": "ligandmpnn",
+      "prepare_script": "ligandmpnn.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/ligandmpnn/repos/0/LigandMPNN",
+          "url": "https://github.com/dauparas/LigandMPNN"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "metal3d"
+      ],
+      "build_access": null,
+      "definition": "metal3d.def",
+      "name": "metal3d",
+      "prepare_script": "metal3d.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/metal3d/repos/0/metal-site-prediction",
+          "url": "https://github.com/lcbc-epfl/metal-site-prediction.git"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "openfold3"
+      ],
+      "build_access": null,
+      "definition": "openfold3.def",
+      "name": "openfold3",
+      "prepare_script": "openfold3.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/openfold3/repos/0/openfold-3",
+          "url": "https://github.com/aqlaboratory/openfold-3.git"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "boltz2_steered",
+        "protein_hunter"
+      ],
+      "build_access": null,
+      "definition": "protein_hunter.def",
+      "name": "protein_hunter",
+      "prepare_script": "protein_hunter.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/protein_hunter/repos/0/Protein-Hunter",
+          "url": "https://github.com/yehlincho/Protein-Hunter.git"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "proteina_complexa"
+      ],
+      "build_access": null,
+      "definition": "proteina_complexa.def",
+      "name": "proteina_complexa",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "protenix"
+      ],
+      "build_access": null,
+      "definition": "protenix.def",
+      "name": "protenix",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "rfd1"
+      ],
+      "build_access": null,
+      "definition": "rfdiffusion1.def",
+      "name": "rfdiffusion1",
+      "prepare_script": "rfdiffusion1.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/rfdiffusion1/repos/0/RFdiffusion",
+          "url": "https://github.com/RosettaCommons/RFdiffusion.git"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "rfd2"
+      ],
+      "build_access": null,
+      "definition": "rfdiffusion2_portable.def",
+      "name": "rfdiffusion2_portable",
+      "prepare_script": "rfdiffusion2_portable.prepare.sh",
+      "sources": [
+        {
+          "branch": null,
+          "kind": "git",
+          "path": "sources/rfdiffusion2_portable/repos/0/RFdiffusion2",
+          "url": "https://github.com/RosettaCommons/RFdiffusion2"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "rfoptimization"
+      ],
+      "build_access": null,
+      "definition": "rfoptimization.def",
+      "name": "rfoptimization",
+      "prepare_script": null,
+      "sources": []
+    },
+    {
+      "blocks": [
+        "rpxdock"
+      ],
+      "build_access": null,
+      "definition": "rpxdock.def",
+      "name": "rpxdock",
+      "prepare_script": null,
+      "sources": [
+        {
+          "kind": "bundled",
+          "path": "sources/rpxdock/files/0/rpxdock_run.py"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "simplefold"
+      ],
+      "build_access": null,
+      "definition": "simplefold.def",
+      "name": "simplefold",
+      "prepare_script": "simplefold.prepare.sh",
+      "sources": [
+        {
+          "branch": "main",
+          "kind": "git",
+          "path": "sources/simplefold/repos/0/ml-simplefold",
+          "url": "https://github.com/apple/ml-simplefold.git"
+        },
+        {
+          "kind": "bundled",
+          "path": "sources/simplefold/files/0/run_simplefold.py"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        "tmol_interface",
+        "tmol_minimize"
+      ],
+      "build_access": null,
+      "definition": "tmol.def",
+      "name": "tmol",
+      "prepare_script": null,
+      "sources": []
+    }
+  ],
+  "schema_version": 1
+}

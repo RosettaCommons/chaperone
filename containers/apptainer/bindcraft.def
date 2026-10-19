@@ -1,0 +1,94 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        bzip2 \
+        ca-certificates \
+        ffmpeg \
+        git \
+        gnupg \
+        libgmp10 \
+        python3-pip \
+        software-properties-common \
+        tar \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/bindcraft/repos/0/BindCraft /opt/BindCraft
+
+%files
+    sources/bindcraft/files/0/run_bindcraft.py /opt/BindCraft/chaperone_run_bindcraft.py
+
+%post
+    cd /
+    git -C /opt/BindCraft checkout efb5bfeb8b4b1a5944256f979c34e0c8e6a82d9d && test "$(git -C /opt/BindCraft rev-parse HEAD)" = "efb5bfeb8b4b1a5944256f979c34e0c8e6a82d9d"
+
+%post
+    cd /
+    add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y --no-install-recommends python3.10 python3.10-dev python3.10-venv
+
+%post
+    cd /
+    python3.10 -m venv /opt/bindcraft-env
+    /opt/bindcraft-env/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
+    /opt/bindcraft-env/bin/pip install --no-cache-dir 'jax[cuda12]==0.4.35' numpy==1.26.4 pandas==2.2.3 matplotlib==3.9.4 biopython==1.85 scipy==1.15.2 seaborn==0.13.2 tqdm==4.67.1 fsspec==2025.3.2 py3Dmol==2.4.2 chex==0.1.87 dm-haiku==0.0.13 flax==0.8.5 dm-tree==0.1.9 joblib==1.4.2 ml-collections==1.0.0 immutabledict==4.2.1 optax==0.2.4 orbax-checkpoint==0.6.4
+    /opt/bindcraft-env/bin/pip install --no-cache-dir 'git+https://github.com/openmm/pdbfixer.git@94cfa4c0ca551cdc5f13320f9a658efd59f2b881'
+
+%post
+    cd /
+    /opt/bindcraft-env/bin/pip install --no-cache-dir --no-deps 'git+https://github.com/sokrypton/ColabDesign.git@e31a56fe1d9b4de25c8697f3a28b75892941cc72'
+    /opt/bindcraft-env/bin/pip install --no-cache-dir 'pyrosetta==2026.29+releasequarterly.80a0635615' --find-links https://west.rosettacommons.org/pyrosetta/quarterly/release.cxx11thread.serialization/
+
+%post
+    cd /
+    mkdir -p /opt/BindCraft/params
+    wget --tries=5 -O /tmp/alphafold_params.tar https://storage.googleapis.com/alphafold/alphafold_params_2022-12-06.tar
+    test "$(stat -c %s /tmp/alphafold_params.tar)" = "5587968000"
+    tar -tf /tmp/alphafold_params.tar >/dev/null
+    tar -xf /tmp/alphafold_params.tar -C /opt/BindCraft/params
+    test -s /opt/BindCraft/params/params_model_5_ptm.npz
+    test -s /opt/BindCraft/params/params_model_5_multimer_v3.npz
+    rm /tmp/alphafold_params.tar
+
+%post
+    cd /
+    chmod 0755 /opt/BindCraft/functions/dssp /opt/BindCraft/functions/DAlphaBall.gcc /opt/BindCraft/chaperone_run_bindcraft.py
+    CUDA_ROOT=/opt/bindcraft-env/lib/python3.10/site-packages/nvidia/cuda_nvcc /opt/bindcraft-env/bin/python -c 'import colabdesign, jax, jaxlib, pyrosetta'
+    mkdir -p /opt/BindCraft/manifest
+    /opt/bindcraft-env/bin/pip freeze > /opt/BindCraft/manifest/pip-freeze.txt
+    rm -rf /var/lib/apt/lists/*
+
+%environment
+    export BINDCRAFT_HOME=/opt/BindCraft
+    export CUDA_ROOT=/opt/bindcraft-env/lib/python3.10/site-packages/nvidia/cuda_nvcc
+    export PATH=/opt/bindcraft-env/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+    export TMPDIR=/tmp
+    export VIRTUAL_ENV=/opt/bindcraft-env
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+%post
+    export BINDCRAFT_HOME=/opt/BindCraft
+    export CUDA_ROOT=/opt/bindcraft-env/lib/python3.10/site-packages/nvidia/cuda_nvcc
+    export PATH=/opt/bindcraft-env/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+    export TMPDIR=/tmp
+    export VIRTUAL_ENV=/opt/bindcraft-env
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+
+%labels
+    CUDA 12
+    License MIT-and-third-party
+    Revision efb5bfeb8b4b1a5944256f979c34e0c8e6a82d9d
+    Source https://github.com/martinpacesa/BindCraft
+    Version main-efb5bfeb8b4b
+
+%runscript
+    exec python -u /opt/BindCraft/chaperone_run_bindcraft.py "$@"
