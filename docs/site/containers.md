@@ -41,16 +41,113 @@ public `RFD_173.pt` checkpoint rather than the formerly auto-selected private
 `RFD_140_ORI_tipatom.pt`. Treat that as a model change when comparing runs;
 configure `ckpt_path` explicitly when using another compatible checkpoint.
 
+## Download Apptainer definitions
+
+All registered, buildable scientific images have checked-in `.def` files in the
+[Apptainer recipe directory](https://github.com/RosettaCommons/chaperone/tree/main/containers/apptainer).
+The [download and build guide](https://github.com/RosettaCommons/chaperone/blob/main/containers/README.md)
+links each definition and its preparation script; the
+[catalog](https://github.com/RosettaCommons/chaperone/blob/main/containers/apptainer/catalog.json)
+maps image names to block names and lists required source inputs. Several blocks
+share one image: RFD3, RFD3NA, RF3 and FoundryMPNN use `foundry`; ProteinMPNN,
+LigandMPNN and SolubleMPNN use `ligandmpnn`.
+
+For a standalone build, clone or download the repository so the definitions,
+preparation scripts and bundled `sources/` directory stay together. Run builds
+from `containers/apptainer`, because `%files` paths are relative to that directory:
+
+```bash
+git clone https://github.com/RosettaCommons/chaperone.git
+cd chaperone/containers/apptainer
+apptainer build foundry.sif foundry.def
+bash alphafold3.prepare.sh
+apptainer build alphafold3.sif alphafold3.def
+```
+
+Run the matching `<image>.prepare.sh` first whenever the catalog lists one; it
+fetches the declared upstream source checkouts into the build context. Bundled
+local scripts are already under `sources/`. Prepare each source context once;
+the scripts refuse existing checkout paths. To retry an image build, reuse its
+prepared context without rerunning preparation. Downloading a single `.def` alone
+does not supply its `%files` inputs. Builds need outbound network access, disk
+space and a host that permits Apptainer build namespaces; use `--fakeroot` if
+required by your site's supported build configuration. These downloads are
+recipes and source inputs, not prebuilt `.sif` images or model weights.
+
+To use these images in Chaperone, put the `.sif` files in a directory listed in
+`CHAPERONE_CONTAINER_DIRS`, keeping their recipe names, for example `foundry.sif`
+and `alphafold3.sif`. Alternatively, `chaperone install rfd3 af3` stages the same
+declared inputs and builds the images for you. Installing Chaperone from a wheel
+does not require downloading this source-tree recipe directory to use the installer.
+
+## RFD3 and AF3 runtime setup
+
+Set your paths in `.env.local`; use absolute shared paths when running on Slurm:
+
+```dotenv
+CHAPERONE_CONTAINER_BACKEND=apptainer
+CHAPERONE_CONTAINER_DIRS=/absolute/shared/path/containers
+ALPHAFOLD3_WEIGHTS_DIR=/absolute/shared/path/af3_weights
+# Explicitly install Foundry checkpoints here before running its blocks
+FOUNDRY_CHECKPOINT_DIRS=/absolute/shared/path/foundry_weights
+```
+
+AF3 model parameters require the upstream access process; the definition does
+not grant access or include those parameters. Install Foundry checkpoints
+explicitly before inference or warmup. Its pinned 1.0 runtime resolves registry
+names to local checkpoints and fails if they are missing; it does not download
+them on the first block call. For example, on a network-enabled staging host:
+
+```bash
+mkdir -p /absolute/shared/path/foundry_weights
+apptainer exec --cleanenv \
+  --bind /absolute/shared/path/foundry_weights:/checkpoints \
+  /absolute/shared/path/containers/foundry.sif \
+  foundry install rfd3 --checkpoint-dir /checkpoints
+```
+
+Use `foundry install base-models --checkpoint-dir /checkpoints` in the same
+container command to stage the latest RFD3, RF3 and MPNN checkpoints together.
+The [pinned Foundry installation guide](https://github.com/RosettaCommons/foundry/blob/54d188b3c0c27654a01c875b173148a508fcd858/README.md)
+describes other model choices and access requirements. Reuse verified existing
+checkpoints and make their host directory visible to the compute nodes through
+`FOUNDRY_CHECKPOINT_DIRS`.
+
+The AF3 block runs inference with its database-search pipeline
+disabled: provide prepared MSAs when your workflow needs them. Building an AF3
+image does not prepare an MSA database or run a search.
+
+Image installation and execution are separate. Choose
+`CHAPERONE_COMPUTE_BACKEND=local` on a GPU machine or `slurm` for a cluster, and
+configure the cluster resources separately. Input files, images, weights and
+caches must be visible on compute nodes. Check `chaperone list-blocks`, then run
+one real small RFD3 workload to verify checkpoint loading, GPU support and mounts
+before scaling. Container imports and CLI help alone do not verify inference.
+RFD3's warmup command also exercises the real model; run it inside a GPU
+allocation after checkpoint staging:
+
+```bash
+mkdir -p /absolute/shared/path/rfd3_compile_cache
+chaperone warmup-rfd3 --local \
+  --cache-dir /absolute/shared/path/rfd3_compile_cache \
+  --rundir /absolute/shared/path/rfd3_smoke
+```
+
 ## Recipe audit
 
 The release checks render the source recipes for Docker and Apptainer,
 check shell syntax and local copy inputs, and exercise installer staging and
-site selection. That audit is static; not all images have been built or exercised. Validate one small workload on your cluster before scaling up.
+site selection. These automated checks are static and CPU based.
+Execution validation on 2026-10-18 built all 25 scientific images on Linux x86-64
+with an NVIDIA H200 and exercised representative workloads: 23 passed
+inference checks, while BindCraft and BindCraft2 completed trajectories with zero
+accepted designs. This does not cover every host, modality or optional mode.
+Validate one small workload on your cluster before scaling up.
 
 | Recipes | Installation notes |
 |---|---|
 | `bindcraft2` | Pinned PacesaLab implementation with JAX 0.11/CUDA 12 and bundled ProteinMPNN. AlphaFold2 weights use a writable cache or explicit `af2_params_dir`. See the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/bindcraft2/input.md) for installation, supported inputs, and the upstream hosting-restricted license. |
-| `foundry`, `foundry_public` | Foundry 1.0.0 at `54d188b3`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Configure `FOUNDRY_CHECKPOINT_DIRS` for predownloaded weights; otherwise registry names are used. FoundryMPNN equivalence to the `mpnn` block is not established here. |
+| `foundry`, `foundry_public` | Foundry 1.0.0 at `54d188b3`, AtomWorks 3.0.1 and Biotite 1.6.0 for RF3, RFD3, RFD3NA and FoundryMPNN. Install the required checkpoints explicitly with the Foundry CLI before inference, then configure `FOUNDRY_CHECKPOINT_DIRS`; registry names resolve installed weights. FoundryMPNN equivalence to the `mpnn` block is not established here. |
 | `rfoptimization` | Separate Foundry/Boltz2/LigandMPNN environments for iterative complex refinement, with the same Foundry 1.0.0 and AtomWorks 3.0.1 pins. See the [input and checkpoint guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/foundry/rfoptimization/input.md). |
 | `proteina_complexa` | NVIDIA's protein binder generator with an isolated AtomWorks 2 environment. Download the two public model checkpoints and configure `checkpoint_dir`; see the [binder guide](https://github.com/RosettaCommons/chaperone/blob/main/src/blocks/networks/design/proteina_complexa/input.md). |
 | `ligandmpnn` | `dauparas/LigandMPNN` source pinned to `26ec57ac976ade5379920dbd43c7f97a91cf82de`, with all fifteen official checkpoints (every `model_type` and noise level, plus the side-chain packer) baked in and verified by SHA-256 at build time. The backend of the `mpnn` block. |
@@ -147,10 +244,26 @@ single-character input chain IDs; different per-input chain constraint mappings
 require separate chunks. Integration checks do not establish scientific
 equivalence between LigandMPNN and FoundryMPNN.
 
-Some CPU blocks use host tools rather than a container. For example,
-`ligand_ddg` needs Rosetta and, for its bundled Holes metric, DAlphaBall: set
-`ROSETTA_BIN` and `DALPHABALL_BIN`. Its Rosetta protocol, flags, and bundled ligand
-parameter files are included in the wheel and source distribution.
+### Host tools and external assets
+
+The definitions cover scientific images, while other blocks execute in the host
+Python environment or call separately installed tools. A complete recipe catalog
+does not make every block runnable without these task-specific dependencies:
+
+| Dependency | Host configuration |
+|---|---|
+| PyRosetta | Install separately and set `PYROSETTA_PATH` when needed. |
+| Rosetta and DAlphaBall | Set `ROSETTA_BIN` and `DALPHABALL_BIN` for `ligand_ddg`, including its Holes metric. The Rosetta protocol, flags and bundled ligand parameters ship with Chaperone. |
+| HBPLUS and Dunbrack data | Set `HBPLUS_COPY` and `DUNBRACK_LIBRARY_COPY` for blocks using those resources. |
+| Foldseek and US-align | Install the binaries; configure `FOLDSEEK_EXEC` and `USALIGN_BIN` when they are not found on `PATH`. |
+| DSSR and SNAP | Configure `X3DNA_BIN_DIR` and `X3DNA_DIR` for your separately installed 3DNA tools. |
+| ViennaRNA | Install its Python `RNA` module for the blocks that use it. |
+| PLIP and OpenBabel | Install the relevant Python/native dependencies for interaction profiling; Chaperone offers a `plip` extra. |
+| CCD, model weights and databases | Supply the assets required by your selected blocks; image builds do not replace download, cache or access setup. |
+
+Use the [block reference](blocks-reference.md) for each block's prerequisites.
+Existing site images and specialized runtime/evaluation images are separate from
+the generated scientific recipe catalog.
 
 ### Chaperone host and agent runtime
 

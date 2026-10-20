@@ -76,6 +76,11 @@ On IPD, place your site-provided `.env.ipd` in the checkout root; it is loaded w
 
 Block containers are built on demand: `chaperone list-available` shows them and `chaperone install <name> ...` builds one (`/setup` does this for you). Model weights are separate; each block's entry in the block reference says what it needs.
 
+For manual Apptainer builds, download the [definitions and build contexts](containers/README.md)
+for all scientific images, including RFD3's `foundry.def` and AF3's `alphafold3.def`.
+The [container installation guide](docs/site/containers.md) covers model weights,
+required host tools and local/Slurm setup.
+
 # Overview
 
 <p align="center">

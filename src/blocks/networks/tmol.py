@@ -14,20 +14,21 @@
 #   * The AOT wheel carries precompiled `.so` kernels, so NO nvcc / CUDA toolkit
 #     is needed to install or run it -- only a matching torch and (for GPU) an
 #     NVIDIA driver supplied at runtime via apptainer `--nv`.
-#   * Wheel lane: cu132 / torch 2.12, built for sm_80;86;89;90;120
-#     (Ampere->Hopper->Blackwell: A4000/A6000/A100/H100/B100/b4000).
-#     Upgraded from cu128/torch2.8 (no sm_120) to add Blackwell support.
+#   * Use the cu128 / torch 2.10 release lane built against public pip torch,
+#     supporting sm_80;86;89;90. The cu132/torch2.12 lane uses NGC's bundled
+#     torch and fails with an undefined torch::Library symbol against pip2.12.
+#     This lane is not a verified Blackwell/sm_120 runtime.
 import json
 import logging
 from pathlib import Path
 
 from pydantic import Field
 
+from blocks.constants import cuda_python_base
 from chaperone import CompiledBlockFunction, JobArgs, PipelineDataHandler
 from chaperone.block_config import ScriptSpec
 from chaperone.containers import Image
 from chaperone.data.schema import make_row
-from blocks.constants import cuda_python_base
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,12 @@ RUN_TMOL_PATH = Path(__file__).parent.parent / "scripts" / "run_tmol.py"
 TMOL_VERSION = "0.1.35"
 TMOL_WHEEL = (
     "https://github.com/uw-ipd/tmol/releases/download/"
-    f"v{TMOL_VERSION}/tmol-{TMOL_VERSION}+cu132torch2.12-cp312-cp312-linux_x86_64.whl"
+    f"v{TMOL_VERSION}/tmol-{TMOL_VERSION}+cu128torch2.10-cp312-cp312-linux_x86_64.whl"
 )
 
 TMOL_CONTAINER = (
     # cuda_install=[] skips the ~5-6GB system CUDA toolkit: the AOT wheel needs
-    # no nvcc, the torch cu132 wheel bundles its own CUDA runtime libs, and
+    # no nvcc, the torch cu128 wheel bundles its own CUDA runtime libs, and
     # libcuda is injected from the host driver via apptainer `--nv`.
     cuda_python_base(Image("tmol"), "tmol", cuda_install=[])
     # X11 runtime libs required by openbabel (the `[ligand]` extra) -- its format
@@ -52,18 +53,19 @@ TMOL_CONTAINER = (
     )
     .run(
         ". /opt/tmol-env/bin/activate && "
-        "pip install torch==2.12.0 --index-url https://download.pytorch.org/whl/cu132 && "
+        "pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cu128 && "
         # Direct-URL install of the prebuilt AOT wheel (skips the sdist build
         # backend); `[ligand]` pulls openbabel-wheel for ligand support. torch is
-        # already satisfied, so pip will not pull a CPU torch over the cu132 one.
-        f"pip install 'tmol[ligand] @ {TMOL_WHEEL}'"
+        # already satisfied, so pip will not pull a CPU torch over the cu128 one.
+        f"pip install 'tmol[ligand] @ {TMOL_WHEEL}' && "
+        "python -c 'import torch, tmol; from tmol.io import pose_stack_from_biotite; assert torch.__version__.startswith(\"2.10.0\")'"
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(PYTORCH_ALLOC_CONF="expandable_segments:True")
     .label(
         Version=TMOL_VERSION,
-        CUDA="13.2",
-        Torch="2.12.0",
+        CUDA="12.8",
+        Torch="2.10.0",
         Source="https://github.com/uw-ipd/tmol",
     )
     .runscript('"$@"')

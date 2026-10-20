@@ -1,0 +1,101 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        cmake \
+        curl \
+        git \
+        gnupg \
+        libx11-6 \
+        libxau6 \
+        libxext6 \
+        libxrender1 \
+        ninja-build \
+        patch \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        wget \
+        zlib1g-dev
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/alphafold3/repos/0/alphafold3 /opt/alphafold3
+
+%files
+    sources/alphafold3/files/0/run_alphafold_AF.py /opt/chaperone-build-smoke/run_alphafold_AF.py
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    cd /opt/alphafold3 && git checkout --detach 71e671112ab5f287fdabd3ce86b5d05805dd0d81
+
+%post
+    cd /
+    mkdir -p /opt/hmmer_build /usr/local/hmmer
+    wget http://eddylab.org/software/hmmer/hmmer-3.4.tar.gz -P /opt/hmmer_build
+    cd /opt/hmmer_build && echo 'ca70d94fd0cf271bd7063423aabb116d42de533117343a9b27a65c17ff06fbf3 hmmer-3.4.tar.gz' | sha256sum --check
+    cd /opt/hmmer_build && tar zxf hmmer-3.4.tar.gz && rm hmmer-3.4.tar.gz
+    cd /opt/hmmer_build && patch -p0 < /opt/alphafold3/docker/jackhmmer_seq_limit.patch
+    cd /opt/hmmer_build/hmmer-3.4 && ./configure --prefix /usr/local/hmmer && make -j16 && make install
+    cd /opt/hmmer_build/hmmer-3.4/easel && make install
+    rm -rf /opt/hmmer_build
+
+%post
+    cd /
+    python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24
+    cd /opt/alphafold3 && UV_PROJECT_ENVIRONMENT=/opt/af3-env /opt/uv-env/bin/uv sync --frozen --no-dev --no-editable
+    /opt/uv-env/bin/uv pip check --python /opt/af3-env/bin/python
+    /opt/af3-env/bin/build_data
+
+%post
+    cd /
+    for d in /opt/af3-env/lib/python3.12/site-packages/nvidia/*/lib; do for f in "$d"/*.so*; do [ -f "$f" ] && ln -sf "$f" /usr/local/cuda/lib64/; done; done
+    echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cuda_runtime/lib > /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cublas/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cusparse/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cudnn/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cufft/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/cusolver/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/nccl/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /opt/af3-env/lib/python3.12/site-packages/nvidia/nvjitlink/lib >> /etc/ld.so.conf.d/nvidia-pip.conf && echo /usr/local/cuda/lib64 >> /etc/ld.so.conf.d/nvidia-pip.conf && ldconfig
+
+%post
+    cd /
+    JAX_PLATFORMS=cpu /opt/af3-env/bin/python -c "import runpy; runpy.run_path('/opt/chaperone-build-smoke/run_alphafold_AF.py', run_name='chaperone_build_smoke')"
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/opt/af3-env/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cublas/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cusparse/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cudnn/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cufft/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cusolver/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/nccl/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/nvjitlink/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/af3-env/bin:/usr/local/cuda/bin:/usr/local/hmmer/bin:$PATH
+    export TF_ENABLE_ONEDNN_OPTS=0
+    export VIRTUAL_ENV=/opt/af3-env
+    export XLA_CLIENT_MEM_FRACTION=0.95
+    export XLA_FLAGS=--xla_gpu_enable_triton_gemm=false
+    export XLA_PYTHON_CLIENT_PREALLOCATE=true
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/opt/af3-env/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cublas/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cusparse/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cudnn/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cufft/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/cusolver/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/nccl/lib:/opt/af3-env/lib/python3.12/site-packages/nvidia/nvjitlink/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/af3-env/bin:/usr/local/cuda/bin:/usr/local/hmmer/bin:$PATH
+    export TF_ENABLE_ONEDNN_OPTS=0
+    export VIRTUAL_ENV=/opt/af3-env
+    export XLA_CLIENT_MEM_FRACTION=0.95
+    export XLA_FLAGS=--xla_gpu_enable_triton_gemm=false
+    export XLA_PYTHON_CLIENT_PREALLOCATE=true
+
+%labels
+    CUDA 12.8-toolkit/12.9-wheels
+    Version 71e671112ab5f287fdabd3ce86b5d05805dd0d81
+
+%runscript
+    exec "$@"

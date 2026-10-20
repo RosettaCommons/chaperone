@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Container
 ###########################################################################
 
+OPENFOLD3_REVISION = "0d25195edec495f3e0e94fd68be86d4458c246e7"
 OPENFOLD3_CONTAINER = (
     Image("openfold3")
     .base_image("ubuntu:24.04")
@@ -56,7 +57,16 @@ OPENFOLD3_CONTAINER = (
     )
     .git_clone("https://github.com/aqlaboratory/openfold-3.git", "/opt/openfold3")
     .run(
-        ". /opt/openfold3-env/bin/activate && cd /opt/openfold3 && pip install .",
+        f"git -C /opt/openfold3 checkout --detach {OPENFOLD3_REVISION}",
+        # Biotite 1.8 makes AtomArray a Sequence; Lightning then reconstructs it
+        # as a list during device transfer. Match this revision's upstream lock.
+        ". /opt/openfold3-env/bin/activate && cd /opt/openfold3 && pip install . 'biotite==1.7.1' && pip check",
+        "/opt/openfold3-env/bin/python -c 'import torch; "
+        "from biotite.structure import AtomArray; "
+        "from lightning_fabric.utilities.apply_func import move_data_to_device; "
+        "atoms = AtomArray(65); "
+        'result = move_data_to_device({"atoms": atoms, "tensor": torch.ones(1)}, "cpu"); '
+        'assert result["atoms"] is atoms; assert result["tensor"].device.type == "cpu"\'',
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/*")
     .env(
@@ -65,7 +75,7 @@ OPENFOLD3_CONTAINER = (
         LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH",
         VIRTUAL_ENV="/opt/openfold3-env",
     )
-    .label(Version="0.4.0", CUDA="12.6")
+    .label(Version=OPENFOLD3_REVISION, CUDA="12.6", Biotite="1.7.1")
     .runscript('"$@"')
     .template_command(
         exec_mode="exec",
@@ -148,7 +158,8 @@ class OpenFold3Block(AF3LikePredictionBlock):
             self.cache_dir = str(Path(self.cache_dir).expanduser().resolve())
             env["OPENFOLD_CACHE"] = self.cache_dir
         return self._script_spec.image.build_command(
-            *self._script_spec.command, env=env or None,
+            *self._script_spec.command,
+            env=env or None,
             binds=[(self.cache_dir, self.cache_dir)] if self.cache_dir else [],
         )
 
@@ -175,7 +186,9 @@ class OpenFold3Block(AF3LikePredictionBlock):
     def create_command(self, handler, sandbox_dir, chunk_id) -> list[str]:
         sandbox_dir, inputdir, outputdir = self._setup_io_dirs(sandbox_dir)
         if self.cache_dir:
-            Path(self.cache_dir).expanduser().resolve().mkdir(parents=True, exist_ok=True)
+            Path(self.cache_dir).expanduser().resolve().mkdir(
+                parents=True, exist_ok=True
+            )
 
         # Build the queries dict with one entry per design
         queries = {}

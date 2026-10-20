@@ -1,0 +1,49 @@
+BootStrap: docker
+From: nvidia/cuda:12.8.0-runtime-ubuntu24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        hhsuite \
+        kalign \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    wget -q -O /tmp/miniforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+    bash /tmp/miniforge.sh -b -p /opt/conda && rm /tmp/miniforge.sh
+    /opt/conda/bin/conda install -y python=3.13
+    /opt/conda/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
+
+%post
+    cd /
+    /opt/conda/bin/pip install --no-cache-dir "colabfold[alphafold] @ git+https://github.com/sokrypton/ColabFold@v1.6.1"
+    /opt/conda/bin/pip install --no-cache-dir "jax[cuda12]>=0.5.2"
+    /opt/conda/bin/conda install -y -c conda-forge openmm pdbfixer
+    echo "/opt/conda/lib" > /etc/ld.so.conf.d/conda.conf && ldconfig
+    /opt/conda/bin/conda clean -a -y
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export LD_LIBRARY_PATH=/opt/conda/lib:$LD_LIBRARY_PATH
+    export PATH=/opt/conda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+%post
+    export LD_LIBRARY_PATH=/opt/conda/lib:$LD_LIBRARY_PATH
+    export PATH=/opt/conda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+
+%labels
+    CUDA 12.8
+    Python 3.13
+    Version colabfold-v1.6.1
+
+%runscript
+    exec "$@"

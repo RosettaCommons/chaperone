@@ -58,13 +58,22 @@ METAL3D_CONTAINER = (
         # version still compiled against numpy 1.x (torch 2.2.x); newer
         # torch wheels bundle numpy-2-compiled extensions that re-trip
         # the ABI mismatch above.
-        "pip install --no-cache-dir 'torch==2.2.*' 'numpy<2' "
+        # Downgrading Miniforge's base Python can unlink its preinstalled
+        # noarch tqdm without reinstalling it for Python 3.10. Install a
+        # different pinned version through this interpreter's pip explicitly.
+        "python -m pip install --no-cache-dir 'torch==2.2.*' 'numpy<2' 'tqdm==4.67.1' "
         "--index-url https://download.pytorch.org/whl/cu121 "
         "--extra-index-url https://pypi.org/simple",
     )
     .git_clone(
         "https://github.com/lcbc-epfl/metal-site-prediction.git",
         "/opt/metal-site-prediction",
+    )
+    .run(
+        'python -c "import sys, types; '
+        "sys.path.insert(0, '/opt/metal-site-prediction/Metal3D'); "
+        "sys.modules['py3Dmol'] = types.ModuleType('py3Dmol'); "
+        'from utils import helpers, voxelization; from utils.model import Model"'
     )
     .run("apt-get clean && rm -rf /var/lib/apt/lists/* /root/.cache")
     .env(

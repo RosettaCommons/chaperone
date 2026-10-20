@@ -1,0 +1,69 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    python3.12 -m venv /opt/chai1-env
+    . /opt/chai1-env/bin/activate && pip install --upgrade pip setuptools wheel
+
+%post
+    cd /
+    . /opt/chai1-env/bin/activate && pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+
+%post
+    cd /
+    . /opt/chai1-env/bin/activate && pip install --no-deps 'chai_lab==0.6.1' && pip install packaging
+    /opt/chai1-env/bin/python -c 'exec("\nimport importlib.metadata as metadata\nimport subprocess\nimport sys\nfrom packaging.requirements import Requirement\nrequirements = [value for value in metadata.requires('"'"'chai_lab'"'"') if Requirement(value).name != '"'"'torch'"'"']\nsubprocess.run([sys.executable, '"'"'-m'"'"', '"'"'pip'"'"', '"'"'install'"'"', *requirements, '"'"'numpy==1.26.4'"'"', '"'"'torch==2.7.1'"'"'], check=True)\n")'
+
+%post
+    cd /
+    /opt/chai1-env/bin/python -c 'exec("\nimport subprocess\nimport sys\nresult = subprocess.run([sys.executable, '"'"'-m'"'"', '"'"'pip'"'"', '"'"'check'"'"'], capture_output=True, text=True)\nprint(result.stdout, end='"'"''"'"')\nprint(result.stderr, end='"'"''"'"', file=sys.stderr)\nexpected = '"'"'chai-lab 0.6.1 has requirement torch<2.7,>=2.3.1, but you have torch 2.7.1+cu128.'"'"'\nif result.returncode != 1 or result.stdout.strip().splitlines() != [expected]:\n    raise RuntimeError('"'"'Unexpected Chai dependency conflict; only the documented Torch 2.7.1/cu128 override is allowed'"'"')\nprint('"'"'Accepted documented Chai 0.6.1 Torch override for Blackwell; all other dependencies checked'"'"')\n")'
+    /opt/chai1-env/bin/python -c 'import torch; from chai_lab.chai1 import run_inference; assert torch.version.cuda == "12.8"'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/chai1-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/chai1-env
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/chai1-env/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/chai1-env
+
+%labels
+    CUDA 12.8
+    DependencyOverride chai_lab-0.6.1_torch-lt2.7_override-2.7.1-cu128
+    PyTorch 2.7.1
+    Version 0.6.1
+
+%runscript
+    exec "$@"

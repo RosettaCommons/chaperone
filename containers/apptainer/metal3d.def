@@ -1,0 +1,44 @@
+BootStrap: docker
+From: condaforge/miniforge3:latest
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/metal3d/repos/0/metal-site-prediction /opt/metal-site-prediction
+
+%post
+    cd /
+    mamba install -n base -y -c acellera -c conda-forge python=3.10 moleculekit=1.6.9 pdb2pqr openbabel rdkit 'numpy<2' 'scipy<1.13' 'scikit-learn<1.4' biopython tqdm && mamba clean -afy
+    python -m pip install --no-cache-dir 'torch==2.2.*' 'numpy<2' 'tqdm==4.67.1' --index-url https://download.pytorch.org/whl/cu121 --extra-index-url https://pypi.org/simple
+
+%post
+    cd /
+    python -c "import sys, types; sys.path.insert(0, '/opt/metal-site-prediction/Metal3D'); sys.modules['py3Dmol'] = types.ModuleType('py3Dmol'); from utils import helpers, voxelization; from utils.model import Model"
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/* /root/.cache
+
+%environment
+    export METAL3D_REPO=/opt/metal-site-prediction
+    export PYTHONPATH=/opt/metal-site-prediction/Metal3D
+%post
+    export METAL3D_REPO=/opt/metal-site-prediction
+    export PYTHONPATH=/opt/metal-site-prediction/Metal3D
+
+%labels
+    Source lcbc-epfl/metal-site-prediction
+    Version metal3d-2022.08
+
+%runscript
+    exec "$@"

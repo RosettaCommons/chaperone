@@ -1,0 +1,76 @@
+BootStrap: docker
+From: ubuntu:24.04
+%post
+    . /.singularity.d/env/10-docker*.sh
+
+%post
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        python3-pip \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+%files
+    sources/disco/repos/0/DISCO /opt/disco
+
+%post
+    cd /
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+    apt-get update && apt-get install -y cuda-toolkit-12-8
+
+%post
+    cd /
+    python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24
+
+%post
+    cd /
+    git -C /opt/disco checkout --detach 398098c57e3f1dd6dd6205c059f7792dcc9b9147
+    python3.12 -c 'exec('"'"'\nfrom pathlib import Path\npath = Path(\'"'"'/opt/disco/runner/inference.py\'"'"')\nsource = path.read_text()\nold = \'"'"'os.environ["TORCH_CUDA_ARCH_LIST"] = "8.0,8.9"\'"'"'\nif source.count(old) != 1:\n    raise RuntimeError(\'"'"'DISCO CUDA architecture assignment changed; review the pinned source\'"'"')\npath.write_text(source.replace(old, \'"'"'os.environ["TORCH_CUDA_ARCH_LIST"] = (os.environ.get("TORCH_CUDA_ARCH_LIST") or ".".join(map(str, torch.cuda.get_device_capability(self.device)))).replace(",", ";")\'"'"'))\n'"'"')'
+    python3.12 -c 'from pathlib import Path; p = Path('"'"'/opt/disco/pyproject.toml'"'"'); p.write_text(p.read_text() + '"'"'\n[tool.uv]\nconstraint-dependencies = ["torch==2.11.0", "deepspeed==0.19.3", "lightning==2.6.5", "transformers==4.57.6", "numpy==1.26.4"]\n[[tool.uv.index]]\nname = "pytorch-cu128"\nurl = "https://download.pytorch.org/whl/cu128"\nexplicit = true\n[tool.uv.sources.torch]\nindex = "pytorch-cu128"\n'"'"')'
+    cd /opt/disco && /opt/uv-env/bin/uv sync --python python3.12
+    /opt/uv-env/bin/uv pip check --python /opt/disco/.venv/bin/python
+
+%post
+    cd /
+    git init /opt/cutlass && git -C /opt/cutlass remote add origin https://github.com/NVIDIA/cutlass.git && git -C /opt/cutlass fetch --depth 1 origin bd01dd3651330accacb8083aedfac3bf522f25e5 && git -C /opt/cutlass checkout --detach FETCH_HEAD
+
+%post
+    cd /
+    /opt/disco/.venv/bin/python -c 'exec("\nfrom transformers import EsmConfig, EsmForMaskedLM\nconfig = EsmConfig(vocab_size=33, hidden_size=16, num_hidden_layers=2, num_attention_heads=2, intermediate_size=32, position_embedding_type='"'"'rotary'"'"', pad_token_id=1, mask_token_id=32)\nmodel = EsmForMaskedLM(config)\nexpected = {f'"'"'esm.encoder.layer.{i}.attention.self.rotary_embeddings.inv_freq'"'"' for i in range(2)}\nobserved = {key for key in model.state_dict() if key.endswith('"'"'rotary_embeddings.inv_freq'"'"')}\nif observed != expected:\n    raise RuntimeError(f'"'"'ESM rotary buffer layout is incompatible with the DISCO checkpoint: {observed}'"'"')\nmodel.load_state_dict(model.state_dict(), strict=True)\n")'
+    /opt/disco/.venv/bin/python -c 'exec("\nimport os\nfrom deepspeed.ops.op_builder.builder import CUDAOpBuilder\nclass ArchitectureCheck(CUDAOpBuilder):\n    def absolute_name(self):\n        return '"'"'architecture_check'"'"'\n    def sources(self):\n        return []\nfor arch, expected in [('"'"'8.6'"'"', '"'"'8.6+PTX'"'"'), ('"'"'12.0'"'"', '"'"'12.0+PTX'"'"'), ('"'"'8.0;8.9'"'"', '"'"'8.0;8.9+PTX'"'"')]:\n    builder = ArchitectureCheck('"'"'architecture_check'"'"')\n    builder.jit_mode = True\n    builder._jit_arch_list = arch\n    builder.compute_capability_args()\n    assert os.environ['"'"'TORCH_CUDA_ARCH_LIST'"'"'] == expected\n")'
+    cd /opt/disco && CUDA_HOME=/usr/local/cuda CUTLASS_PATH=/opt/cutlass /opt/disco/.venv/bin/python -c 'import torch; import runner.inference; assert torch.version.cuda == "12.8"; print(torch.__version__)'
+
+%post
+    cd /
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export CUDA_HOME=/usr/local/cuda
+    export CUTLASS_PATH=/opt/cutlass
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/disco/.venv/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/disco/.venv
+%post
+    export CUDA_HOME=/usr/local/cuda
+    export CUTLASS_PATH=/opt/cutlass
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/opt/disco/.venv/bin:/usr/local/cuda/bin:$PATH
+    export VIRTUAL_ENV=/opt/disco/.venv
+
+%labels
+    CUDA 12.8
+    PyTorch 2.11.0
+    Version 398098c57e3f1dd6dd6205c059f7792dcc9b9147
+
+%runscript
+    exec "$@"
