@@ -1,8 +1,9 @@
 # <img src="docs/site/.assets/icon.png" alt="Chaperone icon" width="48" align="absmiddle"> Chaperone: A Reliable and Efficient Protein Design Toolset Harness
 
+Read the report: [Reliable and Efficient Agentic Protein Design with Toolset Harnessing (PDF)](docs/chaperone-report.pdf).
+
 <p align="center">
-  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design workflows, model benchmarks, model development" width="100%">
-  <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
+  <img src="docs/site/.assets/chaperone-cover.png" alt="A design agent uses the Chaperone harness of blocks, examples, and skills to turn molecular inputs and design tasks into small-molecule binders, nanoparticles, and protein crystals." width="100%">
 </p>
 
 Chaperone is a unified framework for making structural biology tools interoperable.
@@ -76,6 +77,11 @@ On IPD, place your site-provided `.env.ipd` in the checkout root; it is loaded w
 Block containers are built on demand: `chaperone list-available` shows them and `chaperone install <name> ...` builds one (`/setup` does this for you). Model weights are separate; each block's entry in the block reference says what it needs.
 
 # Overview
+
+<p align="center">
+  <img src="docs/site/.assets/overview.png" alt="Overview of Chaperone: design workflows, model benchmarks, model development" width="100%">
+  <figcaption>Figure 1: Overview of the uses of Chaperone. Left-to-right: Design, analysis, and on-the-fly benchmarking.</figcaption>
+</p>
 
 Chaperone is a general framework for making structural biology tools interoperable. It is explicitly built as a *very simple* harness on top of tools: each tool is a **block** with a self-contained dataframe-in, dataframe-out API. Structure lineage, metrics, and metadata propagate automatically — so you can chain tools together, filter, analyse, and scale without manual bookkeeping.
 
@@ -409,3 +415,23 @@ No, in order to initialize claude properly you should start claude code from the
 
 **Q: How do I add a new tool/block?**
 Use the `/build-block` skill in Claude Code, or see the [block development guide](.agents/skills/build-block/SKILL.md) for the manual process.
+
+# Citation
+
+If you use Chaperone in your research, please cite the [report](docs/chaperone-report.pdf):
+
+```bibtex
+@misc{butcher2026chaperone,
+  title = {Reliable and Efficient Agentic Protein Design with Toolset Harnessing},
+  author = {Butcher, Jasper and Chen, Jie and Hunt, Andrew and Haas, Cyrus M.
+            and Dai, Wenzhao and Sharma, Shajesh and Mitra, Raktim and Salike, Saman
+            and Koob, Jeremy and Muraishi, Aiko and Li, Zhe and Pyles, Harley
+            and Tyka, Michael D. and Bauer, Magnus S. and Brent, Rafi I.
+            and Mittal, Anant and King, Neil P. and Baker, David},
+  year = {2026},
+  howpublished = {Technical report},
+  url = {https://github.com/RosettaCommons/chaperone/blob/main/docs/chaperone-report.pdf}
+}
+```
+
+<p align="center"><em>Chaperone: helping you fold your proteins</em></p>
