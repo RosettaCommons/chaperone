@@ -27,6 +27,8 @@ From: ubuntu:24.04
     apt-get install -y /tmp/apptainer.deb
     rm /tmp/apptainer.deb
     python3 -m venv /opt/chaperone/.venv
+    /opt/chaperone/.venv/bin/pip install --no-cache-dir --upgrade 'pip>=26.2.2'
+    /opt/chaperone/.venv/bin/pip install --no-cache-dir --upgrade 'pip>=26.2.2'
     # The controller orchestrates GPU work in separate model containers.
     /opt/chaperone/.venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
     # Host-side helpers required by the evaluation controller runtime probe.

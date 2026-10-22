@@ -49,7 +49,7 @@ BOLTZ2_CONTAINER = (
     .run(*CUDA_INSTALL)
     .run(
         "python3.12 -m venv /opt/boltz2-env",
-        ". /opt/boltz2-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/boltz2-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         ". /opt/boltz2-env/bin/activate && "

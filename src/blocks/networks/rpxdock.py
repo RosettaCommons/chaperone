@@ -48,6 +48,7 @@ RPXDOCK_CONTAINER = (
     )
     .run(
         "python3 -m venv /opt/rpx-env",
+        "/opt/rpx-env/bin/pip install --upgrade 'pip>=26.2.2'",
         f"git clone https://github.com/willsheffler/willutil.git /opt/willutil && cd /opt/willutil && git checkout {WILLUTIL_REVISION}",
         f"git clone https://github.com/willsheffler/rpxdock.git /opt/rpxdock && cd /opt/rpxdock && git checkout {RPX_REVISION}",
         "/opt/rpx-env/bin/pip install 'numpy==1.26.4' 'mdtraj==1.11.0' -e /opt/willutil",

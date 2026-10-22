@@ -99,7 +99,8 @@ DISCO_CONTAINER = (
         ),
     )
     .run(
-        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24",
+        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install --upgrade 'pip>=26.2.2' && "
+        "/opt/uv-env/bin/pip install uv==0.13.4",
     )
     .git_clone(
         "https://github.com/DISCO-design/DISCO.git",

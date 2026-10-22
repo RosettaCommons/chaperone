@@ -88,7 +88,7 @@ PROTEIN_HUNTER_CONTAINER = (
     .run(
         "python3.10 -m venv /opt/protein-hunter-env",
         ". /opt/protein-hunter-env/bin/activate && "
-        "pip install --no-cache-dir --upgrade pip setuptools wheel",
+        "pip install --no-cache-dir --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         # CUDA 12.8 is required for Blackwell (sm_120). Keep the wheel and

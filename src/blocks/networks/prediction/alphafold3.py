@@ -102,7 +102,8 @@ ALPHAFOLD3_CONTAINER = (
     # Flax/Qwix versions independently can import APIs missing from JAX even
     # when pip accepts their declared dependency ranges.
     .run(
-        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install uv==0.9.24",
+        "python3.12 -m venv /opt/uv-env && /opt/uv-env/bin/pip install --upgrade 'pip>=26.2.2' && "
+        "/opt/uv-env/bin/pip install uv==0.13.4",
         "cd /opt/alphafold3 && UV_PROJECT_ENVIRONMENT=/opt/af3-env "
         "/opt/uv-env/bin/uv sync --frozen --no-dev --no-editable",
         "/opt/uv-env/bin/uv pip check --python /opt/af3-env/bin/python",

@@ -84,7 +84,7 @@ _FOUNDRY_CUDA_CONTAINER = (
     .run(*CUDA_INSTALL)
     .run(
         "python3.12 -m venv /opt/foundry-env",
-        ". /opt/foundry-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/foundry-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
         # Match CUDA12 RF3 operators and the toolkit used to compile Apex.
         ". /opt/foundry-env/bin/activate && pip install torch==2.11.0 "
         "--index-url https://download.pytorch.org/whl/cu128",
@@ -160,7 +160,7 @@ _FOUNDRY_PUBLIC_CONTAINER = (
     )
     .run(
         "python3.12 -m venv /opt/foundry-env",
-        ". /opt/foundry-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/foundry-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
         ". /opt/foundry-env/bin/activate && pip install torch==2.11.0 "
         "--index-url https://download.pytorch.org/whl/cpu",
     )

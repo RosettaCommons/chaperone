@@ -61,7 +61,7 @@ SIMPLEFOLD_CONTAINER = (
     .run(*make_cuda_install("12-8"))
     .run(
         "python3.12 -m venv /opt/simplefold-env",
-        ". /opt/simplefold-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/simplefold-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         ". /opt/simplefold-env/bin/activate && "

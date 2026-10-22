@@ -86,7 +86,7 @@ BINDCRAFT_CONTAINER = (
     .run(
         "python3.10 -m venv /opt/bindcraft-env",
         "/opt/bindcraft-env/bin/pip install --no-cache-dir "
-        "--upgrade pip setuptools wheel",
+        "--upgrade 'pip>=26.2.2' setuptools wheel",
         "/opt/bindcraft-env/bin/pip install --no-cache-dir "
         f"'jax[cuda12]=={_JAX_VERSION}' {_PYTHON_PACKAGES}",
         "/opt/bindcraft-env/bin/pip install --no-cache-dir "

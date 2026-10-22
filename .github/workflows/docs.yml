@@ -32,7 +32,9 @@ jobs:
           cache: pip
           cache-dependency-path: docs/requirements.txt
       - name: Install documentation dependencies
-        run: python -m pip install -r docs/requirements.txt
+        run: |
+          python -m pip install --upgrade "pip>=26.2.2"
+          python -m pip install -r docs/requirements.txt
       - name: Build documentation
         run: |
           test -s docs/site/stylesheets/claude.css

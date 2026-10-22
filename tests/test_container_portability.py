@@ -474,7 +474,7 @@ def test_af3_build_uses_upstream_lock_and_checks_runner_imports():
     from blocks.networks.prediction.alphafold3 import ALPHAFOLD3_CONTAINER
     definition = ALPHAFOLD3_CONTAINER.to_dockerfile()
     assert "git checkout --detach 71e671112ab5f287fdabd3ce86b5d05805dd0d81" in definition
-    assert "uv==0.9.24" in definition
+    assert "uv==0.13.4" in definition
     assert "uv sync --frozen --no-dev --no-editable" in definition
     assert "uv pip check --python /opt/af3-env/bin/python" in definition
     assert "jax[cuda12]>=0.5.0" not in definition

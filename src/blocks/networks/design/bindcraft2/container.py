@@ -18,7 +18,7 @@ BINDCRAFT2_CONTAINER = (
         "git clone https://github.com/PacesaLab/BindCraft2.git /opt/bindcraft2",
         f"git -C /opt/bindcraft2 checkout --detach {BINDCRAFT2_REVISION}",
         "python3.12 -m venv /opt/bindcraft2-env",
-        "/opt/bindcraft2-env/bin/pip install --upgrade pip setuptools wheel",
+        "/opt/bindcraft2-env/bin/pip install --upgrade 'pip>=26.2.2' setuptools wheel",
         "/opt/bindcraft2-env/bin/pip install -e '/opt/bindcraft2[cuda12]' 'jax[cuda12]==0.11.0' biotite==1.6.0 numpy==2.4.3",
         # The JAX wheels carry CUDA libraries; make them visible to the loader.
         "/opt/bindcraft2-env/bin/python -c \"import nvidia, pathlib; print('\\n'.join(sorted(str(p) for root in nvidia.__path__ for p in pathlib.Path(root).glob('*/lib'))))\" > /etc/ld.so.conf.d/bindcraft2-cuda.conf",
