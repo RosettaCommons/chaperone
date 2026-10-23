@@ -104,7 +104,7 @@ def cuda_python_base(
     venv = f"/opt/{env_name}-env"
     img = img.run(
         f"{python} -m venv {venv}",
-        f". {venv}/bin/activate && pip install --upgrade pip setuptools wheel",
+        f". {venv}/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     return cuda_venv_env(img, venv)
 

@@ -49,7 +49,7 @@ OPENFOLD3_CONTAINER = (
     .run(*CUDA_INSTALL)
     .run(
         "python3.12 -m venv /opt/openfold3-env",
-        ". /opt/openfold3-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/openfold3-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         ". /opt/openfold3-env/bin/activate && "

@@ -64,7 +64,7 @@ ESMFOLD2_CONTAINER = (
     .run(*make_cuda_install("13-0"))
     .run(
         "python3.12 -m venv /opt/esmfold2-env",
-        ". /opt/esmfold2-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/esmfold2-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         ". /opt/esmfold2-env/bin/activate && "

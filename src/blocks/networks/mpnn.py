@@ -224,7 +224,7 @@ LIGANDMPNN_CONTAINER = (
     .packages("build-essential", "git", "wget", "ca-certificates", "python3.12", "python3.12-dev", "python3.12-venv")
     .run(
         "python3.12 -m venv /opt/mpnn-env",
-        "/opt/mpnn-env/bin/pip install --upgrade pip setuptools wheel",
+        "/opt/mpnn-env/bin/pip install --upgrade 'pip>=26.2.2' setuptools wheel",
         "/opt/mpnn-env/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128",
         "/opt/mpnn-env/bin/pip install numpy==1.26.4 prody==2.6.1 scipy biopython ml-collections dm-tree",
     )

@@ -111,7 +111,7 @@ RFD1_CONTAINER = (
     .run(
         # Create venv
         "python3.12 -m venv /opt/rfd1-env",
-        ". /opt/rfd1-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/rfd1-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .git_clone(
         "https://github.com/RosettaCommons/RFdiffusion.git",

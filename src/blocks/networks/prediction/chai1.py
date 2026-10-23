@@ -66,7 +66,7 @@ CHAI1_CONTAINER = (
     .run(*CUDA_INSTALL)
     .run(
         "python3.12 -m venv /opt/chai1-env",
-        ". /opt/chai1-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/chai1-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         ". /opt/chai1-env/bin/activate && "

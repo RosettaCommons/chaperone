@@ -88,7 +88,7 @@ from blocks.constants import CUDA_INSTALL  # Only if GPU tool needs CUDA
     .run(*CUDA_INSTALL)  # Only if GPU tool
     .run(
         "python3.12 -m venv /opt/{tool_name}-env",
-        ". /opt/{tool_name}-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/{tool_name}-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         # Clone and install the tool

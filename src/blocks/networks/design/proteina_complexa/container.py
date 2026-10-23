@@ -57,7 +57,8 @@ COMPLEXA_CONTAINER = (
     )
     .run(
         "python3.12 -m venv /opt/complexa-env",
-        "/opt/complexa-env/bin/pip install uv==0.9.24",
+        "/opt/complexa-env/bin/pip install --upgrade 'pip>=26.2.2'",
+        "/opt/complexa-env/bin/pip install uv==0.13.4",
         "git init /opt/complexa && git -C /opt/complexa remote add origin https://github.com/NVIDIA-BioNeMo/Proteina-Complexa.git && "
         f"git -C /opt/complexa fetch --depth 1 origin {COMPLEXA_REVISION} && git -C /opt/complexa checkout --detach FETCH_HEAD",
         "/opt/complexa-env/bin/uv pip install --python /opt/complexa-env/bin/python torch==2.7.0+cu126 torchvision==0.22.0+cu126 torchaudio==2.7.0+cu126 --index-url https://download.pytorch.org/whl/cu126",

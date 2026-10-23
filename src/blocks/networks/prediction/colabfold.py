@@ -149,7 +149,7 @@ _COLABFOLD_PORTABLE_CONTAINER = (
         "bash /tmp/miniforge.sh -b -p /opt/conda && rm /tmp/miniforge.sh",
         # Pin the interpreter first so conda and pip share one Python.
         "/opt/conda/bin/conda install -y python=3.13",
-        "/opt/conda/bin/pip install --no-cache-dir --upgrade pip setuptools wheel",
+        "/opt/conda/bin/pip install --no-cache-dir --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     .run(
         # [alphafold] only: the [openmm] extra would replace conda's CUDA

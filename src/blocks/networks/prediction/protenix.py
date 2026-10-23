@@ -61,7 +61,7 @@ PROTENIX_CONTAINER = (
     )
     .run(
         "python3.12 -m venv /opt/protenix-env",
-        ". /opt/protenix-env/bin/activate && pip install --upgrade pip setuptools wheel",
+        ". /opt/protenix-env/bin/activate && pip install --upgrade 'pip>=26.2.2' setuptools wheel",
     )
     # Keep Protenix's declared versions together, selecting CUDA 12.8 wheels
     # explicitly. Blackwell inference still needs verification on that hardware.
