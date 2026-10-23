@@ -1,6 +1,6 @@
 # <img src="docs/site/.assets/icon.png" alt="Chaperone icon" width="48" align="absmiddle"> Chaperone: A Reliable and Efficient Protein Design Toolset Harness
 
-Read the report: [Reliable and Efficient Agentic Protein Design with Toolset Harnessing (PDF)](docs/chaperone-report.pdf).
+Read the paper: [Reliable and Efficient Agentic Protein Design with Toolset Harnessing (bioRxiv)](https://www.biorxiv.org/content/10.64898/2026.10.19.759896v1).
 
 <p align="center">
   <img src="docs/site/.assets/chaperone-cover.png" alt="A design agent uses the Chaperone harness of blocks, examples, and skills to turn molecular inputs and design tasks into small-molecule binders, nanoparticles, and protein crystals." width="100%">
