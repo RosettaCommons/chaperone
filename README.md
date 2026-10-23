@@ -423,7 +423,7 @@ Use the `/build-block` skill in Claude Code, or see the [block development guide
 
 # Citation
 
-If you use Chaperone in your research, please cite the [report](docs/chaperone-report.pdf):
+If you use Chaperone in your research, please cite the [bioRxiv preprint](https://www.biorxiv.org/content/10.64898/2026.10.19.759896v1):
 
 ```bibtex
 @misc{butcher2026chaperone,
@@ -434,8 +434,9 @@ If you use Chaperone in your research, please cite the [report](docs/chaperone-r
             and Tyka, Michael D. and Bauer, Magnus S. and Brent, Rafi I.
             and Mittal, Anant and King, Neil P. and Baker, David},
   year = {2026},
-  howpublished = {Technical report},
-  url = {https://github.com/RosettaCommons/chaperone/blob/main/docs/chaperone-report.pdf}
+  howpublished = {bioRxiv},
+  doi = {10.64898/2026.10.19.759896},
+  url = {https://www.biorxiv.org/content/10.64898/2026.10.19.759896v1}
 }
 ```
 
