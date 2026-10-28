@@ -71,3 +71,8 @@ nav:
   - Validation: validation.md
   - Evaluations: evaluations.md
   - Agent Skills: skills.md
+
+extra_javascript:
+  - path: https://scripts.simpleanalyticscdn.com/latest.js
+    async: true
+    defer: true
