@@ -46,10 +46,14 @@ def _pyrosetta_install_instructions() -> str:
         "If you already have PyRosetta, set PYROSETTA_PATH to its 'setup' "
         "directory (for example in .env.local). "
         "Otherwise install the helper with "
-        "uv pip install -e '.[pyrosetta]' --override overrides.txt "
-        "and then run "
+        "uv pip install -e '.[pyrosetta]' "
+        "and then run, from the activated environment, "
         'python -c "import pyrosetta_installer; '
-        'pyrosetta_installer.install_pyrosetta()".'
+        'pyrosetta_installer.install_pyrosetta()". '
+        "The installer shells out to bare 'pip', so the environment needs "
+        "one of its own (uv pip install pip); without it, 'pip' resolves "
+        "through PATH to another interpreter and PyRosetta is installed "
+        "where this module cannot import it."
     )
 
 

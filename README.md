@@ -70,7 +70,7 @@ Both paths should be inside this checkout.
 Optional extras:
 
 - **Jupyter kernel:** `python -m ipykernel install --user --name chaperone --display-name "Chaperone"`
-- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`. IPD users can supply an untracked `.env.ipd` pointing to their shared install.
+- **PyRosetta** (only for the blocks that need it): set `PYROSETTA_PATH=/path/to/pyrosetta/setup` in `.env.local`, or run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"` from the activated environment (the installer calls bare `pip`, so the venv needs one of its own — `uv pip install pip` if it was created without `--seed`). IPD users can supply an untracked `.env.ipd` pointing to their shared install.
 
 On IPD, place your site-provided `.env.ipd` in the checkout root; it is loaded when present and is not tracked in Git. Other systems do not need it. Configure your container directories, model weights, and Slurm settings in `.env.local` (or use `CHAPERONE_ENV_FILE=/absolute/path/to/site.env`). See [Slurm site configuration](docs/site/syntax.md#slurm-site-configuration) for partition and GPU mappings. The optional `CHAPERONE_SITE=digs` preset is for IPD shared infrastructure only.
 
