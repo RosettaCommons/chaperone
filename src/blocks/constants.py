@@ -26,10 +26,17 @@ def make_cuda_install(version: str = "12-8", *, ubuntu: str = "2404") -> list[st
     if ubuntu not in {"2204", "2404"}:
         raise ValueError(f"Unsupported CUDA Ubuntu repository: {ubuntu}")
     return [
+        # Disable pip's wheel cache image-wide (/etc/pip.conf is read inside the
+        # venvs too), so multi-GB torch wheels are not also kept in /root/.cache.
+        "printf '[global]\\nno-cache-dir = true\\n' > /etc/pip.conf",
         "mkdir -p /etc/apt/keyrings",
         f"curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{ubuntu}/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/nvidia-cuda.gpg",
         f'echo "deb [signed-by=/etc/apt/keyrings/nvidia-cuda.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{ubuntu}/x86_64 /" > /etc/apt/sources.list.d/cuda.list',
-        f"apt-get update && apt-get install -y cuda-toolkit-{version}",
+        # Cleanup must stay in this command group: ``run()`` joins a group into
+        # one RUN layer, so a later ``.run("apt-get clean ...")`` would only add
+        # whiteouts and leave the ~3.7GB .deb cache inside the CUDA layer.
+        f"apt-get update && apt-get install -y cuda-toolkit-{version}"
+        " && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb",
     ]
 
 
