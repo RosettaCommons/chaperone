@@ -30,7 +30,7 @@ python -c "import chaperone; print('chaperone OK')"
 
 If the venv doesn't exist, create and activate it:
 ```bash
-uv venv --python=3.12 --managed-python
+uv venv --seed --python=3.12 --managed-python
 source .venv/bin/activate
 ```
 
@@ -226,7 +226,8 @@ Present the results as a table showing what's set and what's missing. Then use `
 
 **For `PYROSETTA_PATH`** (PyRosetta-backed blocks):
 - This should point at the PyRosetta `setup/` directory (for example `/path/to/pyrosetta/setup`).
-- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]'` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"`.
+- At IPD this is configured by the supplied `.env.ipd` or the digs preset; elsewhere, either ask the user for their existing path and write it to `.env.local`, or install the helper extra with `uv pip install -e '.[pyrosetta]'` and then run `python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"` from the activated environment.
+- The installer shells out to bare `pip`, so the venv must contain one. Venvs created before this was fixed have no `pip` (uv does not seed one by default); run `uv pip install pip` in them first. Otherwise `pip` resolves through `PATH` to another interpreter, the install appears to succeed, and PyRosetta lands somewhere `blocks.utils.pyrosetta` cannot import it.
 
 Write any user-provided paths to `.env.local` using the same pattern as step 5:
 ```bash
