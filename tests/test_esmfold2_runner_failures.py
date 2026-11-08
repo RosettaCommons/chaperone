@@ -11,7 +11,10 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 
-def test_validation_revision_invalidates_old_partial_cache():
+@pytest.mark.parametrize(
+    "field", ["output_validation_version", "input_preparation_version"]
+)
+def test_revision_invalidates_old_partial_cache(field):
     from pydantic import ValidationError
 
     from blocks.networks.prediction.esmfold2 import ESMFold2Block
@@ -20,8 +23,8 @@ def test_validation_revision_invalidates_old_partial_cache():
 
     block = ESMFold2Block()
     config = block.model_dump(mode="json")
-    assert config.pop("output_validation_version") == 2
-    assert _extract_field_type(type(block).model_fields["output_validation_version"]) is None
+    assert config.pop(field) == 2
+    assert _extract_field_type(type(block).model_fields[field]) is None
     old_payload = [{
         "class": f"{block.__class__.__module__}.{block.__class__.__qualname__}",
         "config": config,
@@ -31,9 +34,9 @@ def test_validation_revision_invalidates_old_partial_cache():
     ).hexdigest()
     assert ExecutionEngine._cache_fingerprint([block]) != old_hash
     with pytest.raises(ValidationError):
-        ESMFold2Block(output_validation_version=1)
+        ESMFold2Block(**{field: 1})
     with pytest.raises(ValidationError):
-        block.output_validation_version = 1
+        setattr(block, field, 1)
 
 
 @pytest.mark.parametrize("failure", [None, "inference", "malformed"])
@@ -81,6 +84,7 @@ def test_runner_exit_status_covers_every_input(monkeypatch, tmp_path, capsys, fa
     esmfold2 = ModuleType("esm.models.esmfold2")
     esmfold2.EsmFold2Model = Model
     esmfold2.ESMFold2InputBuilder = Builder
+    esmfold2.load_ccd = dict
     for name in ("LigandInput", "ProteinInput", "StructurePredictionInput"):
         setattr(esmfold2, name, SimpleNamespace)
     esm.models = models

@@ -11,8 +11,11 @@ Spec JSON schema (written by ``ESMFold2Block.create_command``)::
     {
       "name": "design_0",
       "chains":  [{"id": "A", "sequence": "MSEQ..."}],
-      "ligands": [{"id": "B", "smiles": "N1C(=O)..."}]
+      "ligands": [{"id": "B", "smiles": "N1C(=O)...", "ccd": ["HEM"]}]
     }
+
+A ligand with ``ccd`` is folded from ESMFold2's CCD definition when its CCD has
+every code, and from ``smiles`` otherwise.
 
 Folds via the Biohub ESMFold2 Python API:
 ``ESMFold2InputBuilder().fold(model, StructurePredictionInput(...), ...)``.
@@ -57,7 +60,7 @@ def _configure_runtime_caches(outdir: Path, model: str) -> None:
             os.environ["ESMCFOLD_CCD_PATH"] = str(candidates[0])
 
 
-def _build_input(spec, builder_types):
+def _build_input(spec, builder_types, ccd_codes=()):
     """Build a StructurePredictionInput from a spec dict."""
     StructurePredictionInput, ProteinInput, LigandInput = builder_types
     sequences = []
@@ -70,7 +73,11 @@ def _build_input(spec, builder_types):
             ProteinInput(id=str(chain["id"]), sequence=chain["sequence"], msa=msa)
         )
     for lig in spec.get("ligands", []):
-        sequences.append(LigandInput(id=str(lig["id"]), smiles=lig["smiles"]))
+        ccd = lig.get("ccd")
+        if ccd and all(code in ccd_codes for code in ccd):
+            sequences.append(LigandInput(id=str(lig["id"]), ccd=list(ccd)))
+        else:
+            sequences.append(LigandInput(id=str(lig["id"]), smiles=lig["smiles"]))
     return StructurePredictionInput(sequences=sequences)
 
 
@@ -115,6 +122,7 @@ def main() -> int:
         LigandInput,
         ProteinInput,
         StructurePredictionInput,
+        load_ccd,
     )
     from esm.models import esmfold2 as esmfold2_module
     ESMFold2Model = _model_class(esmfold2_module)
@@ -133,6 +141,7 @@ def main() -> int:
     t0 = time.time()
     model = ESMFold2Model.from_pretrained(args.model).to("cuda").eval()
     builder = ESMFold2InputBuilder()  # loads ccd.pkl
+    ccd_codes = load_ccd()
     print(f"[setup] model ready in {time.time() - t0:.0f}s", flush=True)
 
     rows = []
@@ -143,7 +152,7 @@ def main() -> int:
             spec = json.loads(spec_file.read_text())
             name = spec.get("name", name)
             length = _seq_length(spec)
-            spi = _build_input(spec, builder_types)
+            spi = _build_input(spec, builder_types, ccd_codes)
             t = time.time()
             result = builder.fold(
                 model,

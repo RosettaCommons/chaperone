@@ -181,8 +181,8 @@ def _resolve_ligand(
        → ``("ccd", res_name)``
     4. RDKit geometry → SMILES, falling back to CCD-code → SMILES.
 
-    Oracles that cannot emit a raw CCD code (e.g. Chai-1/ESMFold2 FASTA, which
-    are SMILES-only) should pass the result through :func:`_ccd_to_smiles` /
+    Oracles that cannot emit a raw CCD code (e.g. Chai-1 FASTA, which is
+    SMILES-only) should pass the result through :func:`_ccd_to_smiles` /
     :func:`_resolve_ligand_smiles`.
     """
     specified_smiles = specified_smiles or {}
@@ -233,7 +233,7 @@ def _resolve_ligand_smiles(
     specified_ccd=None,
     disable_ccd_detection=False,
 ):
-    """Resolve a ligand to a SMILES string for SMILES-only oracles (Chai-1, ESMFold2).
+    """Resolve a ligand to a SMILES string for SMILES-only oracles (Chai-1).
 
     Uses the same canonical CCD-first precedence as :func:`_resolve_ligand`,
     converting any CCD descriptor to SMILES. Returns ``None`` if no SMILES could
@@ -723,18 +723,20 @@ def create_esmfold2_spec_from_design(
     """Create an ESMFold2 input spec dict from an atomworks atom array.
 
     ESMFold2's :class:`StructurePredictionInput` is built from
-    ``ProteinInput(id, sequence)`` and ``LigandInput(id, smiles)`` entries. This
-    helper extracts protein chains (single-sequence, no MSA) and ligand SMILES so
+    ``ProteinInput(id, sequence)`` and ``LigandInput(id, smiles | ccd)`` entries.
+    This helper extracts protein chains (single-sequence, no MSA) and ligands so
     the inner runner can reconstruct the input without touching biotite/atomworks.
 
     Ligand detection mirrors :func:`create_chai_fasta_from_design` (specified
     SMILES/CCD override, CCD-code auto-detection, then RDKit geometry → SMILES).
+    A ligand resolved to a CCD code also carries ``ccd``, which the runner uses
+    when ESMFold2's CCD has the code; its SMILES is the fallback.
     Non-protein polymers (DNA/RNA) are out of scope for ESMFold2 here and are
     skipped with a warning.
 
     Returns:
         dict: ``{"name": name, "chains": [{"id", "sequence"}],
-        "ligands": [{"id", "smiles"}]}``.
+        "ligands": [{"id", "smiles", "ccd"?}]}``.
     """
     spec = {"name": name, "chains": [], "ligands": []}
     added_chains = []
@@ -755,21 +757,25 @@ def create_esmfold2_spec_from_design(
     if not spec["chains"]:
         raise ValueError(f"No protein chain found in design {name!r} for ESMFold2.")
 
-    # Ligands as SMILES (ESMFold2 LigandInput)
+    # Ligands (ESMFold2 LigandInput)
     for res_name, ligand, source_chain in _iter_ligand_residues(
         atom_array, remove_ligands=remove_ligands
     ):
-        smiles = _resolve_ligand_smiles(
+        kind, value = _resolve_ligand(
             res_name,
             ligand,
             specified_smiles=specified_smiles,
             specified_ccd=specified_ccd,
             disable_ccd_detection=disable_ccd_detection,
         )
+        smiles = value if kind == "smiles" else _ccd_to_smiles(value)
 
         if smiles:
             chain_id = _next_ligand_chain_id(added_chains, source_chain=source_chain)
-            spec["ligands"].append({"id": str(chain_id), "smiles": smiles})
+            entry = {"id": str(chain_id), "smiles": smiles}
+            if kind == "ccd":
+                entry["ccd"] = [value]
+            spec["ligands"].append(entry)
             added_chains.append(str(chain_id))
 
     return spec
