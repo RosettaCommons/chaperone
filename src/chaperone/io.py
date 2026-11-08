@@ -183,15 +183,18 @@ def assign_types_(atom_array):
 def get_sequences(atom_array):
     sequences = {}
     from biotite.structure import get_residue_starts
+    from biotite.structure.info import link_type
 
     starts = get_residue_starts(atom_array)
     tokens = atom_array[starts]
-    # A residue counts when it is an amino acid whose first atom is its N, or
-    # its CA in a CA-only model. A calcium ion is also named CA and a ligand
-    # can start with an N or a CA, so the element and residue type must agree.
+    # A residue counts when its first atom is its N, or its CA in a CA-only
+    # model, and the CCD does not know it as something other than an amino acid:
+    # a calcium ion is also named CA and a ligand can start with an N or a CA.
     alpha = (tokens.atom_name == "CA") & np.isin(tokens.element, ["C", ""])
     amide = (tokens.atom_name == "N") & np.isin(tokens.element, ["N", ""])
-    is_protein = (alpha | amide) & struc.filter_amino_acids(tokens)
+    unknown = [name for name in np.unique(tokens.res_name) if link_type(name) is None]
+    amino_acid = struc.filter_amino_acids(tokens) | np.isin(tokens.res_name, unknown)
+    is_protein = (alpha | amide) & amino_acid
 
     for chain_id in np.unique(tokens.chain_id):
         in_chain = tokens.chain_id == chain_id

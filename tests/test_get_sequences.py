@@ -44,8 +44,9 @@ def test_partial_and_reduced_models_keep_their_sequence():
         + _residue("C", 2, "ALA", names=("N",))
         + _residue("C", 3, "MSE")
         + _residue("C", 4, "UNK")
+        + _residue("C", 5, "A:1")
     )
-    assert get_sequences(atoms) == {"A": "GAX", "B": "GA", "C": "GAXX"}
+    assert get_sequences(atoms) == {"A": "GAX", "B": "GA", "C": "GAXXX"}
 
 
 def test_residue_listing_its_ca_first_does_not_take_over_the_chain():
