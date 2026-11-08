@@ -25,9 +25,9 @@ def test_ions_and_ligands_are_not_protein_residues():
         _residue("A", 1, "GLY")
         + _residue("A", 2, "ALA")
         + [_atom("A", 3, "CA", "CA", "CA")]
+        + _residue("A", 4, "LIG", names=("CA", "CB", "OG"))
         + [_atom("B", 1, "CA", "CA", "CA")]
         + [_atom("C", 1, "NO3", "N", "N"), _atom("C", 1, "NO3", "O1", "O")]
-        + _residue("A", 4, "LIG", names=("CA", "CB", "OG"))
         + _residue("D", 1, "LIG", names=("CA", "CB", "OG"))
     )
     assert get_sequences(atoms) == {"A": "GA", "B": None, "C": None, "D": None}
