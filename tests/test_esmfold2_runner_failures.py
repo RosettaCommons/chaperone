@@ -84,7 +84,6 @@ def test_runner_exit_status_covers_every_input(monkeypatch, tmp_path, capsys, fa
     esmfold2 = ModuleType("esm.models.esmfold2")
     esmfold2.EsmFold2Model = Model
     esmfold2.ESMFold2InputBuilder = Builder
-    esmfold2.load_ccd = dict
     for name in ("LigandInput", "ProteinInput", "StructurePredictionInput"):
         setattr(esmfold2, name, SimpleNamespace)
     esm.models = models

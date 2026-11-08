@@ -75,7 +75,7 @@ def _build_input(spec, builder_types, ccd_codes=()):
     for lig in spec.get("ligands", []):
         ccd = lig.get("ccd")
         if ccd and all(code in ccd_codes for code in ccd):
-            sequences.append(LigandInput(id=str(lig["id"]), ccd=list(ccd)))
+            sequences.append(LigandInput(id=str(lig["id"]), ccd=ccd))
         else:
             sequences.append(LigandInput(id=str(lig["id"]), smiles=lig["smiles"]))
     return StructurePredictionInput(sequences=sequences)
@@ -122,7 +122,6 @@ def main() -> int:
         LigandInput,
         ProteinInput,
         StructurePredictionInput,
-        load_ccd,
     )
     from esm.models import esmfold2 as esmfold2_module
     ESMFold2Model = _model_class(esmfold2_module)
@@ -141,7 +140,8 @@ def main() -> int:
     t0 = time.time()
     model = ESMFold2Model.from_pretrained(args.model).to("cuda").eval()
     builder = ESMFold2InputBuilder()  # loads ccd.pkl
-    ccd_codes = load_ccd()
+    load_ccd = getattr(esmfold2_module, "load_ccd", None)  # legacy images may lack it
+    ccd_codes = load_ccd() if load_ccd else ()
     print(f"[setup] model ready in {time.time() - t0:.0f}s", flush=True)
 
     rows = []
