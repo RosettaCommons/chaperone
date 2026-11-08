@@ -186,14 +186,17 @@ def get_sequences(atom_array):
 
     starts = get_residue_starts(atom_array)
     tokens = atom_array[starts]
+    # A residue counts when it is an amino acid whose first atom is its N, or
+    # its CA in a CA-only model. A calcium ion is also named CA and a ligand
+    # can start with an N or a CA, so the element and residue type must agree.
+    alpha = (tokens.atom_name == "CA") & np.isin(tokens.element, ["C", ""])
+    amide = (tokens.atom_name == "N") & np.isin(tokens.element, ["N", ""])
+    is_protein = (alpha | amide) & struc.filter_amino_acids(tokens)
 
     for chain_id in np.unique(tokens.chain_id):
-        tokens_in_chain = tokens[tokens.chain_id == chain_id]
-        ca_mask = tokens_in_chain.atom_name == "CA"
-        seq_tokens = tokens_in_chain[ca_mask]
-        if len(seq_tokens) == 0:
-            n_mask = tokens_in_chain.atom_name == "N"
-            seq_tokens = tokens_in_chain[n_mask]
+        in_chain = tokens.chain_id == chain_id
+        tokens_in_chain = tokens[in_chain]
+        seq_tokens = tokens[in_chain & is_protein]
         mapping = RES_NAME_TO_ONE_LETTER
         if len(seq_tokens) == 0:
             nucleic_mask = np.isin(
