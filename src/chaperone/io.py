@@ -183,17 +183,24 @@ def assign_types_(atom_array):
 def get_sequences(atom_array):
     sequences = {}
     from biotite.structure import get_residue_starts
+    from biotite.structure.info import link_type
 
     starts = get_residue_starts(atom_array)
     tokens = atom_array[starts]
+    # A residue counts when its first atom is its N or its CA (a CA-only model,
+    # or a residue listing CA first), unless the CCD knows it as something other
+    # than an amino acid: a calcium ion is also named CA, and a ligand can start
+    # with an N or a CA.
+    alpha = (tokens.atom_name == "CA") & np.isin(tokens.element, ["C", ""])
+    amide = (tokens.atom_name == "N") & np.isin(tokens.element, ["N", ""])
+    unknown = [name for name in np.unique(tokens.res_name) if link_type(name) is None]
+    amino_acid = struc.filter_amino_acids(tokens) | np.isin(tokens.res_name, unknown)
+    is_protein = (alpha | amide) & amino_acid
 
     for chain_id in np.unique(tokens.chain_id):
-        tokens_in_chain = tokens[tokens.chain_id == chain_id]
-        ca_mask = tokens_in_chain.atom_name == "CA"
-        seq_tokens = tokens_in_chain[ca_mask]
-        if len(seq_tokens) == 0:
-            n_mask = tokens_in_chain.atom_name == "N"
-            seq_tokens = tokens_in_chain[n_mask]
+        in_chain = tokens.chain_id == chain_id
+        tokens_in_chain = tokens[in_chain]
+        seq_tokens = tokens[in_chain & is_protein]
         mapping = RES_NAME_TO_ONE_LETTER
         if len(seq_tokens) == 0:
             nucleic_mask = np.isin(
