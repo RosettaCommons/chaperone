@@ -14,8 +14,8 @@ Spec JSON schema (written by ``ESMFold2Block.create_command``)::
       "ligands": [{"id": "B", "smiles": "N1C(=O)...", "ccd": ["HEM"]}]
     }
 
-A ligand with ``ccd`` is folded from ESMFold2's CCD definition when its CCD has
-every code, and from ``smiles`` otherwise.
+A ligand with ``ccd`` uses ESMFold2's CCD when it has every code; otherwise it
+falls back to ``smiles``.
 
 Folds via the Biohub ESMFold2 Python API:
 ``ESMFold2InputBuilder().fold(model, StructurePredictionInput(...), ...)``.

@@ -72,3 +72,12 @@ def test_runner_folds_ccd_ligands_from_esmfold2_ccd():
         {"id": "C", "smiles": "fallback"},
         {"id": "D", "smiles": "CCO"},
     ]
+
+
+def test_runner_keeps_smiles_when_esm_has_no_ccd():
+    build_input = runpy.run_path(str(RUNNER))["_build_input"]
+    spec = {"ligands": [{"id": "B", "smiles": "heme", "ccd": ["HEM"]}]}
+
+    built = build_input(spec, (dict, dict, dict))
+
+    assert built["sequences"] == [{"id": "B", "smiles": "heme"}]
