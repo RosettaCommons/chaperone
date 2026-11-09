@@ -187,9 +187,10 @@ def get_sequences(atom_array):
 
     starts = get_residue_starts(atom_array)
     tokens = atom_array[starts]
-    # A residue counts when its first atom is its N, or its CA in a CA-only
-    # model, and the CCD does not know it as something other than an amino acid:
-    # a calcium ion is also named CA and a ligand can start with an N or a CA.
+    # A residue counts when its first atom is its N or its CA (a CA-only model,
+    # or a residue listing CA first), unless the CCD knows it as something other
+    # than an amino acid: a calcium ion is also named CA, and a ligand can start
+    # with an N or a CA.
     alpha = (tokens.atom_name == "CA") & np.isin(tokens.element, ["C", ""])
     amide = (tokens.atom_name == "N") & np.isin(tokens.element, ["N", ""])
     unknown = [name for name in np.unique(tokens.res_name) if link_type(name) is None]
