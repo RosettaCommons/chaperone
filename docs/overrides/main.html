@@ -1,0 +1,65 @@
+{#-
+  Material for MkDocs theme override (the MkDocs equivalent of the Sphinx
+  _templates/page.html used on the other rosettacommons.github.io docs sites).
+
+  Adds the "Was this page helpful?" widget to the bottom of every page, plus the
+  periodic feedback popup. Behaviour lives in site/javascripts/page_feedback.js
+  and styling in site/stylesheets/page_feedback.css.
+
+  The reason values below are posted to the Google Form's multiple-choice
+  question, so they must match that question's options exactly.
+-#}
+{% extends "base.html" %}
+
+{% set feedback_reasons = [
+  "It's unclear or hard to follow",
+  "It's outdated or incorrect",
+  "An example or command didn't work",
+  "I didn't find what I needed",
+] %}
+
+{% macro feedback_widget(source) %}
+  <p class="page-feedback-question">Was this page helpful?</p>
+  <div class="page-feedback-buttons">
+    <button type="button" class="page-feedback-button" data-helpful="yes" aria-label="Yes, this page was helpful" title="Yes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+    </button>
+    <button type="button" class="page-feedback-button" data-helpful="no" aria-label="No, this page was not helpful" title="No">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+    </button>
+  </div>
+  <form class="page-feedback-comment" hidden>
+    <fieldset class="page-feedback-reasons">
+      <legend>What was the problem? (optional)</legend>
+      {% for reason in feedback_reasons %}
+      <label>
+        <input type="radio" name="page-feedback-reason-{{ source }}" value="{{ reason }}">
+        {{ reason }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label for="page-feedback-comment-{{ source }}">Anything else we should know? (optional)</label>
+    <textarea id="page-feedback-comment-{{ source }}" rows="3" maxlength="2000"></textarea>
+    <p class="page-feedback-privacy">Please don't include personal information. Your answers are sent anonymously to a Google Form.</p>
+    <div class="page-feedback-comment-actions">
+      <button type="submit" class="page-feedback-send">Send</button>
+      <button type="button" class="page-feedback-skip">Skip</button>
+    </div>
+  </form>
+  <p class="page-feedback-thanks" hidden>Thanks for your feedback!</p>
+{% endmacro %}
+
+{% block content %}
+  {{ super() }}
+
+  <aside class="page-feedback" data-source="inline" aria-label="Page feedback">
+    {{ feedback_widget("inline") }}
+  </aside>
+
+  <dialog class="page-feedback-popup" data-source="popup" aria-label="Documentation feedback">
+    <div class="page-feedback-popup-body">
+      <button type="button" class="page-feedback-popup-close" aria-label="Close">&times;</button>
+      {{ feedback_widget("popup") }}
+    </div>
+  </dialog>
+{% endblock %}
