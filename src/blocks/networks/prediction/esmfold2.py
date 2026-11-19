@@ -137,6 +137,13 @@ class ESMFold2Block(AF3LikePredictionBlock):
         json_schema_extra={"cli_type": None, "internal": True},
         description="Internal cache revision requiring every prediction in a chunk to succeed; not a user option.",
     )
+    input_preparation_version: Literal[2] = Field(
+        2,
+        frozen=True,
+        repr=False,
+        json_schema_extra={"cli_type": None, "internal": True},
+        description="Internal cache revision for CCD ligands folded from ESMFold2's CCD; not a user option.",
+    )
     num_loops: int = Field(
         3,
         json_schema_extra={"tier": TIER_PRIMARY},
