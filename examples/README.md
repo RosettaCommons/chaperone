@@ -23,6 +23,7 @@ each design case, including its objective, workflow, and evaluation criteria.
 | [benchmarks/disco/](benchmarks/disco/) | DISCO co-design of a heme B binder, checked by AF3 refolding |
 | [benchmarks/ame/](benchmarks/ame/) | Active-site motif recovery for de novo enzyme design on M-CSA motifs |
 | [benchmarks/prediction/validation/](benchmarks/prediction/validation/) | The structure-prediction validation cohort (see `docs/site/validation.md`) |
+| [benchmarks/guidance-cycling/](benchmarks/guidance-cycling/) | Measured data: whether another round of guided generation improves an already-good backbone, and which MPNN model to feed it |
 | [tests/catcif-storage/](tests/catcif-storage/) | Per-chunk catcif storage and how to read it back |
 
 ## Layout
